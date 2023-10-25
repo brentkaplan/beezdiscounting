@@ -4,3 +4,4 @@
 ^LICENSE\.md$
 ^other$
 ~$
+^cran-comments\.md$

@@ -1,0 +1,8 @@
+citHeader("To cite 'beezdiscounting' in publications, please use:")
+
+year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", meta$Date, perl = TRUE)
+vers <- paste("R package version", meta$Version)
+
+bibentry("Manual",
+      other = unlist(citation(auto = meta), recursive = FALSE)
+)

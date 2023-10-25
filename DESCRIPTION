@@ -1,0 +1,29 @@
+Package: beezdiscounting
+Title: Behavioral Economic Easy Discounting
+Version: 0.0.0.9000
+Date: 2023-10-25
+Authors@R: 
+    person("Brent", "Kaplan", email = "bkaplan.ku@gmail.com", role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0002-3758-6776"))
+Author: Brent Kaplan [aut, cre, cph]
+Maintainer: Brent Kaplan <bkaplan.ku@gmail.com>
+Description: Facilitates some of the analyses performed in studies of
+    behavioral economic discounting. The package supports scoring of the 27-Item Monetary Choice
+    Questionnaire (see Kaplan et al., 2016; <doi:10.1007/s40614-016-0070-9>) and scoring of the 
+    minute discounting task (see Koffarnus & Bickel, 2014; <doi:10.1037/a0035973>) using the 
+    Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide; 
+    <doi:10.13140/RG.2.2.26495.79527>), which is also available as a .qsf file in this package. 
+License: GPL (>= 2) | file LICENSE
+URL: https://github.com/brentkaplan/beezdiscounting
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Depends: 
+    R (>= 2.10)
+Imports:
+    dplyr,
+    gtools,
+    magrittr,
+    stringr,
+    tidyr
+LazyData: true

@@ -5,6 +5,9 @@
 #' @return A dataframe with id, indexes, response, k value, and effective delay 50.
 #' @importFrom stats complete.cases
 #' @export
+#'
+#' @examples
+#' score_dd(five.fivetrial)
 score_dd <- function(df) {
   dd1 <- df |>
     dplyr::select(ResponseId, paste0("I", seq(1, 31, by = 2)), "AttendSS" = `Attend-SS`,
@@ -49,6 +52,9 @@ score_dd <- function(df) {
 #' @return A dataframe with ResponseId, indexes, values and timing
 #' @importFrom stats complete.cases
 #' @export
+#'
+#' @examples
+#' timing_dd(five.fivetrial)
 timing_dd <- function(df) {
   timing <- dplyr::select(df, ResponseId, dplyr::contains("Timing"))
   colnames(timing) <- gsub("Timing_First Click", "firstclick", colnames(timing))
@@ -83,6 +89,9 @@ timing_dd <- function(df) {
 #' @return A dataframe with the ResponseId, index, and response (ss or ll).
 #' @importFrom stats complete.cases
 #' @export
+#'
+#' @examples
+#' ans_dd(five.fivetrial)
 ans_dd <- function(df) {
   ans <- df |>
     dplyr::select(ResponseId, paste0("I", 1:31), dplyr::starts_with("Attend")) |>
@@ -100,6 +109,9 @@ ans_dd <- function(df) {
 #'
 #' @return A dataframe with k/ed50 values, answers, timing
 #' @export
+#'
+#' @examples
+#' calc_dd(five.fivetrial)
 calc_dd <- function(df) {
     return(dplyr::left_join(timing_dd(df), ans_dd(df), by = c("ResponseId", "index")) |>
            dplyr::left_join(dplyr::select(score_dd(df), ResponseId, attentionflag, kval, ed50),

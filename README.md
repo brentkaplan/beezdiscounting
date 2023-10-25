@@ -1,6 +1,12 @@
 # Behavioral Economic (be) Easy (ez) Discounting
 An R package containing commonly used functions for analyzing behavioral economic discounting data.
 
+The package supports scoring of the 27-Item Monetary Choice
+Questionnaire (see Kaplan et al., 2016; <doi:10.1007/s40614-016-0070-9>) and scoring of the 
+minute discounting task (see Koffarnus & Bickel, 2014; <doi:10.1037/a0035973>) using the 
+Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide; 
+<doi:10.13140/RG.2.2.26495.79527>), which is also available as a .qsf file in this package.
+
 ## Note About Use
 Currently in development.
 

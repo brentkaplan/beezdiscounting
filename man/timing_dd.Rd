@@ -15,3 +15,6 @@ A dataframe with ResponseId, indexes, values and timing
 \description{
 Extract timing metrics from 5.5 trial delay discounting from Qualtrics template
 }
+\examples{
+timing_dd(five.fivetrial)
+}

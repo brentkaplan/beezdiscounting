@@ -5,7 +5,6 @@ Date: 2023-10-25
 Authors@R: 
     person("Brent", "Kaplan", email = "bkaplan.ku@gmail.com", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0002-3758-6776"))
-Author: Brent Kaplan [aut, cre, cph]
 Maintainer: Brent Kaplan <bkaplan.ku@gmail.com>
 Description: Facilitates some of the analyses performed in studies of
     behavioral economic discounting. The package supports scoring of the 27-Item Monetary Choice

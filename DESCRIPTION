@@ -12,7 +12,7 @@ Description: Facilitates some of the analyses performed in studies of
     minute discounting task (see Koffarnus & Bickel, 2014; <doi:10.1037/a0035973>) using the 
     Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide; 
     <doi:10.13140/RG.2.2.26495.79527>), which is also available as a .qsf file in this package. 
-License: GPL (>= 2) | file LICENSE
+License: GPL (>= 2)
 URL: https://github.com/brentkaplan/beezdiscounting
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

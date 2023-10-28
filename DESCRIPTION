@@ -23,6 +23,7 @@ Imports:
     dplyr,
     gtools,
     magrittr,
+    psych,
     stringr,
     tidyr
 LazyData: true

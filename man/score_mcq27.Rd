@@ -4,11 +4,15 @@
 \alias{score_mcq27}
 \title{Score 27-item MCQ}
 \usage{
-score_mcq27(dat = dat)
+score_mcq27(dat = dat, impute_method = "none", round = 6)
 }
 \arguments{
 \item{dat}{Dataframe (longform) with subjectid, questionid, and response
 (0 for SIR/SS and 1 for LDR/LL)}
+
+\item{impute_method}{One of: "none", "ggm", "GGM", "inn", "INN"}
+
+\item{round}{Numeric specifying number of decimal places (passed to \code{base::round()})}
 }
 \value{
 Summary dataframe

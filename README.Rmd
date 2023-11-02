@@ -1,0 +1,344 @@
+---
+output:
+  github_document:
+    html_preview: false
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo=TRUE, comment=NA, fig.path = "man/figures/")
+plotdir <- "man/figures/"
+```
+
+[![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/beezdiscounting)](https://cran.r-project.org/package=beezdiscounting)
+[![downloads](https://cranlogs.r-pkg.org/badges/beezdiscounting)](https://cranlogs.r-pkg.org/)
+[![total](https://cranlogs.r-pkg.org/badges/grand-total/beezdiscounting)](https://cranlogs.r-pkg.org/)
+
+# Behavioral Economic (be) Easy (ez) Discounting
+
+An R package containing commonly used functions for analyzing behavioral economic discounting data.
+
+The package supports scoring of the 27-Item Monetary Choice Questionnaire (see 
+[Kaplan et al., 2016](https://doi.org/10.1007/s40614-016-0070-9)) and scoring of the 
+minute discounting task (see [Koffarnus & Bickel, 2014](https://doi.org/10.1037/a0035973))
+using the Qualtrics 5-trial discounting template (see the 
+[Qualtrics Minute Discounting User Guide](https://doi.org/10.13140/RG.2.2.26495.79527)), 
+which is also available as a .qsf file in this package.
+
+## Note About Use
+
+Currently, this version (0.1.1) appears stable. I encourage you to use it
+but be aware that, as with any software release, there might be (unknown) bugs 
+present. I've tried hard to make this version usable while including the 
+core functionality (described more below). However, if you find issues or would 
+like to contribute, please open an issue on my 
+[GitHub page](https://github.com/brentkaplan/beezdiscounting) or 
+[email me](mailto:bkaplan.ku@gmail.com).
+
+## Installing beezdiscounting
+
+### CRAN Release (recommended method)
+
+The latest stable version of `beezdiscounting` (currently v.0.1.1) can be found 
+on [CRAN](https://CRAN.R-project.org/package=beezdiscounting) and installed 
+using the following command. The first time you install the package, you may be 
+asked to select a CRAN mirror. Simply select the mirror geographically closest 
+to you.
+
+```{r cran-install, eval = FALSE}
+install.packages("beezdiscounting")
+
+library(beezdiscounting)
+```
+
+### GitHub Release
+
+To install a stable release directly from
+[GitHub](https://github.com/brentkaplan/beezdiscounting), first install and
+load the `devtools` package. Then, use `install_github` to install the
+package and associated vignette. You *don’t* need to download anything
+directly from [GitHub](https://github.com/brentkaplan/beezdiscounting), as
+you should use the following instructions:
+
+```{r git-install, eval = FALSE}
+install.packages("devtools")
+
+devtools::install_github("brentkaplan/beezdiscounting")
+
+library(beezdiscounting)
+```
+
+```{r packages, include = FALSE, echo = FALSE}
+if (!require(knitr)) {
+  install.packages("knitr")
+  library(knitr)
+}
+
+if (!require(tidyverse)) {
+  install.packages("tidyverse")
+  library(tidyverse)
+}
+
+if (!require(beezdiscounting)) {
+  install.packages("beezdiscounting")
+  library(beezdiscounting)
+}
+
+```
+
+# Using the Package {#usingpackage}
+
+## 27-item Monetary Choice Questionnaire Scoring Overview
+
+### Example Dataset {#exdata}
+
+An example dataset of responses on the 27-Item Monetary Choice Questionnaire 
+is provided. This object is called `mcq27` and is located within 
+the `beezdiscounting` package. These data are the example data used in the 
+paper by 
+[Kaplan et al, 2016](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6701266/). 
+Note the format of the data, which is called "long format". Long format data 
+are data structured such that repeated observations are stacked in multiple 
+rows, rather than across columns.
+
+```{r example-data-set, echo=FALSE, results='asis'}
+knitr::kable(mcq27[c(1:7, 28:34), ])
+```
+
+The first column contains the subject id. The second column contains 
+the question id. The third column contains the response (0 for smaller sooner, 
+1 for larger later) 
+
+### Converting from Wide to Long and Vice Versa
+
+`beezdiscounting` includes several helper functions to reshape data. 
+
+##### `long_to_wide_mcq()`
+
+Long format data are widened such that subject id is the first column
+and each subsequent column contains the response associated with the question
+(specified as column names). 
+
+```{r long-to-wide-mcq}
+wide <- long_to_wide_mcq(generate_data_mcq(2))
+
+knitr::kable(wide[, c(1:5, 24:28)], caption = "Wide Format Data")
+```
+
+##### `wide_to_long_mcq()`
+
+Wide data (see example of wide data above) are made long such that subject id
+is in the first column, question id (inferred from the column names from the 
+wide format dataframe) is the second column, and the response is the third 
+column. 
+
+```{r wide-to-long-mcq, results='asis'}
+long <- wide_to_long_mcq(wide, items = 27)
+
+knitr::kable(long[c(1:5, 28:32), ], caption = "Long Format Data")
+```
+
+##### `wide_to_long_mcq_excel()`
+
+A different 'type' of wide data is that used in the 27-Item Monetary Choice
+Questionnaire Automated Excel Scorer 
+([Kaplan et al, 2016](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6701266/)).
+In this format, the first column is the question id and each subsequent column
+represents a subject (as the column name) and the response in rows (see the
+example below). This function takes the data from that format and converts
+it to the format needed for `beezdiscounting` functions.
+
+```{r wide-excel-data, echo=FALSE}
+wide_excel <- structure(list(questionid = 1:27, `1` = c(1L, 1L, 1L, 1L, 0L, 
+1L, 0L, 0L, 0L, 1L, 1L, 1L, 1L, 0L, 1L, 1L, 1L, 0L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 0L), `2` = c(1L, 1L, 1L, 0L, 1L, 0L, 0L, 
+0L, 1L, 0L, 1L, 1L, 0L, 1L, 0L, 1L, 1L, 1L, 0L, 0L, 0L, 0L, 1L, 
+1L, 1L, 1L, 1L)), row.names = c(NA, -27L), class = c("tbl_df", 
+"tbl", "data.frame"))
+```
+
+```{r wide-excel, results='asis'}
+knitr::kable(wide_excel[c(1:5, 22:27), ], 
+             caption = "Format Expected in the 27-Item MCQ Excel Scorer")
+
+long_excel <- wide_to_long_mcq_excel(wide_excel)
+
+knitr::kable(long_excel[c(1:5, 28:32), ], caption = "Long Format")
+```
+
+##### `long_to_wide_mcq_excel()`
+
+Data can be manipulated from long form into a form used by the 27-Item
+Monetary Choice Questionnaire Automated Excel Scorer.
+
+```{r long-to-wide-excel, results='asis'}
+wide_excel <- long_to_wide_mcq_excel(long_excel)
+
+knitr::kable(wide_excel[c(1:5, 22:27), ], 
+             caption = "Format Expected in the 27-Item MCQ Excel Scorer")
+
+```
+
+
+
+### Generate Fake MCQ Data
+
+Generate data specifying reproducibility and proportion of `NA` responses.
+
+```{r gen-fake-nomissing}
+## fake data with no missing values
+fake_data_no_missing <- generate_data_mcq(n_ids = 2, n_items = 27, 
+                                          seed = 1234, prop_na = 0)
+knitr::kable(fake_data_no_missing, caption = "Fake Data - No Missings")
+```
+
+```{r gen-fake-missing}
+## fake data with missing values
+fake_data_missing <- generate_data_mcq(n_ids = 2, n_items = 27, 
+                                          seed = 1234, prop_na = .1)
+knitr::kable(fake_data_missing, caption = "Fake Data - Missings")
+```
+
+
+### Score 27-item MCQ
+
+MCQ data can be scored regularly and can also impute using various methods
+specified by [Yeh et al, 2023](https://doi.org/10.1371/journal.pone.0292258)
+
+#### Normal (no imputation)
+
+##### No missing data
+```{r score-impute-none-1}
+## normal scoring of data with no missing values
+tbl1 <- score_mcq27(fake_data_no_missing)
+```
+
+```{r score-impute-none-1-output, results = 'asis', echo=FALSE}
+knitr::kable(tbl1[, c(1:6)], caption = "k Values")
+knitr::kable(tbl1[, c(1, 7:11)], caption = "Consistency Scores")
+knitr::kable(tbl1[, c(1, 12:16)], caption = "Proportions")
+```
+
+##### Missing data
+```{r score-impute-none-2}
+## normal scoring of data with missings with no imputation
+tbl2 <- score_mcq27(fake_data_missing)
+```
+
+```{r score-impute-none-2-output, results = 'asis', echo=FALSE}
+knitr::kable(tbl2[, c(1:6)], caption = "k Values")
+knitr::kable(tbl2[, c(1, 7:11)], caption = "Consistency Scores")
+knitr::kable(tbl2[, c(1, 12:16)], caption = "Proportions")
+```
+
+
+#### GGM imputation
+
+This approach (Group Geometric Mean) "...calculates the composite k when at 
+least one of the three amount set ks is fully available" 
+([Yeh et al, 2023](https://doi.org/10.1371/journal.pone.0292258))
+
+```{r score-impute-ggm}
+tbl3 <- score_mcq27(fake_data_missing, impute_method = "GGM")
+```
+
+```{r score-impute-ggm-output, results = 'asis', echo=FALSE}
+knitr::kable(tbl3[, c(1:6)], caption = "k Values")
+knitr::kable(tbl3[, c(1, 7:11)], caption = "Consistency Scores")
+knitr::kable(tbl3[, c(1, 12:16)], caption = "Proportions")
+```
+
+#### INN imputation (no random component)
+
+This approach (Item Nearest Neighbor) "...replaces the missing value with the 
+congruent non-missing responses to the items corresponding to the same k value"
+([Yeh et al, 2023](https://doi.org/10.1371/journal.pone.0292258))
+
+```{r score-impute-inn-norandom}
+tbl4 <- score_mcq27(fake_data_missing, impute_method = "INN")
+```
+
+```{r score-impute-inn-norandom-output, results = 'asis', echo=FALSE}
+knitr::kable(tbl4[, c(1:6)], caption = "k Values")
+knitr::kable(tbl4[, c(1, 7:11)], caption = "Consistency Scores")
+knitr::kable(tbl4[, c(1, 12:16)], caption = "Proportions")
+```
+
+#### INN imputation (with random component)
+
+This approach (Item Nearest Neighbor with Random) "... is identical to 
+[INN no random component], except that when a missing response cannot be 
+resolved, this datum will be randomly replaced with 0 or 1, 
+corresponding to choosing immediate or delayed rewards, respectively" 
+([Yeh et al, 2023](https://doi.org/10.1371/journal.pone.0292258))
+
+```{r score-impute-inn-random}
+tbl5 <- score_mcq27(fake_data_missing, impute_method = "INN",
+                    random = TRUE)
+```
+
+```{r score-impute-inn-random-output, results = 'asis', echo=FALSE}
+knitr::kable(tbl5[, c(1:6)], caption = "k Values")
+knitr::kable(tbl5[, c(1, 7:11)], caption = "Consistency Scores")
+knitr::kable(tbl5[, c(1, 12:16)], caption = "Proportions")
+```
+
+##### Return a list
+You can also return a list when INN imputation with random is specified. This
+is helpful to see what values replaced the missings (`NA`s) in the original 
+dataset.
+
+```{r score-impute-inn-random-list}
+lst <- score_mcq27(fake_data_missing, impute_method = "INN",
+                    random = TRUE, return_data = TRUE)
+```
+
+The scoring summary metric dataframe as before (access via `...$results`):
+
+```{r score-impute-inn-random-list-output, results = 'asis', echo=FALSE}
+knitr::kable(lst$results[, c(1:6)], caption = "k Values")
+knitr::kable(lst$results[, c(1, 7:11)], caption = "Consistency Scores")
+knitr::kable(lst$results[, c(1, 12:16)], caption = "Proportions")
+```
+
+The original data and the new responses imputed (access via `...$data`):
+
+```{r score-impute-inn-random-list-output-2, results = 'asis', echo=FALSE}
+knitr::kable(lst$data, caption = "Original Data and Imputed Data")
+```
+
+## Learn More About Functions
+
+To learn more about a function and what arguments it takes, type "?" in front of the function name.
+
+```{r learn, eval=FALSE}
+?score_mcq27
+```
+
+
+# Recommended Readings
+
+- Kaplan, B. A., Amlung, M., Reed, D. D., Jarmolowicz, D. P., 
+McKerchar, T. L., & Lemley, S. M. (2016). Automating scoring of delay 
+discounting for the 21-and 27-item monetary choice questionnaires. 
+*The Behavior Analyst, 39*, 293-304. https://doi.org/10.1007/s40614-016-0070-9
+
+- Reed, D. D., Niileksela, C. R., & Kaplan, B. A. (2013). Behavioral economics: 
+A tutorial for behavior analysts in practice. *Behavior Analysis in Practice, 6* 
+(1), 34–54. https://doi.org/10.1007/BF03391790
+
+- Kirby, K. N., Petry, N. M., & Bickel, W. K. (1999). Heroin addicts have 
+higher discount rates for delayed rewards than non-drug-using controls. 
+*Journal of Experimental Psychology: General, 128* (1), 78-87. 
+https://doi.org/10.1037//0096-3445.128.1.78 
+
+- Yeh, Y. H., Tegge, A. N., Freitas-Lemos, R., Myerson, J., Green, L., & 
+Bickel, W. K. (2023). Discounting of delayed rewards: Missing data imputation 
+for the 21-and 27-item monetary choice questionnaires. *PLOS ONE, 18*
+(10), e0292258. https://doi.org/10.1371/journal.pone.0292258
+
+- Koffarnus, M. N., & Bickel, W. K. (2014). A 5-trial adjusting delay 
+discounting task: accurate discount rates in less than one minute. 
+*Experimental and Clinical Psychopharmacology, 22*(3), 222-228.
+https://doi.org/10.1037/a0035973

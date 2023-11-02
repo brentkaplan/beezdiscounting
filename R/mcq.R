@@ -3,17 +3,30 @@
 #' @param dat Dataframe (longform) with subjectid, questionid, and response
 #' (0 for SIR/SS and 1 for LDR/LL)
 #' @param impute_method One of: "none", "ggm", "GGM", "inn", "INN"
-#' @param round Numeric specifying number of decimal places (passed to `base::round()`)
+#' @param round Numeric specifying number of decimal places
+#' (passed to `base::round()`)
+#' @param random Boolean whether to insert a random draw (0 or 1) for NAs.
+#' Default is FALSE
+#' @param return_data Boolean whether to return the original data and new
+#' imputed responses. Default is FALSE.
+#' @param verbose Boolean whether to print subject and question ids pertaining
+#' to missing data. Default is FALSE.
 #'
 #' @return Summary dataframe
 #' @export
 #'
 #' @examples
 #' score_mcq27(mcq27)
-score_mcq27 <- function(dat = dat, impute_method = "none", round = 6) {
+score_mcq27 <- function(dat = dat, impute_method = "none",
+                        round = 6, random = FALSE,
+                        return_data = FALSE, verbose = FALSE) {
 
   if (!impute_method %in% c("none", "ggm", "GGM", "inn", "INN")) {
     stop("Impute method must be one of none, ggm, GGM, inn, INN")
+  }
+
+  if (return_data) {
+    dat$newresponse <- NA
   }
 
   # length of ids
@@ -46,24 +59,45 @@ score_mcq27 <- function(dat = dat, impute_method = "none", round = 6) {
     dat_sub <- dat[dat$subjectid == i, ]
 
     # check for 27 items
-    if (!length(dat_sub$response) == 27) stop(paste0("Response length not equal to 27 for subjectid: ", i))
+    if (!length(dat_sub$response) == 27) stop(paste0("Response length
+                                                      not equal to 27
+                                                      for subjectid: ", i))
+
+    if (impute_method %in% c("inn", "INN") & any(is.na(dat_sub$response))) {
+      dat_sub <- inn(dat_sub, random = random, verbose = verbose)
+    }
 
     dfout[dfout$subjectid %in% i, 2:(ncol(dfout)-1)] <- score_one_mcq27(dat_sub,
                                                                       impute_method,
                                                                       round = round)
-  }
-  dfout$impute_method <- impute_method
 
-  return(dfout)
+    if (return_data) {
+      dat$newresponse[dat$subjectid == i] <- dat_sub$response
+    }
+
+  }
+  dfout$impute_method <- if (!(impute_method %in% c("inn", "INN") & random)) {
+    impute_method
+  } else {
+    "INN with random"
+  }
+
+  if (!return_data) {
+    return(dfout)
+  } else {
+    return(list("results" = dfout,
+                "data" = dat))
+  }
+
 
 }
-
 
 #' Score one subject's 27-item MCQ
 #'
 #' @param dat One subject's 27 items from the MCQ
 #' @param impute_method One of: "none", "ggm", "GGM", "inn", "INN"
-#' @param round Numeric specifying number of decimal places (passed to `base::round()`)
+#' @param round Numeric specifying number of decimal places
+#' (passed to `base::round()`)
 #'
 #' @return Vector with scored 27-item MCQ metrics
 #' @importFrom psych geometric.mean
@@ -92,11 +126,12 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
     "medium_proportion" = NA,
     "large_proportion" = NA
   )
-  # browser()
+
   # bring in lookup table
-  dat <- merge(dat, lookup, by.x = "questionid", by.y = "questionid", all.x = TRUE)
+  dat <- merge(dat, lookup, by.x = "questionid",
+               by.y = "questionid", all.x = TRUE)
   # order df
-  dat <- dat[match(lookup$questionid, dat$questionid),]
+  dat <- dat[match(lookup$questionid, dat$questionid), ]
 
   ## overall
   # calculate consistency scores
@@ -107,17 +142,17 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
     if (j == 1) cons[j] <- sum(dat$response[j:length(dat$response)])
     # very last k value bin equals sum of ss (0s)
     if (j == lngth) {
-      cons[j] <- sum(dat$response[1:j-1] == 0)
+      cons[j] <- sum(dat$response[1:j - 1] == 0)
       break()
     }
     # for each question id in between, sum number of 0s before and
     # sum number of 1s at and after the current question id
-    cons[j] <- sum(dat$response[1:j-1] == 0) +
+    cons[j] <- sum(dat$response[1:j - 1] == 0) +
       sum(dat$response[j:length(dat$response)])
   }
 
   # populate consistency
-  dfout["overall_consistency"] <- max(cons)/27
+  dfout["overall_consistency"] <- max(cons) / 27
   # find index where max consistency occurs
   consmaxi <- which(cons == max(cons))
   consmaxi <- sort(rbind(consmaxi, (consmaxi - 1)))
@@ -126,13 +161,14 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
     consmaxi[which(consmaxi == 0)] <- 1
   }
   if (length(consmaxi) != 0) {
-    kval <- gtools::running(c(lookup$kindiff, .25)[consmaxi], fun = psych::geometric.mean, width = 2, by = 2)
+    kval <- gtools::running(c(lookup$kindiff, .25)[consmaxi],
+                            fun = psych::geometric.mean, width = 2, by = 2)
     dfout["overall_k"] <- psych::geometric.mean(kval)
   } else {
     dfout["overall_k"] <- NA
   }
 
-  dfout["overall_proportion"] <- cons[1]/27
+  dfout["overall_proportion"] <- cons[1] / 27
 
   for (k in 1:3) {
 
@@ -145,16 +181,16 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
       if (j == 1) cons[j] <- sum(dat_mag$response[j:length(dat_mag$response)])
       # very last k value bin equals sum of ss (0s)
       if (j == lngth) {
-        cons[j] <- sum(dat_mag$response[1:j-1] == 0)
+        cons[j] <- sum(dat_mag$response[1:j - 1] == 0)
         break()
       }
       # for each question id in between, sum number of 0s before and
       # sum number of 1s at and after the current question id
-      cons[j] <- sum(dat_mag$response[1:j-1] == 0) +
+      cons[j] <- sum(dat_mag$response[1:j - 1] == 0) +
         sum(dat_mag$response[j:length(dat_mag$response)])
     }
 
-    dfout[paste0(mags[k], "_consistency")] <- max(cons)/9
+    dfout[paste0(mags[k], "_consistency")] <- max(cons) / 9
     # find index where max consistency occurs
     consmaxi <- which(cons == max(cons))
     consmaxi <- sort(rbind(consmaxi, (consmaxi - 1)))
@@ -170,19 +206,63 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
     } else {
       dfout[paste0(mags[k], "_k")] <- NA
     }
-    dfout[paste0(mags[k], "_proportion")] <- cons[1]/9
+    dfout[paste0(mags[k], "_proportion")] <- cons[1] / 9
 
 
   }
 
-  dfout["geomean_k"] <- psych::geometric.mean(dfout[c("small_k", "medium_k", "large_k")],
+  dfout["geomean_k"] <- psych::geometric.mean(dfout[c("small_k",
+                                                      "medium_k",
+                                                      "large_k")],
                               na.rm = if (impute_method %in% c("ggm", "GGM")) TRUE else FALSE)
   dfout["composite_consistency"] <- sum(dfout[c("small_consistency",
                                              "medium_consistency",
-                                             "large_consistency")])/3
+                                             "large_consistency")]) / 3
 
   dfout <- round(dfout, digits = round)
 
   return(dfout)
 
+}
+
+#' Calculates item nearest neighbor imputation approach discussed by
+#' Yeh et al. (2023)
+#'
+#' @param dat A single subject's 27-item MCQ data in long form
+#' @param random Boolean whether to insert a random draw (0 or 1) for NAs
+#' @param verbose Boolean whether to print subject and question ids pertaining
+#' to missing data
+#'
+#' @return An imputed data set to be scored
+#'
+inn <- function(dat, random, verbose) {
+  dat <- merge(dat, lookup,
+    by.x = "questionid",
+    by.y = "questionid", all.x = TRUE
+  )
+  dat <- dat[match(lookup$questionid, dat$questionid), ]
+  if (verbose) print(paste("NA found for id:", unique(dat$subjectid)))
+  split_dfs <- suppressWarnings(split(dat, (0:nrow(dat) %/% 3))[-10])
+
+  for (i in seq_along(split_dfs)) {
+    if (!any(is.na(split_dfs[[i]]$response))) {
+      next()
+    } else {
+      subqids <- split_dfs[[i]]$questionid
+      naqids <- split_dfs[[i]]$questionid[which(is.na(split_dfs[[i]]$response))]
+      if (verbose) print(paste0(c("NAs for questionids: ", naqids), collapse = " "))
+      if (length(unique(split_dfs[[i]]$response[!(split_dfs[[i]]$questionid %in% naqids)])) == 1) {
+        # if all non-na values are the same, replace with that non-na number
+        dat$response[dat$questionid %in% naqids] <- unique(split_dfs[[i]]$response[!(split_dfs[[i]]$questionid %in% naqids)])
+      } else {
+        if (random) {
+          dat$response[dat$questionid %in% naqids] <- sample(0:1,
+            length(naqids),
+            replace = TRUE
+          )
+        }
+      }
+    }
+  }
+  return(dat[order(as.numeric(dat$questionid)), c(2, 1, 3)])
 }

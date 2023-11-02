@@ -4,7 +4,7 @@
 \alias{generate_data_mcq}
 \title{Generate fake MCQ data}
 \usage{
-generate_data_mcq(n_ids = 100, n_items = 27, seed = 1234, prop.na = 0)
+generate_data_mcq(n_ids = 100, n_items = 27, seed = 1234, prop_na = 0)
 }
 \arguments{
 \item{n_ids}{Number of subjectids}
@@ -13,7 +13,7 @@ generate_data_mcq(n_ids = 100, n_items = 27, seed = 1234, prop.na = 0)
 
 \item{seed}{Random seed}
 
-\item{prop.na}{Proportion of NAs in the entire data set}
+\item{prop_na}{Proportion of NAs in the entire data set}
 }
 \value{
 Dataframe of subjectid, questionid, and response
@@ -22,5 +22,5 @@ Dataframe of subjectid, questionid, and response
 Generate fake MCQ data
 }
 \examples{
-generate_data_mcq(n_ids = 2, n_items = 27, prop.na = .01)
+generate_data_mcq(n_ids = 2, n_items = 27, prop_na = .01)
 }

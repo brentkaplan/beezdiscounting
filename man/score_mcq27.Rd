@@ -4,7 +4,14 @@
 \alias{score_mcq27}
 \title{Score 27-item MCQ}
 \usage{
-score_mcq27(dat = dat, impute_method = "none", round = 6)
+score_mcq27(
+  dat = dat,
+  impute_method = "none",
+  round = 6,
+  random = FALSE,
+  return_data = FALSE,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{dat}{Dataframe (longform) with subjectid, questionid, and response
@@ -12,7 +19,17 @@ score_mcq27(dat = dat, impute_method = "none", round = 6)
 
 \item{impute_method}{One of: "none", "ggm", "GGM", "inn", "INN"}
 
-\item{round}{Numeric specifying number of decimal places (passed to \code{base::round()})}
+\item{round}{Numeric specifying number of decimal places
+(passed to \code{base::round()})}
+
+\item{random}{Boolean whether to insert a random draw (0 or 1) for NAs.
+Default is FALSE}
+
+\item{return_data}{Boolean whether to return the original data and new
+imputed responses. Default is FALSE.}
+
+\item{verbose}{Boolean whether to print subject and question ids pertaining
+to missing data. Default is FALSE.}
 }
 \value{
 Summary dataframe

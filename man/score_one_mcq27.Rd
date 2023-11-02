@@ -11,7 +11,8 @@ score_one_mcq27(dat, impute_method = "none", round = 6)
 
 \item{impute_method}{One of: "none", "ggm", "GGM", "inn", "INN"}
 
-\item{round}{Numeric specifying number of decimal places (passed to \code{base::round()})}
+\item{round}{Numeric specifying number of decimal places
+(passed to \code{base::round()})}
 }
 \value{
 Vector with scored 27-item MCQ metrics

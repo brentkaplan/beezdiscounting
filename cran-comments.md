@@ -1,7 +1,9 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors ✔ | 0 warnings ✔ | 1 note ✖
 
-* This is a new release.
+* Two links were flagged as possibly invalid URLS. However, the links resolve in the browser.
 
-* Remove LICENSE file per request
+## revdepcheck results
+
+There are currently no downstream dependencies for this package

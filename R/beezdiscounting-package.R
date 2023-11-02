@@ -5,7 +5,9 @@
 ## usethis namespace: end
 NULL
 
-utils::globalVariables(c(".", "ResponseId", "response",
-                         "attentionflag", "kval", "ed50",
-                         "Attend-SS", "Attend-LL", "magnitude",
-                         "question", "measure", "value"))
+utils::globalVariables(c(
+    ".", "ResponseId", "response",
+    "attentionflag", "kval", "ed50",
+    "Attend-SS", "Attend-LL", "magnitude",
+    "question", "measure", "value",
+    "subjectid", "questionid"))

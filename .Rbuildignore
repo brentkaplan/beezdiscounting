@@ -7,5 +7,6 @@
 ^cran-comments\.md$
 ^CRAN-SUBMISSION$
 ^README.Rmd
+^beezdiscounting.code-workspace
 ^tests
 ^revdep$

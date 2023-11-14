@@ -16,5 +16,5 @@ A dataframe with k/ed50 values, answers, timing
 Calculate scores, answers, and timing for 5.5 trial delay discounting from Qualtrics template
 }
 \examples{
-calc_dd(five.fivetrial)
+calc_dd(five.fivetrial_dd)
 }

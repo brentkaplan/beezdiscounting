@@ -16,5 +16,5 @@ A dataframe with the ResponseId, index, and response (ss or ll).
 Converts answers from 5.5 trial delay discounting from Qualtrics template
 }
 \examples{
-ans_dd(five.fivetrial)
+ans_dd(five.fivetrial_dd)
 }

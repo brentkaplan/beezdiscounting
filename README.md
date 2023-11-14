@@ -21,7 +21,7 @@ available as a .qsf file in this package.
 
 ## Note About Use
 
-Currently, this version (0.2.0) appears stable. I encourage you to use
+Currently, this version (0.3.0) appears stable. I encourage you to use
 it but be aware that, as with any software release, there might be
 (unknown) bugs present. I’ve tried hard to make this version usable
 while including the core functionality (described more below). However,
@@ -33,7 +33,7 @@ my [GitHub page](https://github.com/brentkaplan/beezdiscounting) or
 
 ### CRAN Release (recommended method)
 
-The latest stable version of `beezdiscounting` (currently v.0.2.0) can
+The latest stable version of `beezdiscounting` (currently v.0.3.0) can
 be found on [CRAN](https://CRAN.R-project.org/package=beezdiscounting)
 and installed using the following command. The first time you install
 the package, you may be asked to select a CRAN mirror. Simply select the
@@ -624,6 +624,77 @@ The original data and the new responses imputed (access via `...$data`):
 
 Original Data and Imputed Data
 
+## Scoring the Minute Discounting Tasks
+
+### 5.5 Trial Delay Discounting Task
+
+``` r
+dd_out <- calc_dd(five.fivetrial_dd)
+
+knitr::kable(dd_out, caption = "Scoring Summary of the 5.5 Trial Delay Discounting Task")
+```
+
+| ResponseId | index    |   q | firstclick | lastclick | pagesubmit | totalclicks | response | attentionflag |      kval |        ed50 |
+|-----------:|:---------|----:|-----------:|----------:|-----------:|------------:|:---------|:--------------|----------:|------------:|
+|          1 | I16      |   1 |      1.761 |     1.761 |      3.337 |           1 | ll       | No            | 0.0067058 | 149.1249275 |
+|          1 | I24      |   2 |      7.729 |     7.729 |      8.457 |           1 | ss       | No            | 0.0067058 | 149.1249275 |
+|          1 | I20      |   3 |      1.558 |     1.558 |      3.377 |           1 | ll       | No            | 0.0067058 | 149.1249275 |
+|          1 | I22      |   4 |      2.333 |     3.949 |      4.501 |           2 | ss       | No            | 0.0067058 | 149.1249275 |
+|          1 | I21      |   5 |      3.161 |     3.161 |      3.728 |           1 | ss       | No            | 0.0067058 | 149.1249275 |
+|          2 | I16      |   1 |      3.779 |     3.779 |      4.351 |           1 | ss       | No            | 4.8989795 |   0.2041241 |
+|          2 | I8       |   2 |      1.454 |     1.454 |      3.190 |           1 | ss       | No            | 4.8989795 |   0.2041241 |
+|          2 | I4       |   3 |      1.179 |     1.179 |      3.144 |           1 | ll       | No            | 4.8989795 |   0.2041241 |
+|          2 | I6       |   4 |      0.873 |     0.873 |      3.256 |           1 | ss       | No            | 4.8989795 |   0.2041241 |
+|          2 | I5       |   5 |      2.621 |     2.621 |      3.258 |           1 | ss       | No            | 4.8989795 |   0.2041241 |
+|          3 | I16      |   1 |      1.115 |     1.115 |      3.272 |           1 | ss       | Yes           |        NA |          NA |
+|          3 | I8       |   2 |      0.679 |     0.679 |      3.074 |           1 | ss       | Yes           |        NA |          NA |
+|          3 | I4       |   3 |      0.606 |     0.606 |      3.044 |           1 | ss       | Yes           |        NA |          NA |
+|          3 | I2       |   4 |      0.745 |     0.745 |      3.302 |           1 | ss       | Yes           |        NA |          NA |
+|          3 | I1       |   5 |      0.924 |     0.924 |      4.181 |           1 | ss       | Yes           |        NA |          NA |
+|          3 | AttendSS |   6 |      1.450 |     1.450 |      4.181 |           1 | ss       | Yes           |        NA |          NA |
+|          4 | I16      |   1 |      1.011 |     1.011 |      3.190 |           1 | ll       | Yes           |        NA |          NA |
+|          4 | I24      |   2 |      1.041 |     1.041 |      3.109 |           1 | ll       | Yes           |        NA |          NA |
+|          4 | I28      |   3 |      0.806 |     0.806 |      3.113 |           1 | ll       | Yes           |        NA |          NA |
+|          4 | I30      |   4 |      0.822 |     0.822 |      3.487 |           1 | ll       | Yes           |        NA |          NA |
+|          4 | I31      |   5 |      0.914 |     0.914 |      3.170 |           1 | ll       | Yes           |        NA |          NA |
+|          4 | AttendLL |   6 |      2.158 |     2.158 |      3.573 |           1 | ll       | Yes           |        NA |          NA |
+
+Scoring Summary of the 5.5 Trial Delay Discounting Task
+
+### 5.5 Trial Probability Discounting Task
+
+``` r
+pd_out <- calc_pd(five.fivetrial_pd)
+
+knitr::kable(pd_out, caption = "Scoring Summary of the 5.5 Trial Probability Discounting Task")
+```
+
+| ResponseId | index    |   q | firstclick | lastclick | pagesubmit | totalclicks | response | attentionflag |      hval |      ep50 |
+|-----------:|:---------|----:|-----------:|----------:|-----------:|------------:|:---------|:--------------|----------:|----------:|
+|          1 | I16      |   1 |      3.980 |     3.980 |      5.184 |           1 | sc       | No            |  7.435436 | 0.1344911 |
+|          1 | I8       |   2 |      4.010 |     4.010 |      4.763 |           1 | lu       | No            |  7.435436 | 0.1344911 |
+|          1 | I12      |   3 |      2.061 |     2.061 |      3.252 |           1 | sc       | No            |  7.435436 | 0.1344911 |
+|          1 | I10      |   4 |      1.525 |     1.525 |      3.019 |           1 | sc       | No            |  7.435436 | 0.1344911 |
+|          1 | I9       |   5 |      2.253 |     2.954 |      3.738 |           2 | lu       | No            |  7.435436 | 0.1344911 |
+|          2 | I16      |   1 |      2.873 |     2.873 |      3.883 |           1 | sc       | No            | 99.000000 | 0.0101010 |
+|          2 | I8       |   2 |      3.745 |     3.745 |      4.864 |           1 | sc       | No            | 99.000000 | 0.0101010 |
+|          2 | I4       |   3 |      1.159 |     1.159 |      6.356 |           1 | sc       | No            | 99.000000 | 0.0101010 |
+|          2 | I2       |   4 |      3.064 |     3.064 |      5.408 |           1 | sc       | No            | 99.000000 | 0.0101010 |
+|          2 | I1       |   5 |      2.049 |     2.049 |      5.097 |           1 | sc       | No            | 99.000000 | 0.0101010 |
+|          2 | AttendSS |   6 |      2.295 |     2.295 |      4.641 |           1 | lu       | No            | 99.000000 | 0.0101010 |
+|          3 | I16      |   1 |      8.933 |     8.933 |      9.769 |           1 | sc       | No            |  1.601445 | 0.6244361 |
+|          3 | I8       |   2 |      2.163 |     2.163 |      2.981 |           1 | lu       | No            |  1.601445 | 0.6244361 |
+|          3 | I12      |   3 |      3.129 |     3.129 |      3.895 |           1 | lu       | No            |  1.601445 | 0.6244361 |
+|          3 | I14      |   4 |      2.655 |     2.655 |      4.855 |           1 | lu       | No            |  1.601445 | 0.6244361 |
+|          3 | I15      |   5 |      4.021 |     4.021 |      4.705 |           1 | sc       | No            |  1.601445 | 0.6244361 |
+|          4 | I16      |   1 |      4.415 |     4.415 |      5.382 |           1 | sc       | No            |  7.435436 | 0.1344911 |
+|          4 | I8       |   2 |      6.123 |     6.123 |      6.974 |           1 | lu       | No            |  7.435436 | 0.1344911 |
+|          4 | I12      |   3 |      1.673 |     1.673 |      3.191 |           1 | sc       | No            |  7.435436 | 0.1344911 |
+|          4 | I10      |   4 |      1.757 |     1.757 |      3.259 |           1 | sc       | No            |  7.435436 | 0.1344911 |
+|          4 | I9       |   5 |      1.207 |     1.207 |      4.592 |           1 | lu       | No            |  7.435436 | 0.1344911 |
+
+Scoring Summary of the 5.5 Trial Probability Discounting Task
+
 ## Learn More About Functions
 
 To learn more about a function and what arguments it takes, type “?” in
@@ -661,3 +732,12 @@ front of the function name.
   discounting task: accurate discount rates in less than one minute.
   *Experimental and Clinical Psychopharmacology, 22*(3), 222-228.
   <https://doi.org/10.1037/a0035973>
+
+- Koffarnus, M. N., Rzeszutek, M. J., & Kaplan, B. A. (2021). Additional
+  discounting rates in less than one minute: Task variants for
+  probability and a wider range of delays.
+  <https://doi.org/10.13140/RG.2.2.31281.92000>
+
+- Koffarnus, M. N., Kaplan, B. A., & Stein, J. S. (2017). User guide for
+  Qualtrics minute discounting template.
+  <https://doi.org/10.13140/RG.2.2.26495.79527>

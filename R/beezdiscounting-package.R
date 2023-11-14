@@ -10,4 +10,5 @@ utils::globalVariables(c(
     "attentionflag", "kval", "ed50",
     "Attend-SS", "Attend-LL", "magnitude",
     "question", "measure", "value",
-    "subjectid", "questionid"))
+    "subjectid", "questionid",
+    "hval", "ep50"))

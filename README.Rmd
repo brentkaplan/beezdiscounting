@@ -28,7 +28,7 @@ which is also available as a .qsf file in this package.
 
 ## Note About Use
 
-Currently, this version (0.2.0) appears stable. I encourage you to use it
+Currently, this version (0.3.0) appears stable. I encourage you to use it
 but be aware that, as with any software release, there might be (unknown) bugs 
 present. I've tried hard to make this version usable while including the 
 core functionality (described more below). However, if you find issues or would 
@@ -40,7 +40,7 @@ like to contribute, please open an issue on my
 
 ### CRAN Release (recommended method)
 
-The latest stable version of `beezdiscounting` (currently v.0.2.0) can be found 
+The latest stable version of `beezdiscounting` (currently v.0.3.0) can be found 
 on [CRAN](https://CRAN.R-project.org/package=beezdiscounting) and installed 
 using the following command. The first time you install the package, you may be 
 asked to select a CRAN mirror. Simply select the mirror geographically closest 
@@ -308,6 +308,23 @@ The original data and the new responses imputed (access via `...$data`):
 knitr::kable(lst$data, caption = "Original Data and Imputed Data")
 ```
 
+## Scoring the Minute Discounting Tasks
+
+### 5.5 Trial Delay Discounting Task
+```{r dd, results = 'asis'}
+dd_out <- calc_dd(five.fivetrial_dd)
+
+knitr::kable(dd_out, caption = "Scoring Summary of the 5.5 Trial Delay Discounting Task")
+```
+
+### 5.5 Trial Probability Discounting Task
+```{r pd, results = 'asis'}
+pd_out <- calc_pd(five.fivetrial_pd)
+
+knitr::kable(pd_out, caption = "Scoring Summary of the 5.5 Trial Probability Discounting Task")
+```
+
+
 ## Learn More About Functions
 
 To learn more about a function and what arguments it takes, type "?" in front of the function name.
@@ -342,3 +359,11 @@ for the 21-and 27-item monetary choice questionnaires. *PLOS ONE, 18*
 discounting task: accurate discount rates in less than one minute. 
 *Experimental and Clinical Psychopharmacology, 22*(3), 222-228.
 https://doi.org/10.1037/a0035973
+
+- Koffarnus, M. N., Rzeszutek, M. J., & Kaplan, B. A. (2021). Additional
+discounting rates in less than one minute: Task variants for probability
+and a wider range of delays. https://doi.org/10.13140/RG.2.2.31281.92000
+
+- Koffarnus, M. N., Kaplan, B. A., & Stein, J. S. (2017). User guide for
+Qualtrics minute discounting template.
+https://doi.org/10.13140/RG.2.2.26495.79527

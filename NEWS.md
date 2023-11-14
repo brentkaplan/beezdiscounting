@@ -1,3 +1,20 @@
+# beezdiscounting 0.3.0
+
+## New features
+
+* Add functions for scoring 5.5 trial probability discounting task (from the Qualtrics template) including: `calc_pd()`
+(and `score_pd()`, `timing_pd()`, and `ans_pd`).
+
+## Minor fix
+
+* Subsetting issue is fixed in `score_dd()` that would unintentionally drop all rows if both conditions were `FALSE`.
+
+## Other changes
+
+* Rename example data from `five.fivetrial` to `five.fivetrial_dd` for delay discounting.
+
+* Add example data `five.fivetrial_pd` for probability discounting.
+
 # beezdiscounting 0.2.0
 
 ## New features

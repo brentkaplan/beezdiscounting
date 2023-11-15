@@ -15,6 +15,9 @@ A dataframe with ResponseId, indexes, values and timing
 \description{
 Extract timing metrics from 5.5 trial probability discounting from Qualtrics template
 }
+\details{
+Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
+}
 \examples{
 timing_pd(five.fivetrial_pd)
 }

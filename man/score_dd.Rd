@@ -15,6 +15,9 @@ A dataframe with id, indexes, response, k value, and effective delay 50.
 \description{
 Score 5.5 trial delay discounting from Qualtrics template
 }
+\details{
+Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
+}
 \examples{
 score_dd(five.fivetrial_dd)
 }

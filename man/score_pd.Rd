@@ -15,6 +15,9 @@ A dataframe with id, indexes, response, h value, and effective probability 50.
 \description{
 Score 5.5 trial probability discounting from Qualtrics template
 }
+\details{
+Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
+}
 \examples{
 score_pd(five.fivetrial_pd)
 }

@@ -3,6 +3,8 @@
 #' @param df A dataframe containing all the columns
 #'
 #' @return A dataframe with id, indexes, response, k value, and effective delay 50.
+#' @details
+#' Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
 #' @importFrom stats complete.cases
 #' @export
 #'
@@ -52,6 +54,8 @@ score_dd <- function(df) {
 #' @param df A dataframe containing all the columns
 #'
 #' @return A dataframe with ResponseId, indexes, values and timing
+#' @details
+#' Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
 #' @importFrom stats complete.cases
 #' @export
 #'
@@ -126,6 +130,8 @@ calc_dd <- function(df) {
 #' @param df A dataframe containing all the columns
 #'
 #' @return A dataframe with id, indexes, response, h value, and effective probability 50.
+#' @details
+#' Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
 #' @importFrom stats complete.cases
 #' @export
 #'
@@ -165,7 +171,8 @@ score_pd <- function(df) {
   pdframe$hval[pdframe$index %in% "AttendLL" & pdframe$response %in% "sc"] <- "0.010101"
 
   pdframe$hval <- as.numeric(pdframe$hval)
-  pdframe$ep50 <- 1/pdframe$hval
+  pdframe$etheta50 <- 1/pdframe$hval
+  pdframe$ep50 <- (1 / (pdframe$etheta50 + 1)) * 100
   return(pdframe)
 
 }
@@ -175,6 +182,8 @@ score_pd <- function(df) {
 #' @param df A dataframe containing all the columns
 #'
 #' @return A dataframe with ResponseId, indexes, values and timing
+#' @details
+#' Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
 #' @importFrom stats complete.cases
 #' @export
 #'
@@ -239,7 +248,9 @@ ans_pd <- function(df) {
 #' calc_pd(five.fivetrial_pd)
 calc_pd <- function(df) {
   return(dplyr::left_join(timing_pd(df), ans_pd(df), by = c("ResponseId", "index")) |>
-           dplyr::left_join(dplyr::select(score_pd(df), ResponseId, attentionflag, hval, ep50),
+           dplyr::left_join(dplyr::select(score_pd(df),
+                                          ResponseId, attentionflag,
+                                          hval, etheta50, ep50),
                             by = c("ResponseId")) |>
            dplyr::arrange(ResponseId, q))
 }

@@ -21,7 +21,7 @@ available as a .qsf file in this package.
 
 ## Note About Use
 
-Currently, this version (0.3.0) appears stable. I encourage you to use
+Currently, this version (0.3.1) appears stable. I encourage you to use
 it but be aware that, as with any software release, there might be
 (unknown) bugs present. I’ve tried hard to make this version usable
 while including the core functionality (described more below). However,
@@ -29,11 +29,22 @@ if you find issues or would like to contribute, please open an issue on
 my [GitHub page](https://github.com/brentkaplan/beezdiscounting) or
 [email me](mailto:bkaplan.ku@gmail.com).
 
+## Citing the Package
+
+If you use this package in your own work, please consider citing the
+package:
+
+Kaplan, B. A. (2023). *beezdiscounting: Behavioral Economic Easy
+Discounting*. R package version 0.3.1,
+<https://github.com/brentkaplan/beezdiscounting>
+
+You can also find the latest citation using `citation("beezdemand")`
+
 ## Installing beezdiscounting
 
 ### CRAN Release (recommended method)
 
-The latest stable version of `beezdiscounting` (currently v.0.3.0) can
+The latest stable version of `beezdiscounting` (currently v.0.3.1) can
 be found on [CRAN](https://CRAN.R-project.org/package=beezdiscounting)
 and installed using the following command. The first time you install
 the package, you may be asked to select a CRAN mirror. Simply select the
@@ -669,29 +680,29 @@ pd_out <- calc_pd(five.fivetrial_pd)
 knitr::kable(pd_out, caption = "Scoring Summary of the 5.5 Trial Probability Discounting Task")
 ```
 
-| ResponseId | index    |   q | firstclick | lastclick | pagesubmit | totalclicks | response | attentionflag |      hval |      ep50 |
-|-----------:|:---------|----:|-----------:|----------:|-----------:|------------:|:---------|:--------------|----------:|----------:|
-|          1 | I16      |   1 |      3.980 |     3.980 |      5.184 |           1 | sc       | No            |  7.435436 | 0.1344911 |
-|          1 | I8       |   2 |      4.010 |     4.010 |      4.763 |           1 | lu       | No            |  7.435436 | 0.1344911 |
-|          1 | I12      |   3 |      2.061 |     2.061 |      3.252 |           1 | sc       | No            |  7.435436 | 0.1344911 |
-|          1 | I10      |   4 |      1.525 |     1.525 |      3.019 |           1 | sc       | No            |  7.435436 | 0.1344911 |
-|          1 | I9       |   5 |      2.253 |     2.954 |      3.738 |           2 | lu       | No            |  7.435436 | 0.1344911 |
-|          2 | I16      |   1 |      2.873 |     2.873 |      3.883 |           1 | sc       | No            | 99.000000 | 0.0101010 |
-|          2 | I8       |   2 |      3.745 |     3.745 |      4.864 |           1 | sc       | No            | 99.000000 | 0.0101010 |
-|          2 | I4       |   3 |      1.159 |     1.159 |      6.356 |           1 | sc       | No            | 99.000000 | 0.0101010 |
-|          2 | I2       |   4 |      3.064 |     3.064 |      5.408 |           1 | sc       | No            | 99.000000 | 0.0101010 |
-|          2 | I1       |   5 |      2.049 |     2.049 |      5.097 |           1 | sc       | No            | 99.000000 | 0.0101010 |
-|          2 | AttendSS |   6 |      2.295 |     2.295 |      4.641 |           1 | lu       | No            | 99.000000 | 0.0101010 |
-|          3 | I16      |   1 |      8.933 |     8.933 |      9.769 |           1 | sc       | No            |  1.601445 | 0.6244361 |
-|          3 | I8       |   2 |      2.163 |     2.163 |      2.981 |           1 | lu       | No            |  1.601445 | 0.6244361 |
-|          3 | I12      |   3 |      3.129 |     3.129 |      3.895 |           1 | lu       | No            |  1.601445 | 0.6244361 |
-|          3 | I14      |   4 |      2.655 |     2.655 |      4.855 |           1 | lu       | No            |  1.601445 | 0.6244361 |
-|          3 | I15      |   5 |      4.021 |     4.021 |      4.705 |           1 | sc       | No            |  1.601445 | 0.6244361 |
-|          4 | I16      |   1 |      4.415 |     4.415 |      5.382 |           1 | sc       | No            |  7.435436 | 0.1344911 |
-|          4 | I8       |   2 |      6.123 |     6.123 |      6.974 |           1 | lu       | No            |  7.435436 | 0.1344911 |
-|          4 | I12      |   3 |      1.673 |     1.673 |      3.191 |           1 | sc       | No            |  7.435436 | 0.1344911 |
-|          4 | I10      |   4 |      1.757 |     1.757 |      3.259 |           1 | sc       | No            |  7.435436 | 0.1344911 |
-|          4 | I9       |   5 |      1.207 |     1.207 |      4.592 |           1 | lu       | No            |  7.435436 | 0.1344911 |
+| ResponseId | index    |   q | firstclick | lastclick | pagesubmit | totalclicks | response | attentionflag |      hval |  etheta50 |     ep50 |
+|-----------:|:---------|----:|-----------:|----------:|-----------:|------------:|:---------|:--------------|----------:|----------:|---------:|
+|          1 | I16      |   1 |      3.980 |     3.980 |      5.184 |           1 | sc       | No            |  7.435436 | 0.1344911 | 88.14525 |
+|          1 | I8       |   2 |      4.010 |     4.010 |      4.763 |           1 | lu       | No            |  7.435436 | 0.1344911 | 88.14525 |
+|          1 | I12      |   3 |      2.061 |     2.061 |      3.252 |           1 | sc       | No            |  7.435436 | 0.1344911 | 88.14525 |
+|          1 | I10      |   4 |      1.525 |     1.525 |      3.019 |           1 | sc       | No            |  7.435436 | 0.1344911 | 88.14525 |
+|          1 | I9       |   5 |      2.253 |     2.954 |      3.738 |           2 | lu       | No            |  7.435436 | 0.1344911 | 88.14525 |
+|          2 | I16      |   1 |      2.873 |     2.873 |      3.883 |           1 | sc       | No            | 99.000000 | 0.0101010 | 99.00000 |
+|          2 | I8       |   2 |      3.745 |     3.745 |      4.864 |           1 | sc       | No            | 99.000000 | 0.0101010 | 99.00000 |
+|          2 | I4       |   3 |      1.159 |     1.159 |      6.356 |           1 | sc       | No            | 99.000000 | 0.0101010 | 99.00000 |
+|          2 | I2       |   4 |      3.064 |     3.064 |      5.408 |           1 | sc       | No            | 99.000000 | 0.0101010 | 99.00000 |
+|          2 | I1       |   5 |      2.049 |     2.049 |      5.097 |           1 | sc       | No            | 99.000000 | 0.0101010 | 99.00000 |
+|          2 | AttendSS |   6 |      2.295 |     2.295 |      4.641 |           1 | lu       | No            | 99.000000 | 0.0101010 | 99.00000 |
+|          3 | I16      |   1 |      8.933 |     8.933 |      9.769 |           1 | sc       | No            |  1.601445 | 0.6244361 | 61.55983 |
+|          3 | I8       |   2 |      2.163 |     2.163 |      2.981 |           1 | lu       | No            |  1.601445 | 0.6244361 | 61.55983 |
+|          3 | I12      |   3 |      3.129 |     3.129 |      3.895 |           1 | lu       | No            |  1.601445 | 0.6244361 | 61.55983 |
+|          3 | I14      |   4 |      2.655 |     2.655 |      4.855 |           1 | lu       | No            |  1.601445 | 0.6244361 | 61.55983 |
+|          3 | I15      |   5 |      4.021 |     4.021 |      4.705 |           1 | sc       | No            |  1.601445 | 0.6244361 | 61.55983 |
+|          4 | I16      |   1 |      4.415 |     4.415 |      5.382 |           1 | sc       | No            |  7.435436 | 0.1344911 | 88.14525 |
+|          4 | I8       |   2 |      6.123 |     6.123 |      6.974 |           1 | lu       | No            |  7.435436 | 0.1344911 | 88.14525 |
+|          4 | I12      |   3 |      1.673 |     1.673 |      3.191 |           1 | sc       | No            |  7.435436 | 0.1344911 | 88.14525 |
+|          4 | I10      |   4 |      1.757 |     1.757 |      3.259 |           1 | sc       | No            |  7.435436 | 0.1344911 | 88.14525 |
+|          4 | I9       |   5 |      1.207 |     1.207 |      4.592 |           1 | lu       | No            |  7.435436 | 0.1344911 | 88.14525 |
 
 Scoring Summary of the 5.5 Trial Probability Discounting Task
 

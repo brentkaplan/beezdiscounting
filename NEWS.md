@@ -1,3 +1,9 @@
+# beezdiscounting 0.3.1
+
+## Minor fix
+
+* Correctly names output columns from `calc_pd()` and `score_pd()`. `ep50` changed to `etheta50` and corrected calculation of `ep50`.
+
 # beezdiscounting 0.3.0
 
 ## New features

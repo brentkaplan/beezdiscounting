@@ -28,7 +28,7 @@ which is also available as a .qsf file in this package.
 
 ## Note About Use
 
-Currently, this version (0.3.0) appears stable. I encourage you to use it
+Currently, this version (0.3.1) appears stable. I encourage you to use it
 but be aware that, as with any software release, there might be (unknown) bugs 
 present. I've tried hard to make this version usable while including the 
 core functionality (described more below). However, if you find issues or would 
@@ -36,11 +36,20 @@ like to contribute, please open an issue on my
 [GitHub page](https://github.com/brentkaplan/beezdiscounting) or 
 [email me](mailto:bkaplan.ku@gmail.com).
 
+## Citing the Package
+
+If you use this package in your own work, please consider citing the package:
+
+Kaplan, B. A. (2023). _beezdiscounting: Behavioral Economic Easy Discounting_. R package
+version 0.3.1, <https://github.com/brentkaplan/beezdiscounting>
+
+You can also find the latest citation using `citation("beezdemand")`
+
 ## Installing beezdiscounting
 
 ### CRAN Release (recommended method)
 
-The latest stable version of `beezdiscounting` (currently v.0.3.0) can be found 
+The latest stable version of `beezdiscounting` (currently v.0.3.1) can be found 
 on [CRAN](https://CRAN.R-project.org/package=beezdiscounting) and installed 
 using the following command. The first time you install the package, you may be 
 asked to select a CRAN mirror. Simply select the mirror geographically closest 

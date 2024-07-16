@@ -266,3 +266,34 @@ inn <- function(dat, random, verbose) {
   }
   return(dat[order(as.numeric(dat$questionid)), c(2, 1, 3)])
 }
+
+
+#' Calculate proportion of SIR/SS responses at each k value
+#'
+#' @param dat Dataframe (longform) with subjectid, questionid, and response
+#' (0 for SIR/SS and 1 for LDR/LL)
+#'
+#' @return Dataframe with proportion of SIR/SS responses at each k rank
+#' @export
+#'
+#' @examples prop_ss(mcq27)
+prop_ss <- function(dat) {
+
+  # bring in lookup table
+  dat <- merge(dat, lookup, by.x = "questionid",
+               by.y = "questionid", all.x = TRUE)
+  # order df
+  dat <- dat[match(lookup$questionid, dat$questionid), ]
+
+  prop_ss_tbl <- dplyr::group_by(dat, k_rank) |>
+    dplyr::summarise(prop_ss = sum(response == 0, na.rm = TRUE) / 3) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(prop_ss = round(prop_ss, 2))
+
+  if (any(is.na(dat$response))) {
+    warning("Missing data found and ignored. Consider imputing missing data.")
+  }
+
+  return(prop_ss_tbl)
+
+}

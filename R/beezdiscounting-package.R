@@ -11,4 +11,6 @@ utils::globalVariables(c(
     "Attend-SS", "Attend-LL", "magnitude",
     "question", "measure", "value",
     "subjectid", "questionid",
-    "hval", "etheta50", "ep50"))
+    "hval", "etheta50", "ep50", "lookup",
+    "k_rank"
+    ))

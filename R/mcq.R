@@ -297,3 +297,14 @@ prop_ss <- function(dat) {
   return(prop_ss_tbl)
 
 }
+
+
+#' Get internal lookup table for the 27-item MCQ
+#'
+#' @return Dataframe with questionid, magnitude, and kindiff
+#' @export
+#'
+#' @examples get_lookup_table()
+get_lookup_table <- function() {
+  return(lookup)
+}

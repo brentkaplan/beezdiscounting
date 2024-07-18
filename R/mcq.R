@@ -298,6 +298,30 @@ prop_ss <- function(dat) {
 
 }
 
+#' Provide a summary of the results from the MCQ ouutput table.
+#'
+#' @param res Dataframe with MCQ results (output from the `calc_mcq` function)
+#'
+#' @return Dataframe with summary statistics
+#' @export
+#'
+#' @examples summarize_mcq(score_mcq27(mcq27))
+summarize_mcq <- function(res) {
+  sum_tab <- res %>%
+    dplyr::summarise(
+      dplyr::across(overall_k:composite_consistency, list(
+        Mean = ~ mean(.),
+        SD = ~ sd(.),
+        SEM = ~ sd(.) / sqrt(dplyr::n())
+      ), .names = "{.col}-{.fn}")
+    ) |>
+    tidyr::pivot_longer(dplyr::everything(), names_to = c(".value", "Statistic"), names_sep = "-") %>%
+    tidyr::pivot_longer(-Statistic, names_to = "Metric", values_to = "value") |>
+    tidyr::pivot_wider(names_from = Statistic, values_from = value)
+
+  return(sum_tab)
+}
+
 
 #' Get internal lookup table for the 27-item MCQ
 #'

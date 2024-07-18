@@ -12,5 +12,5 @@ utils::globalVariables(c(
     "question", "measure", "value",
     "subjectid", "questionid",
     "hval", "etheta50", "ep50", "lookup",
-    "k_rank"
+    "k_rank", "Statistic", "overall_k", "composite_consistency"
     ))

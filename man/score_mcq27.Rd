@@ -9,6 +9,7 @@ score_mcq27(
   impute_method = "none",
   round = 6,
   random = FALSE,
+  trans = "none",
   return_data = FALSE,
   verbose = FALSE
 )
@@ -24,6 +25,9 @@ score_mcq27(
 
 \item{random}{Boolean whether to insert a random draw (0 or 1) for NAs.
 Default is FALSE}
+
+\item{trans}{Transformation to apply to k values: "none", "log", or "ln".
+Default is "none"}
 
 \item{return_data}{Boolean whether to return the original data and new
 imputed responses. Default is FALSE.}

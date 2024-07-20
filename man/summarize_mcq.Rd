@@ -4,10 +4,12 @@
 \alias{summarize_mcq}
 \title{Provide a summary of the results from the MCQ ouutput table.}
 \usage{
-summarize_mcq(res)
+summarize_mcq(res, na.rm = TRUE)
 }
 \arguments{
 \item{res}{Dataframe with MCQ results (output from the \code{calc_mcq} function)}
+
+\item{na.rm}{Boolean whether to remove NAs from the calculation}
 }
 \value{
 Dataframe with summary statistics

@@ -11,6 +11,8 @@
 #' imputed responses. Default is FALSE.
 #' @param verbose Boolean whether to print subject and question ids pertaining
 #' to missing data. Default is FALSE.
+#' @param trans Transformation to apply to k values: "none", "log", or "ln".
+#' Default is "none"
 #'
 #' @return Summary dataframe
 #' @export
@@ -19,10 +21,15 @@
 #' score_mcq27(mcq27)
 score_mcq27 <- function(dat = dat, impute_method = "none",
                         round = 6, random = FALSE,
+                        trans = "none",
                         return_data = FALSE, verbose = FALSE) {
 
   if (!impute_method %in% c("none", "ggm", "GGM", "inn", "INN")) {
     stop("Impute method must be one of none, ggm, GGM, inn, INN")
+  }
+
+  if (!trans %in% c("none", "log", "ln")) {
+    stop("Transformation must be one of 'none', 'log', 'ln'")
   }
 
   if (return_data) {
@@ -76,10 +83,23 @@ score_mcq27 <- function(dat = dat, impute_method = "none",
     }
 
   }
+
   dfout$impute_method <- if (!(impute_method %in% c("inn", "INN") & random)) {
     impute_method
   } else {
     "INN with random"
+  }
+
+  if (trans == "log") {
+    dfout <- dfout |>
+      dplyr::mutate(dplyr::across(overall_k:geomean_k, ~ log10(.x))) |>
+      dplyr::rename_with(~ paste0("log10_", .x, recycle0 = TRUE),
+                  overall_k:geomean_k)
+  } else if (trans == "ln") {
+    dfout <- dfout |>
+      dplyr::mutate(dplyr::across(overall_k:geomean_k, ~ log(.x))) |>
+      dplyr::rename_with(~ paste0("ln_", .x, recycle0 = TRUE),
+                  overall_k:geomean_k)
   }
 
   if (!return_data) {
@@ -301,18 +321,19 @@ prop_ss <- function(dat) {
 #' Provide a summary of the results from the MCQ ouutput table.
 #'
 #' @param res Dataframe with MCQ results (output from the `calc_mcq` function)
+#' @param na.rm Boolean whether to remove NAs from the calculation
 #'
 #' @return Dataframe with summary statistics
 #' @export
 #'
 #' @examples summarize_mcq(score_mcq27(mcq27))
-summarize_mcq <- function(res) {
+summarize_mcq <- function(res, na.rm = TRUE) {
   sum_tab <- res %>%
     dplyr::summarise(
-      dplyr::across(overall_k:composite_consistency, list(
-        Mean = ~ mean(.),
-        SD = ~ sd(.),
-        SEM = ~ sd(.) / sqrt(dplyr::n())
+      dplyr::across(dplyr::contains("overall_k"):composite_consistency, list(
+        Mean = ~ mean(., na.rm = na.rm),
+        SD = ~ sd(., na.rm = na.rm),
+        SEM = ~ sd(., na.rm = na.rm) / sqrt(dplyr::n())
       ), .names = "{.col}-{.fn}")
     ) |>
     tidyr::pivot_longer(dplyr::everything(), names_to = c(".value", "Statistic"), names_sep = "-") %>%

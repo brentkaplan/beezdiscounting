@@ -28,5 +28,6 @@ utils::globalVariables(c(
     "Statistic",
     "overall_k",
     "composite_consistency",
-    "geomean_k"
+    "geomean_k",
+    "group"
     ))

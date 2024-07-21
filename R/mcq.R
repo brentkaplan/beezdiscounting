@@ -313,7 +313,7 @@ prop_ss <- function(dat) {
   if (any(is.na(dat$response))) {
     warning("Missing data found and ignored. Consider imputing missing data.")
   }
-
+  class(prop_ss_tbl) <- c("prop_ss_output", class(prop_ss_tbl))
   return(prop_ss_tbl)
 
 }
@@ -352,4 +352,53 @@ summarize_mcq <- function(res, na.rm = TRUE) {
 #' @examples get_lookup_table()
 get_lookup_table <- function() {
   return(lookup)
+}
+
+
+#' Plot Proportion of SIR/SS Choices by k Value
+#'
+#' This function creates a plot of the proportion of SIR/SS
+#' choices by k value using the output of the `prop_ss` function.
+#'
+#' @param x Output from the `prop_ss` function
+#' @param ... Additional arguments passed to `ggplot2::geom_point()`
+#' @param pt_shape Shape of the points in the plot. Default is 21.
+#' @param pt_fill Fill color of the points in the plot. Default is "white".
+#' @param pt_size Size of the points in the plot. Default is 3.
+#' @param title Title of the plot. Default is "Proportion of SIR/SS choices by k value".
+#' @param xlab Label for the x-axis. Default is "k value rank".
+#' @param ylab Label for the y-axis. Default is "Proportion of SS choices".
+#'
+#' @return A ggplot object.
+#' @export
+#'
+#' @examples plot(prop_ss(mcq27))
+plot.prop_ss_output <- function(
+    x,
+    ...,
+    pt_shape = 21,
+    pt_fill = "white",
+    pt_size = 3,
+    title = "Proportion of SIR/SS choices by k value",
+    xlab = "k value rank",
+    ylab = "Proportion of SS choices"
+    ) {
+  x |>
+    dplyr::mutate(group = 1) |>
+    ggplot2::ggplot(ggplot2::aes(x = factor(k_rank), y = prop_ss, group = group)) +
+    ggplot2::geom_line() +
+    ggplot2::geom_point(
+      shape = pt_shape,
+      fill = pt_fill,
+      size = pt_size
+    ) +
+    ggplot2::labs(title = title,
+         x = xlab,
+         y = ylab) +
+    ggplot2::theme_minimal() +
+    ggplot2::scale_x_discrete(labels = c(
+      "0.00016", "0.0004", "0.001",
+      "0.0025", "0.006", "0.016",
+      "0.041", "0.1", "0.25")
+    )
 }

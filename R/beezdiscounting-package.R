@@ -29,5 +29,6 @@ utils::globalVariables(c(
     "overall_k",
     "composite_consistency",
     "geomean_k",
-    "group"
+    "group",
+    "metric"
     ))

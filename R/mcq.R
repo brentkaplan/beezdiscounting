@@ -102,6 +102,8 @@ score_mcq27 <- function(dat = dat, impute_method = "none",
                   overall_k:geomean_k)
   }
 
+  class(dfout) <- c("score_mcq27_output", class(dfout))
+
   if (!return_data) {
     return(dfout)
   } else {
@@ -401,4 +403,60 @@ plot.prop_ss_output <- function(
       "0.0025", "0.006", "0.016",
       "0.041", "0.1", "0.25")
     )
+}
+
+
+#' Plot MCQ-27 Scores
+#'
+#' This function creates a plot of the MCQ-27 scores for
+#' different metrics (small_k, medium_k, large_k, geomean_k, overall_k).
+#' The function handles different logarithmic transformations of the k-values
+#' and adjusts the y-axis label accordingly.
+#'
+#' @param x A data frame returned by the `score_mcq27` function.
+#' @param ... Additional arguments passed to methods.
+#' @param xlab Label for the x-axis. Default is "Metric".
+#' @param alpha Transparency of the points in the plot. Default is 0.3.
+#'
+#' @return A ggplot object showing the boxplot of MCQ-27 scores.
+#' @export
+#'
+#' @examples plot(score_mcq27(mcq27))
+plot.score_mcq27_output <- function(x, ..., xlab = "Metric", alpha = 0.3) {
+  target_levels <- c("small_k", "medium_k", "large_k", "geomean_k", "overall_k")
+  tmp <- x |>
+    dplyr::select(dplyr::contains(c("id", "_k"))) |>
+    tidyr::pivot_longer(cols = dplyr::contains("_k"), names_to = "metric", values_to = "value")
+
+  if (any(grepl("log10", tmp$metric))) {
+    tmp <- tmp |>
+      dplyr::mutate(
+        metric = gsub("log10_", "", metric),
+        metric = factor(metric, levels = target_levels)
+      )
+    ylab = "Log10(k) value"
+  } else if (any(grepl("ln", tmp$metric))) {
+    tmp <- tmp |>
+      dplyr::mutate(
+        metric = gsub("ln_", "", metric),
+        metric = factor(metric, levels = target_levels)
+      )
+    ylab <- "Ln(k) value"
+  } else {
+    tmp <- tmp |>
+      dplyr::mutate(metric = factor(metric, levels = target_levels))
+    ylab <- "k value"
+  }
+
+  bplot <- tmp %>%
+    ggplot2::ggplot(ggplot2::aes(x = metric, y = value)) +
+    ggplot2::geom_boxplot() +
+    ggplot2::geom_point(alpha = alpha) +
+    ggplot2::theme_minimal() +
+    ggplot2::labs(
+      x = xlab,
+      y = ylab
+    )
+
+  return(bplot)
 }

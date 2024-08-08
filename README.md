@@ -1,11 +1,11 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
+# Behavioral Economic (be) Easy (ez) Discounting <a><img src="hex-beezdiscounting.png" align="right" height="138" /></a>
+
 [![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/beezdiscounting)](https://cran.r-project.org/package=beezdiscounting)
 [![downloads](https://cranlogs.r-pkg.org/badges/beezdiscounting)](https://cranlogs.r-pkg.org/)
 [![total](https://cranlogs.r-pkg.org/badges/grand-total/beezdiscounting)](https://cranlogs.r-pkg.org/)
-
-# Behavioral Economic (be) Easy (ez) Discounting
 
 An R package containing commonly used functions for analyzing behavioral
 economic discounting data.

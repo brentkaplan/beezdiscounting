@@ -1,3 +1,40 @@
+# beezdiscounting 0.3.2
+
+### New Features
+
+- **`fit_dd()`**:
+  - Introduced a new function to fit delay-discounting models using specified equations (`"mazur"`/`"hyperbolic"` or `"exponential"`) and methods (`"pooled"`, `"mean"`, or `"two stage"`).
+  - Supports flexible data handling for aggregated and participant-specific modeling.
+  - Returns an object of class `"fit_dd"` containing the fitted models, input data, and method details.
+
+- **`plot_dd()`**:
+  - Added a function to visualize fitted delay-discounting models.
+  - Automatically adapts to different fitting methods, including aggregated and individual models.
+  - Provides customizable axis labels and optional log-transformed x-axis for improved visualization of delay scales.
+
+- **`results_dd()`**:
+  - New utility to extract model parameter estimates, confidence intervals, and fit statistics from a `"fit_dd"` object.
+  - Supports both aggregated and participant-specific models.
+  - Outputs a tidy tibble with columns for terms, estimates, standard errors,
+    t-statistics, p-values, R2, and confidence bounds.
+
+- **`check_unsystematic()`**:
+  - New utility function to check delay-discounting datasets for unsystematic
+    data patterns according to Johnson & Bickel's (2008) two criteria.
+
+### Improvements
+
+- Confidence intervals are now computed using the `calc_conf_int()` function, ensuring accurate estimation based on model degrees of freedom.
+- R2 values are calculated consistently using the `calc_r2()` function, providing reliable fit metrics for all models.
+
+### Enhancements
+
+- The package now supports robust delay-discounting workflows, from unsystematic
+  identification (`check_unsystematic`), model fitting (`fit_dd`), to visualization (`plot_dd`), to result extraction
+  (`results_dd`).
+- Improved compatibility with delay-discounting datasets that require participant-level or aggregated modeling approaches.
+
+
 # beezdiscounting 0.3.1
 
 ## Minor fix
@@ -25,11 +62,11 @@
 
 ## New features
 
-* `score_mcq27()` properly supports arguments: `impute_method`, `random`, `return_data`, and `verbose`. 
+* `score_mcq27()` properly supports arguments: `impute_method`, `random`, `return_data`, and `verbose`.
 See documentation and the `README` for explanations.
 
-* `generate_data_mcq()` can generate fake MCQ data, including `seed` and `prop_na` arguments for 
-reproducibility and specifying proportion of `NA`s. 
+* `generate_data_mcq()` can generate fake MCQ data, including `seed` and `prop_na` arguments for
+reproducibility and specifying proportion of `NA`s.
 
 * `long_to_wide*` and `wide_to_long*` are helper functions to reshape data from/to different formats.
 

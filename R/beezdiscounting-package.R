@@ -30,5 +30,18 @@ utils::globalVariables(c(
     "composite_consistency",
     "geomean_k",
     "group",
-    "metric"
+    "metric",
+    "estimate",
+    "std.error",
+    "conf",
+    "model",
+    "term",
+    "fit",
+    "tidy_summary",
+    "glance_summary",
+    "R2",
+    "conf_int",
+    "x",
+    "y",
+    "id"
     ))

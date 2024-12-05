@@ -1,8 +1,98 @@
 {
-	"folders": [
-		{
-			"path": "."
-		}
-	],
-	"settings": {}
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        // Positron-specific settings
+        // -------------------------------------------------------------------------
+        "rstudio.keymap.enable": true,
+        // "python.defaultInterpreterPath": "/opt/homebrew/bin/python",
+        // Editor settings
+        // -------------------------------------------------------------------------
+        // Fonts
+        // Use GitHub's Monaspace (https://github.com/githubnext/monaspace) and enable ligatures
+        "editor.fontFamily": "'Monaspace Argon Var'",
+        "editor.fontSize": 12.5,
+        "editor.fontLigatures": "'ss01', 'ss02', 'ss03', 'ss04', 'ss05', 'ss06', 'ss07', 'ss08', 'calt', 'dlig', 'liga'",
+        // Theme
+        // Monakai would be nice, but it has issues in Positron
+        // "workbench.colorTheme": "Monokai",
+        "workbench.colorTheme": "Default Dark Modern",
+        // Use nicer icons
+        "workbench.productIconTheme": "fluent-icons",
+        "workbench.iconTheme": "material-icon-theme",
+        // Highlight modified/unsaved tabs
+        "workbench.editor.highlightModifiedTabs": true,
+        // Add some rulers
+        "editor.rulers": [
+            80,
+            100
+        ],
+        // Indent with two spaces, but only for R
+        "[r]": {
+            "editor.tabSize": 2
+        },
+        // Nicer handling of end-of-document newlines, via
+        // https://rfdonnelly.github.io/posts/sane-vscode-whitespace-settings/
+        "files.insertFinalNewline": true,
+        "editor.renderFinalNewline": "dimmed",
+        "editor.renderWhitespace": "trailing",
+        "files.trimFinalNewlines": true,
+        "files.trimTrailingWhitespace": true,
+        // Various editor settings
+        "editor.formatOnPaste": true,
+        "editor.detectIndentation": false,
+        "editor.showFoldingControls": "always",
+        "window.newWindowDimensions": "inherit",
+        "editor.scrollBeyondLastLine": false,
+        "window.title": "${activeEditorFull}${separator}${rootName}",
+        "editor.tabSize": 4,
+        "editor.wordWrap": "on",
+        "editor.multiCursorModifier": "ctrlCmd",
+        "editor.snippetSuggestions": "top",
+        // Hide things from the global search menu and watcher
+        "files.exclude": {
+            "**/.Rhistory": true,
+            "**/.Rproj": true,
+            "**/.Rproj.user": true,
+            "**/renv/library": true,
+            "**/renv/local": true,
+            "**/renv/staging": true
+        },
+        "files.watcherExclude": {
+            "**/.Rproj/*": true,
+            "**/renv/library": true,
+            "**/renv/local": true,
+            "**/renv/staging": true
+        },
+        // Sign git commits
+        "git.enableCommitSigning": true,
+        // Extension-specific settings
+        // -------------------------------------------------------------------------
+        // Markdown linting settings (idk if this stuff even works with Quarto though)
+        "markdownlint.config": {
+            "default": true,
+            "MD012": {
+                "maximum": 2
+            },
+            "MD025": false,
+            "MD041": false
+        },
+        // Wrap at 80 columns with the "Rewrap" extension
+        "rewrap.wrappingColumn": 80,
+        // Hacky "Open Remote - SSH" settings
+        "remote.SSH.serverDownloadUrlTemplate": "https://github.com/gitpod-io/openvscode-server/releases/download/openvscode-server-v${version}/openvscode-server-v${version}-${os}-${arch}.tar.gz",
+        "remote.SSH.experimental.serverBinaryName": "openvscode-server",
+        // Don't phone home for the "YAML" extension
+        "redhat.telemetry.enabled": false,
+        "editor.fontVariations": false,
+
+        "prettier.documentSelectors": [
+            "**/*.qmd"
+        ],
+        "prettier.configPath": "./",
+        "rewrap.autoWrap.enabled": true,
+    }
 }

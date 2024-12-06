@@ -193,8 +193,6 @@ plot_dd <- function(
       ggplot2::theme(
         legend.position = "none"
       )
-
-
   }
 
   plt <- plt +
@@ -247,17 +245,18 @@ results_dd <- function(fit_dd_object) {
     out <- broom::tidy(fit_dd_object[[1]]) |>
       dplyr::bind_cols(broom::glance(fit_dd_object[[1]])) |>
       dplyr::mutate(
-        model = fit_dd_object[[3]],
-        R2 = calc_r2(fit_dd_object[[1]]),,
+        method = fit_dd_object[[3]],
+        R2 = calc_r2(fit_dd_object[[1]]),
+        model = fit_dd_object[1],
         conf = purrr::pmap(
-          list(estimate = estimate, std_error = std.error, model = fit_dd_object[[1]]),
+          list(estimate = estimate, std_error = std.error, model = model),
           ~ calc_conf_int(..1, ..2, ..3, alpha = 0.05)
         ),
         conf_low = purrr::map_dbl(conf, 1),
         conf_high = purrr::map_dbl(conf, 2)
       ) |>
-      dplyr::relocate(model, .before = term) |>
-      dplyr::select(-conf)
+      dplyr::relocate(method, .before = term) |>
+      dplyr::select(-conf, -model)
   } else if (fit_dd_object[[3]] %in% c("ts", "two stage", "Two Stage")) {
     fit_results <- tibble::tibble(
       id = names(fit_dd_object[[1]]),
@@ -295,8 +294,8 @@ results_dd <- function(fit_dd_object) {
         conf_high = purrr::map_dbl(conf_int, ~ .[[1]][2])
       ) |>
       dplyr::select(-conf_int) |>
-      dplyr::mutate(model = fit_dd_object[[3]]) |>
-      dplyr::relocate(model, .before = id)
+      dplyr::mutate(method = fit_dd_object[[3]]) |>
+      dplyr::relocate(method, .before = id)
 
 
   }

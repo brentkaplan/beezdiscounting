@@ -57,6 +57,8 @@ fit_dd <- function(
     )
     ))
 
+  dat$id <- factor(dat$id)
+
   if (any(equation %in% c("mazur", "Mazur", "hyperbolic", "Hyperbolic"))) {
     fo <- y ~ 1 / (1 + k * x)
   } else if (any(equation %in% c("exponential", "Exponential"))) {
@@ -115,6 +117,7 @@ fit_dd <- function(
 #' @param fit_dd_object A fitted delay-discounting model object of class `"fit_dd"`, created by the `fit_dd()` function.
 #' @param xlabel A character string specifying the label for the x-axis. Default is `"Delay"`.
 #' @param ylabel A character string specifying the label for the y-axis. Default is `"Indifference Point"`.
+#' @param title A character string specifying the plot title. Default is `""`.
 #' @param logx Logical. If `TRUE`, the x-axis is log-transformed. Default is `TRUE`.
 #'
 #' @return A ggplot object representing the fitted model and data.
@@ -133,6 +136,7 @@ plot_dd <- function(
   fit_dd_object,
   xlabel = "Delay",
   ylabel = "Indifference Point",
+  title = "",
   logx = TRUE
 ) {
 
@@ -199,7 +203,8 @@ plot_dd <- function(
     beezdemand::theme_apa() +
     ggplot2::labs(
       x = xlabel,
-      y = ylabel
+      y = ylabel,
+      title = title
     )
 
   if (logx) {
@@ -257,6 +262,13 @@ results_dd <- function(fit_dd_object) {
       ) |>
       dplyr::relocate(method, .before = term) |>
       dplyr::select(-conf, -model)
+
+    if (fit_dd_object[[3]] %in% c("mean", "Mean")) {
+      out <- out |>
+        dplyr::mutate(calc_aucs(fit_dd_object[[2]])) |>
+        dplyr::relocate(dplyr::starts_with("auc"), .after = R2)
+    }
+
   } else if (fit_dd_object[[3]] %in% c("ts", "two stage", "Two Stage")) {
     fit_results <- tibble::tibble(
       id = names(fit_dd_object[[1]]),
@@ -284,9 +296,15 @@ results_dd <- function(fit_dd_object) {
         glance_summary = purrr::map(fit, ~ if (!is.null(.)) broom::glance(.) else NA)
       )
 
+    fit_results <- fit_dd_object[[2]] |>
+      dplyr::mutate(id = as.character(id)) |>
+      dplyr::group_by(id) |>
+      dplyr::group_split() |>
+      purrr::map_dfr(calc_aucs) |>
+      dplyr::left_join(x = fit_results, y = _, by = "id")
 
     out <- fit_results |>
-      dplyr::select(id, tidy_summary, glance_summary, R2, conf_int) |>
+      dplyr::select(id, tidy_summary, glance_summary, R2, tidyr::starts_with("auc"), conf_int) |>
       tidyr::unnest(cols = tidy_summary) |>
       tidyr::unnest(cols = glance_summary) |>
       dplyr::mutate(

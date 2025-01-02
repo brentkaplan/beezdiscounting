@@ -43,5 +43,6 @@ utils::globalVariables(c(
     "conf_int",
     "x",
     "y",
-    "id"
+    "id",
+    "method"
     ))

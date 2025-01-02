@@ -8,6 +8,7 @@ plot_dd(
   fit_dd_object,
   xlabel = "Delay",
   ylabel = "Indifference Point",
+  title = "",
   logx = TRUE
 )
 }
@@ -17,6 +18,8 @@ plot_dd(
 \item{xlabel}{A character string specifying the label for the x-axis. Default is \code{"Delay"}.}
 
 \item{ylabel}{A character string specifying the label for the y-axis. Default is \code{"Indifference Point"}.}
+
+\item{title}{A character string specifying the plot title. Default is \code{""}.}
 
 \item{logx}{Logical. If \code{TRUE}, the x-axis is log-transformed. Default is \code{TRUE}.}
 }

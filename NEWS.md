@@ -10,17 +10,21 @@
 - **`plot_dd()`**:
   - Added a function to visualize fitted delay-discounting models.
   - Automatically adapts to different fitting methods, including aggregated and individual models.
-  - Provides customizable axis labels and optional log-transformed x-axis for improved visualization of delay scales.
+  - Provides customizable axis labels, title, and optional log-transformed x-axis for improved visualization of delay scales.
 
 - **`results_dd()`**:
   - New utility to extract model parameter estimates, confidence intervals, and fit statistics from a `"fit_dd"` object.
   - Supports both aggregated and participant-specific models.
   - Outputs a tidy tibble with columns for terms, estimates, standard errors,
-    t-statistics, p-values, R2, and confidence bounds.
+    t-statistics, p-values, R2, three different AUC metrics, and confidence bounds.
 
 - **`check_unsystematic()`**:
   - New utility function to check delay-discounting datasets for unsystematic
     data patterns according to Johnson & Bickel's (2008) two criteria.
+
+- **`calc_aucs()`**:
+  - New utility function to calculate three different area under the curve
+    (AUC) metrics for delay-discounting data according to Borges et al. (2016).
 
 ### Improvements
 

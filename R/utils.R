@@ -201,3 +201,64 @@ calc_conf_int <- function(estimate, std_error, model, alpha = 0.05) {
   upper <- estimate + t_crit * std_error
   c(lower, upper)
 }
+
+
+#' Calculate Area-Under-the-Curve (AUC) Metrics for Delay Discounting Data
+#'
+#' This function calculates three types of Area-Under-the-Curve (AUC) metrics for delay discounting data:
+#' regular AUC (using raw delays), log10 AUC (using logarithmically scaled delays), and rank AUC (using ordinally scaled delays).
+#' These metrics provide different perspectives on the rate of delay discounting.
+#'
+#' @param dat A data frame containing delay discounting data.
+#'   It must include the following columns:
+#'   - `id`: Participant or group identifier.
+#'   - `x`: Delay values (e.g., in days).
+#'   - `y`: Indifference point values (e.g., subjective value of the delayed reward).
+#'
+#' @return A tibble with the following columns:
+#'   - `id`: The participant or group identifier.
+#'   - `auc_regular`: The regular AUC, calculated using the raw delay values.
+#'   - `auc_log10`: The log10 AUC, calculated using logarithmically transformed delay values.
+#'   - `auc_rank`: The rank AUC, calculated using ordinally scaled delay values.
+#'
+#' @export
+#'
+#' @examples
+#' # Example data
+#' data <- data.frame(
+#'   id = rep("P1", 6),
+#'   x = c(1, 7, 30, 90, 180, 365),
+#'   y = c(0.8, 0.5, 0.3, 0.2, 0.1, 0.05)
+#' )
+#'
+#' # Calculate AUC metrics for a single participant
+#' calc_aucs(data)
+calc_aucs <- function(dat) {
+  dat <- dat |> dplyr::arrange(x)  # Ensure dat is sorted by delay (x)
+
+  # Regular AUC
+  auc_regular <- sum(
+    (diff(dat$x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
+  )
+
+  # Log10 AUC
+  log_x <- log10(dat$x + 1)  # Add 1 to handle log10(0) issue
+  log_x <- log_x / max(log_x)  # Scale to proportions
+  auc_log <- sum(
+    (diff(log_x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
+  )
+
+  # Rank AUC
+  rank_x <- seq_len(nrow(dat)) / nrow(dat)  # Ranks as proportions
+  auc_rank <- sum(
+    (diff(rank_x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
+  )
+
+  # Return a tibble with the results
+  tibble::tibble(
+    id = unique(dat$id),
+    auc_regular = auc_regular,
+    auc_log10 = auc_log,
+    auc_rank = auc_rank
+  )
+}

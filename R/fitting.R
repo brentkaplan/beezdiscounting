@@ -179,6 +179,9 @@ plot_dd <- function(
       .y = names(fit_dd_object[[1]]),
       ~ {
         model <- .x$result
+        if (is.null(model)) {
+          return(NULL)  # Skip if the model is NULL
+        }
         preds <- predict(model, newdata = data.frame(x = new_x))
         tibble::tibble(
           id = .y,

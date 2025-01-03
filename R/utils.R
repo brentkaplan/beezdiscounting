@@ -110,8 +110,8 @@ long_to_wide_mcq_excel <- function(dat, subj_col = "subjectid",
 #'
 #' @return A tibble with the following columns:
 #'   - `id`: The unique identifier for the data set.
-#'   - `c1_violation`: Logical value indicating whether Criterion 1 was violated.
-#'   - `c2_violation`: Logical value indicating whether Criterion 2 was violated.
+#'   - `c1_pass`: Logical value indicating whether Criterion 1 was passed.
+#'   - `c2_pass`: Logical value indicating whether Criterion 2 was passed.
 #' @export
 #'
 #' @examples
@@ -134,8 +134,8 @@ check_unsystematic <- function(dat, ll = 1, c1 = .2, c2 = .1) {
 
   out <- tibble::tibble(
     id = unique(dat$id),
-    c1_violation = c1_check,
-    c2_violation = c2_check
+    c1_pass = !c1_check,
+    c2_pass = !c2_check
   )
 
   return(out)

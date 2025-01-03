@@ -23,8 +23,8 @@ check_unsystematic(dat, ll = 1, c1 = 0.2, c2 = 0.1)
 A tibble with the following columns:
 \itemize{
 \item \code{id}: The unique identifier for the data set.
-\item \code{c1_violation}: Logical value indicating whether Criterion 1 was violated.
-\item \code{c2_violation}: Logical value indicating whether Criterion 2 was violated.
+\item \code{c1_pass}: Logical value indicating whether Criterion 1 was passed.
+\item \code{c2_pass}: Logical value indicating whether Criterion 2 was passed.
 }
 }
 \description{

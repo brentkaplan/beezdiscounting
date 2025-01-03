@@ -237,9 +237,11 @@ calc_aucs <- function(dat) {
   dat <- dat |> dplyr::arrange(x)  # Ensure dat is sorted by delay (x)
 
   # Regular AUC
-  auc_regular <- sum(
+  auc_regular_raw <- sum(
     (diff(dat$x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
   )
+  max_possible_area <- diff(range(dat$x))  # Total range of x
+  auc_regular <- auc_regular_raw / max_possible_area  # Normalize
 
   # Log10 AUC
   log_x <- log10(dat$x + 1)  # Add 1 to handle log10(0) issue

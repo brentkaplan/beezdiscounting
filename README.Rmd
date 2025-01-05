@@ -113,7 +113,7 @@ An example dataset of responses on the 27-Item Monetary Choice Questionnaire
 is provided. This object is called `mcq27` and is located within
 the `beezdiscounting` package. These data are the example data used in the
 paper by
-[Kaplan et al, 2016](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6701266/).
+[Kaplan et al, 2016](https://pmc.ncbi.nlm.nih.gov/articles/PMC6701266/).
 Note the format of the data, which is called "long format". Long format data
 are data structured such that repeated observations are stacked in multiple
 rows, rather than across columns.
@@ -159,7 +159,7 @@ knitr::kable(long[c(1:5, 28:32), ], caption = "Long Format Data")
 
 A different 'type' of wide data is that used in the 27-Item Monetary Choice
 Questionnaire Automated Excel Scorer
-([Kaplan et al, 2016](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6701266/)).
+([Kaplan et al, 2016](https://pmc.ncbi.nlm.nih.gov/articles/PMC6701266/)).
 In this format, the first column is the question id and each subsequent column
 represents a subject (as the column name) and the response in rows (see the
 example below). This function takes the data from that format and converts

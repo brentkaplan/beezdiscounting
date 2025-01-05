@@ -26,7 +26,7 @@ A tibble with the following columns:
 }
 \description{
 This function calculates three types of Area-Under-the-Curve (AUC) metrics for delay discounting data:
-regular AUC (using raw delays), log10 AUC (using logarithmically scaled delays), and rank AUC (using ordinally scaled delays).
+regular AUC (using raw delays), log10 AUC (using logarithmically scaled delays), and ordinal AUC (using ordinally scaled delays).
 These metrics provide different perspectives on the rate of delay discounting.
 }
 \examples{

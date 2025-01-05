@@ -206,7 +206,7 @@ calc_conf_int <- function(estimate, std_error, model, alpha = 0.05) {
 #' Calculate Area-Under-the-Curve (AUC) Metrics for Delay Discounting Data
 #'
 #' This function calculates three types of Area-Under-the-Curve (AUC) metrics for delay discounting data:
-#' regular AUC (using raw delays), log10 AUC (using logarithmically scaled delays), and rank AUC (using ordinally scaled delays).
+#' regular AUC (using raw delays), log10 AUC (using logarithmically scaled delays), and ordinal AUC (using ordinally scaled delays).
 #' These metrics provide different perspectives on the rate of delay discounting.
 #'
 #' @param dat A data frame containing delay discounting data.
@@ -250,10 +250,10 @@ calc_aucs <- function(dat) {
     (diff(log_x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
   )
 
-  # Rank AUC
-  rank_x <- seq_len(nrow(dat)) / nrow(dat)  # Ranks as proportions
-  auc_rank <- sum(
-    (diff(rank_x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
+  # Ordinal AUC
+  ord_x <- seq_len(nrow(dat)) / nrow(dat)  # Ranks as proportions
+  auc_ord <- sum(
+    (diff(ord_x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
   )
 
   # Return a tibble with the results
@@ -261,6 +261,6 @@ calc_aucs <- function(dat) {
     id = unique(dat$id),
     auc_regular = auc_regular,
     auc_log10 = auc_log,
-    auc_rank = auc_rank
+    auc_ord = auc_ord
   )
 }

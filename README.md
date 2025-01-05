@@ -774,11 +774,11 @@ knitr::kable(dd_results[, c(1:2, 18:20)], caption = "Area Under the Curve Values
 
 | method    | id  | auc_regular | auc_log10 |   auc_ord |
 |:----------|:----|------------:|----------:|----------:|
-| Two Stage | P1  |   0.0508842 | 0.2071525 | 0.1554101 |
-| Two Stage | P2  |   0.0482794 | 0.1290330 | 0.1007213 |
-| Two Stage | P3  |   0.0409701 | 0.1487396 | 0.1126794 |
-| Two Stage | P4  |   0.0313241 | 0.1915161 | 0.1386907 |
-| Two Stage | P5  |   0.0169814 | 0.0994360 | 0.0722988 |
+| Two Stage | P1  |   0.0508842 | 0.2347151 | 0.1864921 |
+| Two Stage | P2  |   0.0482794 | 0.1462015 | 0.1208656 |
+| Two Stage | P3  |   0.0409701 | 0.1685302 | 0.1352153 |
+| Two Stage | P4  |   0.0313241 | 0.2169982 | 0.1664288 |
+| Two Stage | P5  |   0.0169814 | 0.1126664 | 0.0867586 |
 
 Area Under the Curve Values
 
@@ -888,6 +888,16 @@ front of the function name.
   economics: A tutorial for behavior analysts in practice. *Behavior
   Analysis in Practice, 6* (1), 34–54.
   <https://doi.org/10.1007/BF03391790>
+
+- Mazur, J. E. (1987). An adjusting procedure for studying delayed
+  reinforcement. In M. L. Commons, J. E. Mazur, J. A. Nevin, & H.
+  Rachlin (Eds.), The effect of delay and of intervening events on
+  reinforcement value (pp. 55–73). Lawrence Erlbaum Associates, Inc.
+
+- Borges, A. M., Kuang, J., Milhorn, H. and Yi, R. (2016), An
+  alternative approach to calculating Area-Under-the-Curve (AUC) in
+  delay discounting research. *Journal of the Experimental Analysis of
+  Behavior, 106*, 145-155. <https://doi.org/10.1002/jeab.219>
 
 - Kirby, K. N., Petry, N. M., & Bickel, W. K. (1999). Heroin addicts
   have higher discount rates for delayed rewards than non-drug-using

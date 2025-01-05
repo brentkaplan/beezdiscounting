@@ -236,31 +236,31 @@ calc_conf_int <- function(estimate, std_error, model, alpha = 0.05) {
 calc_aucs <- function(dat) {
   dat <- dat |> dplyr::arrange(x)  # Ensure dat is sorted by delay (x)
 
+  # Helper function to calculate trapezoidal AUC and normalize it
+  calc_trap_auc <- function(x, y) {
+    raw_auc <- sum((diff(x) * (y[-length(y)] + y[-1]) / 2))
+    max_area <- diff(range(x))
+    normalized_auc <- raw_auc / max_area
+    return(normalized_auc)
+  }
+
   # Regular AUC
-  auc_regular_raw <- sum(
-    (diff(dat$x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
-  )
-  max_possible_area <- diff(range(dat$x))  # Total range of x
-  auc_regular <- auc_regular_raw / max_possible_area  # Normalize
+  auc_regular <- calc_trap_auc(dat$x, dat$y)
 
   # Log10 AUC
   log_x <- log10(dat$x + 1)  # Add 1 to handle log10(0) issue
   log_x <- log_x / max(log_x)  # Scale to proportions
-  auc_log <- sum(
-    (diff(log_x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
-  )
+  auc_log10 <- calc_trap_auc(log_x, dat$y)
 
   # Ordinal AUC
   ord_x <- seq_len(nrow(dat)) / nrow(dat)  # Ranks as proportions
-  auc_ord <- sum(
-    (diff(ord_x) * (dat$y[-length(dat$y)] + dat$y[-1]) / 2)
-  )
+  auc_ord <- calc_trap_auc(ord_x, dat$y)
 
   # Return a tibble with the results
   tibble::tibble(
     id = unique(dat$id),
     auc_regular = auc_regular,
-    auc_log10 = auc_log,
+    auc_log10 = auc_log10,
     auc_ord = auc_ord
   )
 }

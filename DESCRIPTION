@@ -1,11 +1,11 @@
 Package: beezdiscounting
 Title: Behavioral Economic Easy Discounting
 Version: 0.3.2
-Date: 2024-12-04
+Date: 2025-01-08
 Authors@R:
-    person("Brent", "Kaplan", email = "bkaplan.ku@gmail.com", role = c("aut", "cre", "cph"),
+    person(given = "Brent A.", family = "Kaplan", email = "bkaplan.ku@gmail.com", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0002-3758-6776"))
-Maintainer: Brent Kaplan <bkaplan.ku@gmail.com>
+Maintainer: Brent A. Kaplan <bkaplan.ku@gmail.com>
 Description: Facilitates some of the analyses performed in studies of
     behavioral economic discounting. The package supports scoring of the 27-Item Monetary Choice
     Questionnaire (see Kaplan et al., 2016; <doi:10.1007/s40614-016-0070-9>), calculating k

@@ -41,8 +41,8 @@ page](https://github.com/brentkaplan/shinybeez).
 If you use this package in your own work, please consider citing the
 package:
 
-Kaplan, B. A. (2023). *beezdiscounting: Behavioral Economic Easy
-Discounting*. R package version 0.3.1,
+Kaplan, B. A. (2025). *beezdiscounting: Behavioral Economic Easy
+Discounting*. R package version 0.3.2,
 <https://github.com/brentkaplan/beezdiscounting>
 
 You can also find the latest citation using `citation("beezdemand")`
@@ -51,7 +51,7 @@ You can also find the latest citation using `citation("beezdemand")`
 
 ### CRAN Release (recommended method)
 
-The latest stable version of `beezdiscounting` (currently v.0.3.1) can
+The latest stable version of `beezdiscounting` (currently v.0.3.2) can
 be found on [CRAN](https://CRAN.R-project.org/package=beezdiscounting)
 and installed using the following command. The first time you install
 the package, you may be asked to select a CRAN mirror. Simply select the

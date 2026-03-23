@@ -1,3 +1,17 @@
+# beezdiscounting (development version)
+
+### Bug Fixes
+
+- **`score_dd()`** and **`ans_dd()`**: Fixed incorrect response classification for
+  Qualtrics numeric recode exports where SS = `"1"` and LL = `"2"`. Previously,
+  all numeric responses were classified as `"ll"`, producing incorrect `kval` and
+  `ed50`. Both text exports (containing `"now"`) and numeric exports (`"1"` / `"2"`)
+  are now handled correctly via an internal `normalize_dd_response()` helper.
+
+- **`score_pd()`** and **`ans_pd()`**: Same fix for probability discounting.
+  SC = `"1"`, LU = `"2"` in numeric exports are now correctly classified via
+  an internal `normalize_pd_response()` helper.
+
 # beezdiscounting 0.3.2
 
 ### New Features

@@ -1,3 +1,13 @@
+normalize_dd_response <- function(x) {
+  x_char <- as.character(x)
+  dplyr::case_when(
+    x_char == "1"                      ~ "ss",
+    x_char == "2"                      ~ "ll",
+    stringr::str_detect(x_char, "now") ~ "ss",
+    TRUE                               ~ "ll"
+  )
+}
+
 #' Score 5.5 trial delay discounting from Qualtrics template
 #'
 #' @param df A dataframe containing all the columns
@@ -18,7 +28,7 @@ score_dd <- function(df) {
   ddframe <- dd1 |>
     tidyr::pivot_longer(cols = 2:ncol(dd1), names_to = "index", values_to = "response") %>%
     dplyr::filter(complete.cases(.)) |>
-    dplyr::mutate(response = ifelse(stringr::str_detect(response, "now"), "ss", "ll"))
+    dplyr::mutate(response = normalize_dd_response(response))
   ddframe$kval <- NA
   ddframe$attentionflag <- "No"
   indexes <- paste0("I", seq(1, 31, by = 2))
@@ -104,7 +114,7 @@ ans_dd <- function(df) {
     dplyr::select(-dplyr::contains("Timing"), -dplyr::contains("_DO")) %>%
     tidyr::pivot_longer(cols = 2:ncol(.), names_to = "index", values_to = "response") %>%
     dplyr::filter(complete.cases(.)) |>
-    dplyr::mutate(response = ifelse(stringr::str_detect(response, "now"), "ss", "ll"))
+    dplyr::mutate(response = normalize_dd_response(response))
   ans$index <- gsub("-", "", ans$index)
   return(ans)
 }
@@ -123,6 +133,16 @@ calc_dd <- function(df) {
            dplyr::left_join(dplyr::select(score_dd(df), ResponseId, attentionflag, kval, ed50),
                             by = c("ResponseId")) |>
            dplyr::arrange(ResponseId, q))
+}
+
+normalize_pd_response <- function(x) {
+  x_char <- as.character(x)
+  dplyr::case_when(
+    x_char == "1"                           ~ "sc",
+    x_char == "2"                           ~ "lu",
+    stringr::str_detect(x_char, "for sure") ~ "sc",
+    TRUE                                    ~ "lu"
+  )
 }
 
 #' Score 5.5 trial probability discounting from Qualtrics template
@@ -145,7 +165,7 @@ score_pd <- function(df) {
   pdframe <- pd1 |>
     tidyr::pivot_longer(cols = 2:ncol(pd1), names_to = "index", values_to = "response") %>%
     dplyr::filter(complete.cases(.)) |>
-    dplyr::mutate(response = ifelse(stringr::str_detect(response, "for sure"), "sc", "lu"))
+    dplyr::mutate(response = normalize_pd_response(response))
   pdframe$hval <- NA
   pdframe$attentionflag <- "No"
   indexes <- paste0("I", seq(1, 31, by = 2))
@@ -232,7 +252,7 @@ ans_pd <- function(df) {
     dplyr::select(-dplyr::contains("Timing"), -dplyr::contains("_DO")) %>%
     tidyr::pivot_longer(cols = 2:ncol(.), names_to = "index", values_to = "response") %>%
     dplyr::filter(complete.cases(.)) |>
-    dplyr::mutate(response = ifelse(stringr::str_detect(response, "for sure"), "sc", "lu"))
+    dplyr::mutate(response = normalize_pd_response(response))
   ans$index <- gsub("-", "", ans$index)
   return(ans)
 }

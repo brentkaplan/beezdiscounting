@@ -45,9 +45,10 @@ reference:
   - title: Mixed-effects discounting (TMB)
     desc: >
       Fit SLT-beta mixed-effects discounting models to bounded
-      indifference-point data using TMB.
+      indifference-point data using TMB, and simulate from the same model.
     contents:
       - fit_dd_tmb
+      - simulate_dd_ip
 
   - title: Estimated marginal means & comparisons
     desc: >

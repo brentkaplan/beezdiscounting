@@ -5,6 +5,14 @@
 ## usethis namespace: end
 NULL
 
+#' @importFrom nlme fixef
+#' @export
+nlme::fixef
+
+#' @importFrom nlme ranef
+#' @export
+nlme::ranef
+
 utils::globalVariables(c(
     ".",
     "ResponseId",

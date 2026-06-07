@@ -291,3 +291,152 @@ describe("fitted / residuals", {
     expect_true(all(is.finite(rp)))
   })
 })
+
+# ---------------------------------------------------------------------------
+# M.5: tidy
+# ---------------------------------------------------------------------------
+
+describe("tidy", {
+  it("returns the broom column contract", {
+    fit <- .get_fit_for_methods()
+    td <- tidy(fit)
+    expect_s3_class(td, "tbl_df")
+    expect_true(all(c("term", "estimate", "std.error", "statistic",
+                      "p.value", "component", "estimate_scale",
+                      "term_display") %in% names(td)))
+  })
+
+  it("has nrow > 0 and no NA estimates on a good fit (fixed rows)", {
+    fit <- .get_fit_for_methods()
+    td <- tidy(fit, effects = "fixed")
+    expect_gt(nrow(td), 0L)
+    expect_true(all(!is.na(td$estimate)))
+  })
+
+  it("fixed-effect rows carry component = 'fixed', variance rows 'variance'", {
+    fit <- .get_fit_for_methods()
+    td <- tidy(fit)
+    expect_true(any(td$component == "fixed"))
+    expect_true(any(td$component == "variance"))
+    k_row <- td[td$term == "k:(Intercept)", ]
+    expect_equal(nrow(k_row), 1L)
+    expect_equal(k_row$component, "fixed")
+  })
+
+  it("internal space leaves the log-k estimate untransformed", {
+    fit <- .get_fit_for_methods()
+    td <- tidy(fit, report_space = "internal")
+    k_row <- td[td$term == "k:(Intercept)", ]
+    expect_equal(k_row$estimate, unname(fit$model$coefficients["beta_k"][1]),
+                 tolerance = 1e-10)
+    expect_equal(k_row$estimate_scale, "log")
+  })
+
+  it("natural space exponentiates the intercept to k and rescales SE", {
+    fit <- .get_fit_for_methods()
+    td_int <- tidy(fit, report_space = "internal")
+    td_nat <- tidy(fit, report_space = "natural")
+    ki <- td_int[td_int$term == "k:(Intercept)", ]
+    kn <- td_nat[td_nat$term == "k:(Intercept)", ]
+    expect_equal(kn$estimate, exp(ki$estimate), tolerance = 1e-8)
+    expect_equal(kn$std.error, exp(ki$estimate) * ki$std.error, tolerance = 1e-8)
+    expect_equal(kn$estimate_scale, "natural")
+  })
+
+  it("non-circular: natural-scale k equals exp(beta_k) computed independently", {
+    fit <- .get_fit_for_methods()
+    td_nat <- tidy(fit, report_space = "natural")
+    kn <- td_nat[td_nat$term == "k:(Intercept)", ]
+    expected_k <- exp(unname(fit$model$coefficients["beta_k"][1]))
+    expect_equal(kn$estimate, expected_k, tolerance = 1e-8)
+  })
+
+  it("log10 space divides the log estimate by log(10)", {
+    fit <- .get_fit_for_methods()
+    td_int <- tidy(fit, report_space = "internal")
+    td_l10 <- tidy(fit, report_space = "log10")
+    ki <- td_int[td_int$term == "k:(Intercept)", ]
+    kl <- td_l10[td_l10$term == "k:(Intercept)", ]
+    expect_equal(kl$estimate, ki$estimate / log(10), tolerance = 1e-8)
+    expect_equal(kl$estimate_scale, "log10")
+  })
+
+  it("statistic/p.value are estimation-scale invariant to report_space", {
+    fit <- .get_fit_for_methods()
+    a <- tidy(fit, report_space = "internal")
+    b <- tidy(fit, report_space = "natural")
+    c_ <- tidy(fit, report_space = "log10")
+    ka <- a[a$term == "k:(Intercept)", ]
+    kb <- b[b$term == "k:(Intercept)", ]
+    kc <- c_[c_$term == "k:(Intercept)", ]
+    expect_equal(ka$statistic, kb$statistic, tolerance = 1e-10)
+    expect_equal(ka$p.value, kb$p.value, tolerance = 1e-10)
+    expect_equal(ka$statistic, kc$statistic, tolerance = 1e-10)
+  })
+
+  it("effects = 'fixed' drops the variance rows", {
+    fit <- .get_fit_for_methods()
+    td <- tidy(fit, effects = "fixed")
+    expect_true(all(td$component == "fixed"))
+  })
+
+  it("effects = 'ran_pars' returns only variance rows", {
+    fit <- .get_fit_for_methods()
+    td <- tidy(fit, effects = "ran_pars")
+    expect_true(all(td$component == "variance"))
+    expect_gt(nrow(td), 0L)
+  })
+
+  it("all three report_space values preserve the row count", {
+    fit <- .get_fit_for_methods()
+    ni <- nrow(tidy(fit, report_space = "internal"))
+    nn <- nrow(tidy(fit, report_space = "natural"))
+    nl <- nrow(tidy(fit, report_space = "log10"))
+    expect_equal(ni, nn)
+    expect_equal(ni, nl)
+  })
+})
+
+# ---------------------------------------------------------------------------
+# M.6: glance
+# ---------------------------------------------------------------------------
+
+describe("glance", {
+  it("returns one row with the canonical columns and backend string", {
+    fit <- .get_fit_for_methods()
+    g <- glance(fit)
+    expect_s3_class(g, "tbl_df")
+    expect_equal(nrow(g), 1L)
+    expect_named(g, c("model_class", "backend", "equation", "family",
+                      "nobs", "n_subjects", "n_random_effects",
+                      "converged", "logLik", "AIC", "BIC"))
+    expect_equal(g$model_class, "beezdiscounting_tmb")
+    expect_equal(g$backend, "TMB_mixed")
+    expect_equal(g$equation, "mazur")
+    expect_equal(g$family, "sltb")
+    expect_equal(g$nobs, fit$param_info$n_obs)
+    expect_equal(g$n_subjects, fit$param_info$n_subjects)
+    expect_equal(g$logLik, fit$loglik)
+    expect_equal(g$AIC, fit$AIC)
+    expect_equal(g$BIC, fit$BIC)
+  })
+
+  it("nobs / AIC / BIC / logLik are all numeric", {
+    fit <- .get_fit_for_methods()
+    g <- glance(fit)
+    expect_type(g$nobs, "integer")
+    expect_type(g$AIC, "double")
+    expect_type(g$BIC, "double")
+    expect_type(g$logLik, "double")
+  })
+
+  it("reports family = gaussian for a gaussian fit", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    d2 <- .simulate_dd_ip_mixed(n_subjects = 25, family = "gaussian",
+                                equation = "mazur", seed = 11)
+    f2 <- fit_dd_tmb(d2, equation = "mazur", family = "gaussian",
+                     random_effects = k ~ 1, verbose = 0)
+    expect_equal(glance(f2)$family, "gaussian")
+  })
+})

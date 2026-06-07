@@ -492,3 +492,180 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
   out$.std_resid <- fr$.resid / .dd_tmb_response_sd(x, fr$.fitted)
   out
 }
+
+
+# --- tidy / glance ---
+
+#' Random-effect and auxiliary variance components for a beezdiscounting_tmb fit
+#'
+#' Reports the random-intercept SD on the log10-k scale (divides the natural-log
+#' SD by `log(10)` for comparability with `nlme::VarCorr()`) and the auxiliary
+#' parameter back-transformed to its natural scale: `phi` (sltb) or `sigma_e`
+#' (gaussian).
+#'
+#' @param object A `beezdiscounting_tmb` fit.
+#' @return A data frame with columns `Component`, `Estimate`, `Scale`.
+#' @keywords internal
+.dd_tmb_variance_components <- function(object) {
+  coefs  <- object$model$coefficients
+  family <- object$param_info$family
+  ln10   <- log(10)
+
+  rows <- list(
+    data.frame(
+      Component = "sigma_u (log10-k RE SD)",
+      Estimate  = exp(coefs[["log_sigma_u"]]) / ln10,
+      Scale     = "log10",
+      stringsAsFactors = FALSE
+    )
+  )
+  if (family == "sltb") {
+    rows[[length(rows) + 1L]] <- data.frame(
+      Component = "phi (precision)",
+      Estimate  = exp(coefs[["log_phi"]]),
+      Scale     = "natural",
+      stringsAsFactors = FALSE
+    )
+  } else {
+    rows[[length(rows) + 1L]] <- data.frame(
+      Component = "sigma_e (Residual SD)",
+      Estimate  = exp(coefs[["log_sigma_e"]]),
+      Scale     = "natural",
+      stringsAsFactors = FALSE
+    )
+  }
+  do.call(rbind, rows)
+}
+
+
+#' Tidy a beezdiscounting_tmb model into a coefficient tibble
+#'
+#' Returns fixed-effect rows (the log-k coefficients) and/or variance-component
+#' rows, following the broom coefficient-table contract.
+#'
+#' `estimate` and `std.error` are reported on the `report_space` scale for the
+#' fixed-effect (`beta_k`) rows. `statistic` and `p.value` are always computed
+#' on the estimation (log-k) scale — Wald statistics are not recomputed after
+#' back-transforming (broom convention; see the `summary()` note for details).
+#' Variance-component rows carry `NA` for `statistic` and `p.value` and are not
+#' affected by `report_space`.
+#'
+#' @param x A `beezdiscounting_tmb` object.
+#' @param effects Character vector: `"fixed"` (log-k fixed-effect rows),
+#'   `"ran_pars"` (the RE SD and the auxiliary precision/scale parameter), or
+#'   both (default).
+#' @param report_space `"natural"`, `"log10"`, or `"internal"` — reporting
+#'   scale for fixed-effect `estimate`/`std.error`. Default is `"natural"`.
+#' @param ... Unused.
+#' @return A tibble with columns `term`, `estimate`, `std.error`, `statistic`,
+#'   `p.value`, `component`, `estimate_scale`, `term_display`. Fixed-effect rows
+#'   carry `component == "fixed"`; variance rows carry `component == "variance"`.
+#'
+#' @importFrom generics tidy
+#' @export
+tidy.beezdiscounting_tmb <- function(x,
+                                     effects      = c("fixed", "ran_pars"),
+                                     report_space = c("natural", "log10", "internal"),
+                                     ...) {
+  effects      <- match.arg(effects, several.ok = TRUE)
+  report_space <- match.arg(report_space)
+
+  result <- tibble::tibble(
+    term           = character(),
+    estimate       = numeric(),
+    std.error      = numeric(),
+    statistic      = numeric(),
+    p.value        = numeric(),
+    component      = character(),
+    estimate_scale = character(),
+    term_display   = character()
+  )
+
+  if ("fixed" %in% effects) {
+    coefs <- x$model$coefficients
+    se    <- .dd_tmb_model_se(x)
+    nms   <- names(coefs)
+    tn    <- .dd_tmb_build_term_names(x, nms)
+
+    # Keep only the beta_k rows; the variance rows land in "ran_pars".
+    is_fixed <- nms == "beta_k"
+
+    # Wald statistics on the estimation (log) scale — never recomputed after
+    # back-transforming (broom convention).
+    z_val <- coefs / se
+    p_val <- 2 * stats::pnorm(-abs(z_val))
+
+    fixed <- tibble::tibble(
+      term           = tn$term[is_fixed],
+      estimate       = unname(coefs[is_fixed]),
+      std.error      = unname(se[is_fixed]),
+      statistic      = unname(z_val[is_fixed]),
+      p.value        = unname(p_val[is_fixed]),
+      component      = "fixed",
+      estimate_scale = "log",     # internal space for beta_k is log-k
+      term_display   = tn$term[is_fixed]
+    )
+
+    # Back-transform estimate + std.error to report_space; statistic/p.value
+    # are left on the estimation scale (assigned above, untouched by transform).
+    fixed <- .dd_transform_coef_table(
+      coef_tbl       = fixed,
+      report_space   = report_space,
+      internal_space = "log"
+    )
+
+    result <- dplyr::bind_rows(result, fixed)
+  }
+
+  if ("ran_pars" %in% effects) {
+    vc  <- .dd_tmb_variance_components(x)
+    ran <- tibble::tibble(
+      term           = vc$Component,
+      estimate       = vc$Estimate,
+      std.error      = NA_real_,
+      statistic      = NA_real_,
+      p.value        = NA_real_,
+      component      = "variance",
+      estimate_scale = vc$Scale,
+      term_display   = vc$Component
+    )
+    result <- dplyr::bind_rows(result, ran)
+  }
+
+  if (isFALSE(x$converged) || isFALSE(x$se_available)) {
+    attr(result, "se_warning") <-
+      "Standard errors / convergence are unreliable; CIs and p-values may be invalid."
+  }
+
+  result
+}
+
+
+#' Glance at a beezdiscounting_tmb model
+#'
+#' Returns a one-row tibble of model-level summary statistics suitable for use
+#' with `broom::glance()` workflows and multi-model comparison tables.
+#'
+#' @param x A `beezdiscounting_tmb` object.
+#' @param ... Unused.
+#' @return A one-row tibble with columns `model_class`, `backend`, `equation`,
+#'   `family`, `nobs`, `n_subjects`, `n_random_effects`, `converged`, `logLik`,
+#'   `AIC`, `BIC`.
+#'
+#' @importFrom generics glance
+#' @export
+glance.beezdiscounting_tmb <- function(x, ...) {
+  tibble::tibble(
+    model_class      = "beezdiscounting_tmb",
+    backend          = "TMB_mixed",
+    equation         = x$param_info$equation,
+    family           = x$param_info$family,
+    nobs             = x$param_info$n_obs,
+    n_subjects       = x$param_info$n_subjects,
+    n_random_effects = x$param_info$n_random_effects,
+    converged        = x$converged,
+    logLik           = x$loglik,
+    AIC              = x$AIC,
+    BIC              = x$BIC
+  )
+}

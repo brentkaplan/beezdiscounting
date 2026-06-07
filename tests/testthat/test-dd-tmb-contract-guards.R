@@ -23,6 +23,15 @@ describe("between-subject contract warning (B4)", {
     )
     expect_false(any(grepl("not constant within", w)))
   })
+
+  it("warns (and counts subjects) for a FACTOR that varies within a subject", {
+    d <- simulate_dd_ip(n_subjects = 10, seed = 6)
+    d$grp <- factor(rep(c("p", "q"), length.out = nrow(d)))  # varies within subject
+    expect_warning(
+      suppressMessages(fit_dd_tmb(d, factors = "grp", verbose = 0)),
+      "not constant within"
+    )
+  })
 })
 
 describe("declared-factor coercion + covariate type (B5)", {
@@ -44,6 +53,13 @@ describe("declared-factor coercion + covariate type (B5)", {
     d$age <- 30
     d$age[1] <- Inf
     expect_error(fit_dd_tmb(d, continuous_covariates = "age", verbose = 0), "finite")
+  })
+
+  it("rejects a non-numeric continuous covariate", {
+    d <- simulate_dd_ip(n_subjects = 10, seed = 3)
+    d$age <- rep(c("low", "high"), length.out = nrow(d))   # character covariate
+    expect_error(fit_dd_tmb(d, continuous_covariates = "age", verbose = 0),
+                 "numeric")
   })
 
   it("rejects a predictor that names the id / delay / response column", {
@@ -78,6 +94,13 @@ describe("generalized blow-up predicate (B7)", {
     # non-finite beta and beta/X shape mismatch -> blow-up
     expect_true(.dd_logk_blowup(list(par = c(beta_k = NA_real_, beta_k = 1)), X))
     expect_true(.dd_logk_blowup(list(par = c(beta_k = 0)), X))
+    # non-finite eta (a non-finite design entry) -> blow-up
+    expect_true(.dd_logk_blowup(list(par = c(beta_k = 1, beta_k = 1)),
+                                cbind(1, c(0, Inf))))
+    # intercept-only: max|X beta| == |beta[1]|, so behavior is unchanged
+    Xi <- cbind(rep(1, 4))
+    expect_false(.dd_logk_blowup(list(par = c(beta_k = 5)), Xi))
+    expect_true(.dd_logk_blowup(list(par = c(beta_k = 25)), Xi))
   })
 })
 

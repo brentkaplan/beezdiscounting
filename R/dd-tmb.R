@@ -557,9 +557,9 @@ NULL
   } else {
     best_result <- best_any
     warning(
-      "All multi-start fits tripped the beta_k sanity guard ",
-      "(k -> Inf / non-finite intercept); returning the lowest-nll fit. ",
-      "Inspect data for boundary-heavy subjects.",
+      "All multi-start fits tripped the log-k sanity guard ",
+      "(some fitted k -> Inf / non-finite across the design); returning the ",
+      "lowest-nll fit. Inspect data for boundary-heavy subjects or degenerate cells.",
       call. = FALSE
     )
   }
@@ -747,18 +747,24 @@ NULL
 .dd_check_between_subject <- function(data, extra_cols, id_col = "id",
                                       tol = 1e-8) {
   varying <- character(0)
+  affected <- character(0)
   for (col in intersect(unique(extra_cols), names(data))) {
     not_const <- tapply(data[[col]], data[[id_col]], function(v) {
       v <- v[!is.na(v)]
       if (length(v) <= 1L) return(FALSE)
       if (is.numeric(v)) (max(v) - min(v)) > tol else length(unique(v)) > 1L
     })
-    if (any(not_const, na.rm = TRUE)) varying <- c(varying, col)
+    if (any(not_const, na.rm = TRUE)) {
+      varying <- c(varying, col)
+      affected <- union(affected, names(not_const)[which(not_const)])
+    }
   }
   if (length(varying) > 0L) {
+    n_affected <- length(affected)
     cli::cli_warn(c(
       "!" = "{cli::qty(varying)}Predictor{?s} {.val {varying}} {?is/are} not \\
-             constant within {.field {id_col}}.",
+             constant within {.field {id_col}} ({cli::qty(n_affected)}{n_affected} \\
+             subject{?s} affected).",
       "i" = "{.fn fit_dd_tmb} treats predictors as between-subject; subject-level \\
              {.code k} / {.fn ranef} use each subject's FIRST design row, so they \\
              are approximate for within-subject-varying predictors."

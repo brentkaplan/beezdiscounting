@@ -82,6 +82,15 @@ describe("coverage: 3 factors end-to-end (gap 2 / the dropped-3rd-factor regress
                     .lp(fit, data.frame(a = "a2", b = "b2", c = "c1"))))
     expect_equal(em$k[1], exp(lp_c1), tolerance = 1e-6)
   })
+
+  it("fits 3 factors with factor_interaction = TRUE end-to-end (full crossing)", {
+    sim <- .factorial_data(4, list(a = c("a1", "a2"), b = c("b1", "b2"),
+                                   c = c("c1", "c2")), seed = 13)
+    fit <- fit_dd_tmb(sim, factors = c("a", "b", "c"), factor_interaction = TRUE,
+                      family = "gaussian", multi_start = FALSE, verbose = 0)
+    expect_equal(ncol(fit$formula_details$X), 8L)   # 2^3 full interaction design
+    expect_equal(nrow(get_dd_param_emms(fit)), 8L)  # all 8 cells EMM-accessible
+  })
 })
 
 describe("coverage: at= restricting an OMITTED (marginalized) factor (gap 3)", {
@@ -135,6 +144,13 @@ describe("coverage: trt.vs.ctrl combined with contrast_by (gap 5)", {
     expect_setequal(unique(td$site), c("S1", "S2"))
     # every contrast is "<level> - <reference C1>"
     expect_true(all(grepl("C1$", td$contrast)))
+    # per-by-cell p-adjust: within each site, holm is applied over THAT site's
+    # raw p-values (2 contrasts), NOT globally over all 4 (non-circular recompute).
+    for (s in unique(td$site)) {
+      sub   <- td[td$site == s, ]
+      raw_p <- 2 * stats::pnorm(-abs(sub$statistic))
+      expect_equal(sub$p.value, stats::p.adjust(raw_p, "holm"), tolerance = 1e-8)
+    }
   })
 })
 

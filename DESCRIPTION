@@ -17,7 +17,8 @@ Description: Facilitates some of the analyses performed in studies of
     Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide;
     <doi:10.13140/RG.2.2.26495.79527>), which is also available as a .qsf file in this package.
 License: GPL (>= 2)
-URL: https://github.com/brentkaplan/beezdiscounting
+URL: https://brentkaplan.github.io/beezdiscounting/, https://github.com/brentkaplan/beezdiscounting
+BugReports: https://github.com/brentkaplan/beezdiscounting/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Depends:

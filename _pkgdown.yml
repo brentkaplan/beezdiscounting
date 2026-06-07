@@ -1,0 +1,150 @@
+url: https://brentkaplan.github.io/beezdiscounting/
+
+llm-docs: true
+
+template:
+  bootstrap: 5
+  light-switch: true
+  math-rendering: katex
+  bslib:
+    bg: "#FFFFFF"
+    fg: "#1E3242"
+    primary: "#2B4560"
+    secondary: "#A25F5F"
+    success: "#7D9C7F"
+    info: "#5D8AA8"
+    base_font:
+      google: "Open Sans"
+    heading_font:
+      google: "Open Sans"
+    code_font:
+      google: "Fira Mono"
+
+home:
+  title: beezdiscounting - Behavioral Economic Discounting Analysis
+  description: >
+    R package for behavioral economic discounting analysis. Scores delay and
+    probability discounting tasks, fits hyperbolic and exponential discount
+    functions, scores the 27-Item Monetary Choice Questionnaire (MCQ), computes
+    AUC and systematicity measures, and fits TMB-based SLT-beta mixed-effects
+    discounting models for bounded indifference-point data.
+  strip_header: false
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github, lightswitch]
+  components:
+    articles:
+      text: Articles
+      menu:
+        - text: Modeling indifference points with bounded error distributions
+          href: articles/sltb-discounting.html
+
+reference:
+  - title: Mixed-effects discounting (TMB)
+    desc: >
+      Fit SLT-beta mixed-effects discounting models to bounded
+      indifference-point data using TMB.
+    contents:
+      - fit_dd_tmb
+
+  - title: Estimated marginal means & comparisons
+    desc: >
+      Post-hoc estimated marginal means and pairwise comparisons for fitted
+      mixed-effects discounting models.
+    contents:
+      - get_dd_param_emms
+      - get_dd_comparisons
+
+  - title: Model inspection (S3 methods)
+    desc: S3 methods for extracting information from fitted models.
+    contents:
+      - starts_with("tidy")
+      - starts_with("glance")
+      - starts_with("augment")
+      - starts_with("predict.")
+      - starts_with("confint.")
+      - starts_with("summary.")
+      - starts_with("coef")
+      - starts_with("fixef")
+      - starts_with("ranef")
+      - starts_with("AIC.")
+      - starts_with("BIC.")
+      - starts_with("logLik.")
+      - starts_with("nobs.")
+      - starts_with("fitted.")
+      - starts_with("residuals.")
+      - starts_with("print.")
+
+  - title: Delay discounting (NLS / scoring)
+    desc: >
+      Fit hyperbolic/exponential discount functions via nonlinear regression
+      and score delay-discounting tasks.
+    contents:
+      - fit_dd
+      - results_dd
+      - plot_dd
+      - calc_dd
+      - score_dd
+      - ans_dd
+      - timing_dd
+
+  - title: Probability discounting
+    desc: Scoring functions for probability-discounting tasks.
+    contents:
+      - calc_pd
+      - score_pd
+      - ans_pd
+      - timing_pd
+
+  - title: 27-item Monetary Choice Questionnaire (MCQ)
+    desc: Scoring, lookup, simulation, and reshaping for the 27-item MCQ.
+    contents:
+      - score_mcq27
+      - summarize_mcq
+      - prop_ss
+      - get_lookup_table
+      - generate_data_mcq
+      - wide_to_long_mcq
+      - long_to_wide_mcq
+      - wide_to_long_mcq_excel
+      - long_to_wide_mcq_excel
+
+  - title: Utilities & metrics
+    desc: Area under the curve, fit metrics, and systematicity checks.
+    contents:
+      - calc_aucs
+      - calc_r2
+      - calc_conf_int
+      - check_unsystematic
+
+  - title: Visualization
+    desc: Plotting methods for scored task outputs.
+    contents:
+      - starts_with("plot.")
+
+  - title: Datasets
+    desc: Built-in datasets for examples and testing.
+    contents:
+      - dd_ip
+      - jarvis2019
+      - mcq27
+      - five.fivetrial_dd
+      - five.fivetrial_pd
+
+  - title: Reexports
+    desc: Generics re-exported from other packages.
+    contents:
+      - reexports
+      - "%>%"
+
+  - title: internal
+    desc: Documented internal helpers (not exported).
+    contents:
+      - inn
+      - score_one_mcq27
+
+authors:
+  Brent Kaplan:
+    href: https://github.com/brentkaplan

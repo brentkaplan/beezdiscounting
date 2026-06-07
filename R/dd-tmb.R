@@ -115,6 +115,27 @@ NULL
   )
   X <- stats::model.matrix(rhs, data = data)
 
+  # B3: reject a rank-deficient design. An empty factor cell (e.g. an absent
+  # interaction combination in an unbalanced design) yields an all-zero, aliased
+  # column; TMB would then "estimate" an unidentified coefficient and the EMM
+  # marginalization would average over a non-estimable cell -- a confident but
+  # meaningless result. qr()'s default tolerance (1e-7) matches base `lm`'s
+  # aliasing detection; the pivot names the dependent columns.
+  if (ncol(X) > 0L) {
+    qr_x <- qr(X)
+    if (qr_x$rank < ncol(X)) {
+      aliased <- colnames(X)[qr_x$pivot[(qr_x$rank + 1L):ncol(X)]]
+      cli::cli_abort(c(
+        "The fixed-effect design for {.code log k} is rank-deficient \\
+         ({qr_x$rank}/{ncol(X)} columns independent).",
+        "x" = "Non-estimable (aliased) column{?s}: {.val {aliased}}.",
+        "i" = "This usually means an empty factor cell or a redundant \\
+               interaction. Drop the interaction ({.code factor_interaction = \\
+               FALSE}), collapse empty cells, or remove the collinear predictor."
+      ))
+    }
+  }
+
   list(X = X, rhs = rhs, contrasts = attr(X, "contrasts"))
 }
 
@@ -903,9 +924,16 @@ fit_dd_tmb <- function(data,
         n_subjects = prepared$n_subjects,
         n_random_effects = n_random_effects,
         subject_levels = prepared$subject_levels,
-        id_var = id_var,
-        x_var = x_var,
-        y_var = y_var,
+        # B1: store the CANONICAL column names. The validator renames the data to
+        # id/x/y, and fit$data (the default newdata for predict/fitted/residuals/
+        # augment) is always canonical, so the post-fit methods must index it by
+        # the canonical names -- not the caller's original y_var/x_var/id_var,
+        # which would not exist on fit$data and broke every response-path method.
+        # The user's original names are kept under user_vars for reference/display.
+        id_var = "id",
+        x_var = "x",
+        y_var = "y",
+        user_vars = list(id = id_var, x = x_var, y = y_var),
         # Factor metadata persisted so predict()/emmeans can rebuild a
         # column-aligned design via build_fixed_rhs + stored contrasts (B3).
         # Only factors actually placed in the design are recorded (single-level

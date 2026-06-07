@@ -526,3 +526,43 @@ describe("tidy.beezdiscounting_comparison()", {
     expect_equal(nrow(td), 2L * choose(3L, 2L))
   })
 })
+
+describe("se_available gate in EMM / comparisons (B2)", {
+  .b2_fit <- function() {
+    dat <- simulate_dd_ip(
+      n_subjects = 24, family = "gaussian", equation = "mazur",
+      n_conditions = 2, delta_k = c(0, 0.8), seed = 11
+    )
+    fit_dd_tmb(dat, equation = "mazur", family = "gaussian",
+               factors = "condition", multi_start = FALSE, verbose = 0)
+  }
+
+  it("get_dd_param_emms() NA-s uncertainty (keeps estimates) and warns when SEs unreliable", {
+    fit <- .b2_fit()
+    fit$se_available <- FALSE
+    w <- testthat::capture_warnings(em <- get_dd_param_emms(fit))
+    expect_true(any(grepl("unreliable", w)))
+    expect_true(all(is.na(em$std.error)))
+    expect_true(all(is.na(em$conf.low)) && all(is.na(em$conf.high)))
+    expect_false(any(is.na(em$k)))             # point estimates preserved
+  })
+
+  it("get_dd_comparisons() warns exactly once and NA-s contrast SE/p (B2 dedup)", {
+    fit <- .b2_fit()
+    fit$se_available <- FALSE
+    w <- testthat::capture_warnings(
+      cmp <- get_dd_comparisons(fit, contrast_type = "pairwise")
+    )
+    expect_length(w[grepl("unreliable", w)], 1L)   # single se-warning, not double
+    td <- generics::tidy(cmp)
+    expect_true(all(is.na(td$std.error)))
+    expect_true(all(is.na(td$p.value)))
+    expect_false(any(is.na(td$estimate)))          # point estimates preserved
+  })
+
+  it("happy-path fit (se_available TRUE) still returns finite EMM SEs (no over-broadening)", {
+    fit <- .b2_fit()
+    em <- get_dd_param_emms(fit)
+    expect_true(all(is.finite(em$std.error)))
+  })
+})

@@ -560,3 +560,55 @@ describe("summary / print", {
     expect_true(is.call(s$call) || is.null(s$call))
   })
 })
+
+describe("non-default column names (B1: canonical-names contract)", {
+  it("predict/fitted/residuals/augment work when y_var/x_var/id_var are remapped", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 18, seed = 5)
+    remap <- sim
+    names(remap) <- c("subj", "delay", "indiff")  # id, x, y -> remapped names
+
+    fit_canon <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", verbose = 0)
+    fit_remap <- fit_dd_tmb(remap, y_var = "indiff", x_var = "delay",
+                            id_var = "subj", equation = "mazur",
+                            family = "sltb", verbose = 0)
+
+    # Regression: these previously errored because param_info kept the user's
+    # original names while fit$data is canonical id/x/y.
+    expect_no_error(p <- predict(fit_remap, type = "response"))
+    expect_true(".fitted" %in% names(p))
+    expect_equal(length(fitted(fit_remap)), fit_remap$param_info$n_obs)
+    expect_equal(length(residuals(fit_remap)), fit_remap$param_info$n_obs)
+    aug <- augment(fit_remap)
+    expect_true(all(c(".fitted", ".resid", ".std_resid") %in% names(aug)))
+
+    # Identical underlying data (+ deterministic optimizer) -> identical fitted.
+    expect_equal(unname(fitted(fit_remap)), unname(fitted(fit_canon)),
+                 tolerance = 1e-6)
+  })
+})
+
+describe("confint se_available gate (B2)", {
+  it("returns NA intervals (keeps estimates) and warns when se_available is FALSE", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    fit <- .get_fit_for_methods()
+    fit$se_available <- FALSE
+    expect_warning(ci <- confint(fit), "unreliable")
+    expect_true(all(is.na(ci$conf.low)) && all(is.na(ci$conf.high)))
+    expect_false(any(is.na(ci$estimate)))   # point estimates preserved
+  })
+
+  it("finite CIs on a normal (PD-Hessian) fit (no over-broadening)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    fit <- .get_fit_for_methods()
+    if (isTRUE(fit$se_available)) {
+      ci <- confint(fit)
+      expect_true(any(is.finite(ci$conf.low)))
+    } else {
+      succeed("fixture fit had unavailable SEs; gate-on path covered above")
+    }
+  })
+})

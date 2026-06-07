@@ -1,11 +1,46 @@
 # beezdiscounting 0.4.0
 
-* New IP-family mixed-effects discounting tier (`fit_dd_tmb()`, SLT-beta and
-  Gaussian families). The input validator `.dd_validate_ip()` coerces
-  percent- and amount-scaled indifference points to `[0, 1]` and clamps mild
-  out-of-range values, **always emitting a warning that names how many values
-  were divided or clamped**. Proportion data in `[0, 1]` (including exact 0
-  and 1) pass through silently.
+### New Features
+
+- **Mixed-effects discounting via TMB** (`fit_dd_tmb()`): fits the
+  indifference-point (IP) family discounting model — Mazur hyperbolic or
+  exponential mean with a subject random intercept on `log k` — under either the
+  scale-location-truncated beta (`family = "sltb"`, default) or Gaussian
+  (`family = "gaussian"`) observation family. Between-subject factors and
+  continuous covariates enter the `log k` fixed-effect design.
+
+- **SLT-beta error distribution**: assigns finite probability to indifference
+  points at exactly 0 and 1, where ordinary beta regression is undefined. Means
+  use an identity link on the discounting function; variance shrinks near the
+  bounds and grows mid-range.
+
+- **Estimated marginal means and contrasts**: `get_dd_param_emms()` returns the
+  EMM of `k` per factor level (computed on the `log k` scale and
+  back-transformed); `get_dd_comparisons()` returns pairwise or
+  treatment-vs-control contrasts as ratios of discount rates, with multiplicity
+  adjustment via any `stats::p.adjust` method.
+
+- **broom + base S3 surface** on `beezdiscounting_tmb` objects: `tidy()`,
+  `glance()` (backend `"TMB_mixed"`), `augment()`, `coef()`, `fixef()`,
+  `ranef()`, `confint()`, `predict()`, `summary()`, `logLik()`, `AIC()`,
+  `BIC()`, `nobs()`, `print()`.
+
+- **`jarvis2019`** dataset: a de-duplicated Jarvis (2019) delay-discounting
+  fixture (126 subject-records x 7 delays) with boundary indifference points,
+  used by the new `sltb-discounting` vignette to demonstrate the SLT-beta
+  family.
+
+### Documentation
+
+- New vignette `sltb-discounting`: why bounded error distributions matter for
+  indifference points, the SLT-beta density, a boundary demonstration on the
+  Jarvis (2019) data, and the mixed-effects workflow.
+
+### Notes
+
+- The data validator coerces percent/amount response scales to `[0, 1]` and
+  clamps mild out-of-range values, **warning loudly** and naming the number of
+  values coerced or clamped.
 
 # beezdiscounting (development version)
 

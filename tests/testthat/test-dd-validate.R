@@ -106,4 +106,57 @@ describe(".dd_validate_ip", {
     expect_equal(res$coercion_info$divided_by, 1)
     expect_equal(res$data$y, c(1.0, 0.8, 0.5, 0.2, 0.0))
   })
+
+  # --- R3: finiteness of y and x ------------------------------------------
+  it("errors on non-finite y (Inf is rejected, NOT clamped to 1)", {
+    dat <- make_ip(c(0.9, Inf, 0.3, 0.1, 0.0))
+    expect_error(.dd_validate_ip(dat, "y", "x", "id"),
+      regexp = "non-finite|Inf")
+  })
+
+  it("errors on NaN y", {
+    dat <- make_ip(c(0.9, NaN, 0.3, 0.1, 0.0))
+    # NaN coerces through is.na -> the upfront NA check fires first; either the
+    # NA guard or the finiteness guard is acceptable, both reject the row.
+    expect_error(.dd_validate_ip(dat, "y", "x", "id"))
+  })
+
+  it("errors on negative x (delays must be >= 0)", {
+    dat <- make_ip(c(0.9, 0.6, 0.3, 0.1, 0.0), x = c(-1, 7, 30, 90, 180))
+    expect_error(.dd_validate_ip(dat, "y", "x", "id"),
+      regexp = "negative|>= 0")
+  })
+
+  it("errors on non-finite x (delays must be finite)", {
+    dat <- make_ip(c(0.9, 0.6, 0.3, 0.1, 0.0), x = c(Inf, 7, 30, 90, 180))
+    expect_error(.dd_validate_ip(dat, "y", "x", "id"),
+      regexp = "non-finite|finite")
+  })
+
+  it("does NOT fabricate a boundary obs from Inf y (no silent clamp)", {
+    # An Inf y would previously be clamped to 1 (a fabricated boundary). The
+    # validator must error instead so the count of clamped-hi never hides it.
+    dat <- make_ip(c(0.9, 0.6, 0.3, 0.1, Inf))
+    expect_error(.dd_validate_ip(dat, "y", "x", "id"), regexp = "non-finite|Inf")
+  })
+
+  # --- N2: explicit percent request wording -------------------------------
+  it("reports percent scaling as REQUESTED when response_scale = 'percent'", {
+    dat <- make_ip(c(90, 60, 30, 10, 0))
+    expect_warning(
+      res <- .dd_validate_ip(dat, "y", "x", "id", response_scale = "percent"),
+      regexp = "as requested"
+    )
+    expect_equal(res$data$y, c(0.9, 0.6, 0.3, 0.1, 0))
+    expect_identical(res$coercion_info$scale_detected, "percent")
+  })
+
+  it("uses auto-detect wording (not 'as requested') on the proportion branch", {
+    dat <- make_ip(c(90, 60, 30, 10, 0))
+    # Default proportion scale, max > 1.5 -> auto-detect message.
+    w <- tryCatch(.dd_validate_ip(dat, "y", "x", "id"),
+                  warning = function(cnd) conditionMessage(cnd))
+    expect_match(w, "Detected percent-scale")
+    expect_false(grepl("as requested", w))
+  })
 })

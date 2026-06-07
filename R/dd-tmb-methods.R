@@ -933,7 +933,16 @@ print.summary.beezdiscounting_tmb <- function(x, digits = 4, ...) {
   cat("Convergence:", ifelse(x$converged, "Yes", "No"), "\n")
   cat("Subjects:", x$n_subjects, " Observations:", x$nobs, "\n\n")
 
-  cat("--- Fixed Effects (log k) ---\n")
+  # Header reflects the report space of the coefficient-table estimates (R4):
+  # "(k)" natural, "(log k)" internal/log, "(log10 k)" log10.
+  scale_lbl <- unique(stats::na.omit(x$coefficients$estimate_scale))
+  k_space <- switch(if (length(scale_lbl) == 1L) scale_lbl else "log",
+    natural = "k",
+    log10   = "log10 k",
+    log     = "log k",
+    "log k"
+  )
+  cat(sprintf("--- Fixed Effects (%s) ---\n", k_space))
   cd <- as.data.frame(x$coefficients[, c("term", "estimate", "std.error",
                                           "statistic", "p.value")])
   cd$estimate  <- round(cd$estimate, digits)

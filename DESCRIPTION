@@ -1,7 +1,7 @@
 Package: beezdiscounting
 Title: Behavioral Economic Easy Discounting
-Version: 0.3.2
-Date: 2025-01-08
+Version: 0.4.0
+Date: 2026-06-06
 Authors@R:
     person(given = "Brent A.", family = "Kaplan", email = "bkaplan.ku@gmail.com", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0002-3758-6776"))
@@ -27,15 +27,27 @@ Imports:
     beezdemand,
     broom,
     dplyr,
+    emmeans,
+    generics,
     ggplot2,
     gtools,
     magrittr,
     minpack.lm,
     psych,
     purrr,
+    RcppEigen,
     stringr,
     tibble,
-    tidyr
+    tidyr,
+    TMB (>= 1.9.0)
 Suggests:
+    knitr,
+    rmarkdown,
     testthat (>= 3.0.0)
+LinkingTo:
+    RcppEigen,
+    TMB
+VignetteBuilder: knitr
+SystemRequirements: GNU make
+Config/testthat/edition: 3
 LazyData: true

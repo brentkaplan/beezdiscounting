@@ -1,3 +1,12 @@
+# beezdiscounting 0.4.0
+
+* New IP-family mixed-effects discounting tier (`fit_dd_tmb()`, SLT-beta and
+  Gaussian families). The input validator `.dd_validate_ip()` coerces
+  percent- and amount-scaled indifference points to `[0, 1]` and clamps mild
+  out-of-range values, **always emitting a warning that names how many values
+  were divided or clamped**. Proportion data in `[0, 1]` (including exact 0
+  and 1) pass through silently.
+
 # beezdiscounting (development version)
 
 ### Bug Fixes

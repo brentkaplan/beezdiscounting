@@ -5,6 +5,10 @@
 ## usethis namespace: end
 NULL
 
+#' @importFrom generics augment
+#' @export
+generics::augment
+
 #' @importFrom nlme fixef
 #' @export
 nlme::fixef

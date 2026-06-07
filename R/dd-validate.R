@@ -88,10 +88,22 @@
     }
   }
 
+  # --- NA check on original y BEFORE any coercion ----------------------------
+  n_na_y <- sum(is.na(data[[y_var]]))
+  if (n_na_y > 0L) {
+    stop(
+      sprintf(
+        "`%s` contains %d NA value(s); remove or impute them before validation.",
+        y_var, n_na_y
+      ),
+      call. = FALSE
+    )
+  }
+
   long <- data.frame(
     id = data[[id_var]],
     x = as.numeric(data[[x_var]]),
-    y = as.numeric(data[[y_var]]),
+    y = suppressWarnings(as.numeric(data[[y_var]])),
     stringsAsFactors = FALSE
   )
   # Carry retained columns through unchanged (preserve factor class/levels).
@@ -140,7 +152,7 @@
   if (n_clamped_hi > 0L || n_clamped_lo > 0L) {
     warning(
       sprintf(
-        "clamped out-of-range y to [0, 1]: %d value(s) > 1 set to 1, %d value(s) < 0 set to 0.",
+        "Clamped out-of-range y to [0, 1]: %d value(s) > 1 set to 1, %d value(s) < 0 set to 0.",
         n_clamped_hi, n_clamped_lo
       ),
       call. = FALSE

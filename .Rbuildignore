@@ -13,3 +13,8 @@
 ^tests
 ^revdep$
 hex-beezdiscounting.png
+^docs$
+^dev$
+^src/.*\.o$
+^src/.*\.so$
+^\.vscode$

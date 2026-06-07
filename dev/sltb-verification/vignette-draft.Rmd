@@ -1,0 +1,229 @@
+---
+title: "Modeling delay-discounting indifference points with bounded error distributions"
+author: "Brent Kaplan"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Modeling delay-discounting indifference points with bounded error distributions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<!--
+DRAFT (lives in dev/, not built). Becomes vignettes/sltb-discounting.Rmd once
+fit_dd_tmb()/emmeans land and the de-duplicated Jarvis (2019) fixture is bundled
+(data(jarvis2019)). Conceptual + boundary-demo chunks (1-3, 6) run today; the
+API-usage chunks (4-5) are marked eval=FALSE until the functions exist. Apply
+Brent's manuscript voice on the final pass.
+-->
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.2)
+set.seed(1)
+```
+
+## Why indifference points need a bounded error distribution
+
+A delay-discounting task asks a person to trade a smaller-sooner reward against a
+larger-later one across a range of delays. The **indifference point** (IP) at each delay is
+the smaller-sooner amount that feels equivalent to the later reward, expressed as a
+*proportion of that later reward*. By construction an IP lives on the closed interval
+$[0, 1]$:
+
+- $y = 1$ — the person is indifferent only when the immediate amount equals the full later
+  reward: **no discounting**.
+- $y = 0$ — any immediate amount, however small, is preferred: **complete discounting**.
+
+Real data pile up at both ends. In the Jarvis et al. (2019) data shipped with this package,
+a meaningful fraction of observations sit *exactly* at 0 or 1. That single fact rules out
+the two error distributions people reach for first:
+
+- **Gaussian / nonlinear least squares** treats the residuals as unbounded and
+  homoscedastic. It will happily predict an IP below 0 or above 1, and it assumes the noise
+  is the same size near the bounds as in the middle — which is never true for a proportion.
+- **Standard beta regression** is the natural model for a proportion, but its density is
+  *undefined* at exactly 0 and 1 (the log-likelihood is $-\infty$). Every boundary
+  observation has to be discarded or nudged, which biases the fit.
+
+The **Scale-Location-Truncated beta (SLT-beta)** distribution (Kim, Koffarnus & Franck, 2024;
+Kim, Kaplan, Koffarnus & Franck, 2025) keeps the beta's natural fit to proportion data but
+assigns *finite probability* to the endpoints, so 0 and 1 are modeled rather than thrown away.
+
+## What the SLT-beta density is
+
+Write the mean of the IP at delay $D$ as a discounting function of a single rate $k$ — Mazur's
+hyperbola $\mu = 1/(1 + kD)$ or the exponential $\mu = e^{-kD}$ — and let $\phi$ be a
+precision (larger $\phi$ = tighter around the curve). With shape parameters
+$a = \mu\phi$ and $b = (1-\mu)\phi$, and two *fixed* micro-constants $s = 1{+}10^{-7}$ and
+$l = 10^{-8}$, the log-density of an observed IP $y \in [0,1]$ is
+
+$$
+\log f(y \mid \mu, \phi) =
+\underbrace{\log\Gamma(a{+}b) - \log\Gamma(a) - \log\Gamma(b)}_{-\log B(a,b)}
++ (a{-}1)\log\!\big(\tfrac{y}{s}{+}l\big)
++ (b{-}1)\log\!\big(1 - \tfrac{y}{s}{+}l\big)
+- \log s
+- \log Z,
+$$
+
+where the truncation normalizer is $Z = \mathrm{pbeta}(\tfrac{1}{s}{+}l,\,a,\,b) -
+\mathrm{pbeta}(l,\,a,\,b)$.
+
+The intuition is a *microscopic stretch*: the data window $y\in[0,1]$ is mapped just inside
+the open interval where the ordinary beta density is finite, so the kernel is never evaluated
+at exactly 0 or 1. As $s\to 1$ and $l\to 0$ the SLT-beta collapses to the ordinary beta.
+
+```{r density, fig.cap = "SLT-beta (solid) vs. ordinary beta (dashed). The SLT-beta carries finite density to y = 0 and y = 1; the ordinary beta diverges or vanishes there."}
+slt_logpdf <- function(y, mu, phi, s = 1.0000001, l = 1e-8) {
+  a <- mu * phi; b <- (1 - mu) * phi
+  lgamma(a + b) - lgamma(a) - lgamma(b) +
+    (a - 1) * log(y / s + l) + (b - 1) * log(1 - (y / s + l)) -
+    log(s) - log(pbeta(1 / s + l, a, b) - pbeta(l, a, b))
+}
+yy <- seq(0, 1, length.out = 400)
+op <- par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
+for (p in list(c(mu = 0.5, phi = 4), c(mu = 0.15, phi = 6))) {
+  plot(yy, exp(slt_logpdf(yy, p["mu"], p["phi"])), type = "l", lwd = 2,
+       xlab = "indifference point", ylab = "density",
+       main = sprintf("mu = %.2f, phi = %g", p["mu"], p["phi"]))
+  lines(yy, dbeta(yy, p["mu"] * p["phi"], (1 - p["mu"]) * p["phi"]), lty = 2)
+  points(c(0, 1), exp(slt_logpdf(c(0, 1), p["mu"], p["phi"])), pch = 16)
+}
+par(op)
+```
+
+Because the variance of a beta is $\mu(1-\mu)/(\phi+1)$, the SLT-beta automatically gives
+**less** noise near the floor and ceiling and **more** in the middle — the heteroscedastic
+pattern real IP data actually show, and exactly what a Gaussian model gets wrong.
+
+## The boundary problem, on real data
+
+```{r load-data}
+## Final vignette: data(jarvis2019). Draft: read the CSV if present.
+csv <- "~/Downloads/Data_brent.csv"
+if (file.exists(path.expand(csv))) {
+  d <- read.csv(path.expand(csv), check.names = FALSE)
+  delays <- c(7, 30, 180, 365, 730, 1460, 2920)            # 1wk .. 8yr, in days
+  long <- data.frame(id = rep(seq_len(nrow(d)), each = 7), # row = subject unit
+                     delay = rep(delays, nrow(d)),
+                     y = as.numeric(t(as.matrix(d[, -1]))))
+  knitr::kable(as.data.frame(table(IP = long$y)), caption = "Observed indifference points")
+}
+```
+
+The titration grid produces many observations at exactly 0 and 1. Counting subjects with at
+least one boundary value, and asking which error models can even evaluate them:
+
+```{r boundary-demo}
+beta_logpdf <- function(y, mu, phi) {          # ordinary beta: -Inf at y in {0,1}
+  a <- mu * phi; b <- (1 - mu) * phi
+  lgamma(a + b) - lgamma(a) - lgamma(b) + (a - 1) * log(y) + (b - 1) * log(1 - y)
+}
+ids <- unique(long$id)
+bnd <- sapply(ids, function(i) any(long$y[long$id == i] %in% c(0, 1)))
+beta_ok <- sapply(ids, function(i) all(is.finite(beta_logpdf(long$y[long$id == i], 0.5, 8))))
+slt_ok  <- sapply(ids, function(i) all(is.finite(slt_logpdf(long$y[long$id == i], 0.5, 8))))
+data.frame(
+  subjects                       = length(ids),
+  with_boundary_IP               = sum(bnd),
+  evaluable_under_ordinary_beta  = sum(beta_ok),
+  evaluable_under_SLT_beta       = sum(slt_ok)
+)
+```
+
+Every subject with a boundary value is lost to ordinary beta regression and retained by the
+SLT-beta. Fitting each subject (estimating $\log k$ and $\log\phi$ so both stay positive) and
+comparing the recovered rate to nonlinear least squares shows the SLT-beta agrees with NLS on
+the bulk of subjects *and* succeeds on the boundary subjects NLS-plus-beta could not model:
+
+```{r per-subject-fit}
+fit_slt <- function(y, D) {                      # per-subject SLT MLE (log k, log phi)
+  nll <- function(th) {
+    mu <- pmin(pmax(1 / (1 + exp(th[1]) * D), 1e-6), 1 - 1e-6)
+    v <- -sum(slt_logpdf(y, mu, exp(th[2]))); if (is.finite(v)) v else 1e10
+  }
+  o <- optim(c(log(0.01), log(8)), nll, control = list(reltol = 1e-11))
+  exp(o$par[1])
+}
+nls_k <- function(y, D) {                        # multi-start NLS (single start is fragile)
+  for (st in c(exp(-10), 1e-3, 1e-2, 1e-1)) {
+    m <- tryCatch(nls(y ~ 1 / (1 + k * D), start = list(k = st)), error = function(e) NULL)
+    if (!is.null(m)) return(coef(m)[["k"]])
+  }
+  NA_real_
+}
+k_slt <- sapply(ids, function(i) fit_slt(long$y[long$id == i], long$delay[long$id == i]))
+k_nls <- sapply(ids, function(i) nls_k(long$y[long$id == i], long$delay[long$id == i]))
+sprintf("cor(log k): SLT vs NLS = %.3f   |   median k: SLT = %.4f, NLS = %.4f",
+        cor(log(k_slt), log(k_nls), use = "complete.obs"),
+        median(k_slt), median(k_nls, na.rm = TRUE))
+```
+
+A caveat the next section resolves: fit *one subject at a time* and the SLT-beta likelihood
+can occasionally run off to a degenerate solution — for a person whose indifference points are
+almost all 0s and 1s, a fit with near-zero precision that places all its mass on the endpoints
+can score a higher likelihood than any sensible discounting curve. The fix is not to fit
+people in isolation.
+
+## Fitting the mixed-effects model
+
+<!-- eval=FALSE until fit_dd_tmb() lands; this is the intended API. -->
+
+A mixed-effects model shares information across people. The subject random intercept on
+$\log k$ acts as a prior that pulls each person's estimate toward the population, so the
+degenerate per-subject solutions above are regularized away — one of the main reasons to
+prefer `fit_dd_tmb()` over fitting each subject separately.
+
+In practice you rarely want a separate $k$ per person in isolation. `fit_dd_tmb()` fits a
+**mixed-effects** discounting model: a population rate with a subject random intercept on
+$\log k$, plus any between-subject factors, all under the SLT-beta likelihood.
+
+```{r fit-tmb, eval = FALSE}
+fit <- fit_dd_tmb(
+  data      = jarvis2019,            # columns: id, x (delay), y (indifference point)
+  equation  = "mazur",               # or "exponential"
+  family    = "sltb",                # default; "gaussian" reproduces the NLS-style fit
+  random_effects = k ~ 1             # random intercept on log k (fit internally on log scale)
+)
+summary(fit)
+tidy(fit)                            # population log k, precision; back-transformed k
+ranef(fit)                           # per-subject discount rates
+```
+
+Group contrasts use the same estimated-marginal-means surface as `beezdemand`, computed on
+the `log k` scale and back-transformed, so a between-group comparison reads as a **ratio of
+discount rates**:
+
+```{r emmeans, eval = FALSE}
+fit_grp <- fit_dd_tmb(jarvis2019, equation = "mazur", factors = "group")
+get_dd_param_emms(fit_grp)                       # EMM of k per group
+get_dd_comparisons(fit_grp, ~ group, adjust = "holm")  # ratio-of-k contrasts
+```
+
+## Choosing a family
+
+| | `family = "sltb"` (default) | `family = "gaussian"` |
+|---|---|---|
+| Respects $[0,1]$ | yes (incl. boundary mass at 0 and 1) | no (can predict outside) |
+| Variance | shrinks near bounds, grows mid-range | constant |
+| Boundary data | modeled | only via the bounded mean |
+| Matches legacy `fit_dd()` | — | yes (NLS-style) |
+
+Use `"sltb"` for inference on real IP data; use `"gaussian"` when you want continuity with a
+classic least-squares discounting analysis or a quick baseline.
+
+## How much to trust it
+
+The SLT-beta density was checked before release: it integrates to one, has finite density at
+both boundaries, reproduces the published moments, and recovers known discount rates from
+simulated data (rank correlation 0.99 for Mazur, 0.95 for the exponential). On the Jarvis
+(2019) data every boundary subject is fit successfully where ordinary beta regression cannot
+be evaluated at all. The full Monte-Carlo study lives in the package's `dev/` directory.
+
+## References
+
+- Kim, M., Koffarnus, M. N., & Franck, C. T. (2024). *Thinking Inside the Bounds: Improved
+  Error Distributions for Indifference Point Data Analysis and Simulation via Beta Regression
+  Using Common Discounting Functions.*
+- Kim, M., Kaplan, B. A., Koffarnus, M. N., & Franck, C. T. (2025). *Scale-Location-Truncated
+  Beta Regression: Expanding Beta Regression to Accommodate 0 and 1.* arXiv:2509.13167.
+- Jarvis, B. P., et al. (2019). Delay-discounting dataset (N = 126; 1 week – 8 years).

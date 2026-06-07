@@ -102,13 +102,44 @@
 
   long <- data.frame(
     id = data[[id_var]],
-    x = as.numeric(data[[x_var]]),
+    x = suppressWarnings(as.numeric(data[[x_var]])),
     y = suppressWarnings(as.numeric(data[[y_var]])),
     stringsAsFactors = FALSE
   )
   # Carry retained columns through unchanged (preserve factor class/levels).
   for (col in extra_cols) {
     long[[col]] <- data[[col]]
+  }
+
+  # --- x must be finite and non-negative (delays cannot be Inf/NaN/negative) --
+  n_bad_x <- sum(!is.finite(long$x))
+  if (n_bad_x > 0L) {
+    stop(
+      sprintf("`%s` contains %d non-finite value(s); delays must be finite.",
+        x_var, n_bad_x),
+      call. = FALSE
+    )
+  }
+  n_neg_x <- sum(long$x < 0)
+  if (n_neg_x > 0L) {
+    stop(
+      sprintf("`%s` contains %d negative value(s); delays must be >= 0.",
+        x_var, n_neg_x),
+      call. = FALSE
+    )
+  }
+
+  # --- y must be finite: error on Inf/-Inf/NaN (do NOT clamp Inf -> 1) -------
+  # Coercion of non-numeric strings yields NA (caught by the residual-NA check
+  # below); genuine Inf/-Inf/NaN values are a data error and are rejected here
+  # rather than silently clamped, which would fabricate a boundary observation.
+  n_inf_y <- sum(is.infinite(long$y) | is.nan(long$y))
+  if (n_inf_y > 0L) {
+    stop(
+      sprintf("`%s` contains %d non-finite value(s) (Inf/NaN); remove them before validation.",
+        y_var, n_inf_y),
+      call. = FALSE
+    )
   }
 
   # --- scale detection / division ------------------------------------------
@@ -138,10 +169,20 @@
     divided_by <- 100
     scale_detected <- "percent"
     long$y <- long$y / 100
-    warning(
-      "Detected percent-scale responses (max > 1.5); divided y by 100 to map to [0, 1].",
-      call. = FALSE
-    )
+    if (response_scale == "percent") {
+      # Explicit request: report that percent scaling was applied as asked,
+      # not that it was auto-detected.
+      warning(
+        "Applied percent scaling as requested (response_scale = 'percent'); divided y by 100 to map to [0, 1].",
+        call. = FALSE
+      )
+    } else {
+      # Auto-detect on the proportion branch.
+      warning(
+        "Detected percent-scale responses (max > 1.5); divided y by 100 to map to [0, 1].",
+        call. = FALSE
+      )
+    }
   }
 
   # --- clamp mild out-of-range (loud, named counts) ------------------------

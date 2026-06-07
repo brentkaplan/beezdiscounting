@@ -54,7 +54,7 @@ $$
 \log f(y \mid \mu, \phi) =
 \underbrace{\log\Gamma(a{+}b) - \log\Gamma(a) - \log\Gamma(b)}_{-\log B(a,b)}
 + (a{-}1)\log\!\big(\tfrac{y}{s}{+}l\big)
-+ (b{-}1)\log\!\big(1 - \tfrac{y}{s}{+}l\big)
++ (b{-}1)\log\!\big(1 - \big(\tfrac{y}{s}{+}l\big)\big)
 - \log s
 - \log Z,
 $$

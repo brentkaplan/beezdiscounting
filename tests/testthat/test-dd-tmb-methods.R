@@ -532,6 +532,19 @@ describe("summary / print", {
     expect_output(print(s), "TMB_mixed")
   })
 
+  it("print.summary header reflects the report space / scale (R4)", {
+    fit <- .get_fit_for_methods()
+    # natural -> "(k)"
+    expect_output(print(summary(fit, report_space = "natural")),
+                  "Fixed Effects \\(k\\)")
+    # log10 -> "(log10 k)"
+    expect_output(print(summary(fit, report_space = "log10")),
+                  "Fixed Effects \\(log10 k\\)")
+    # internal -> "(log k)"
+    expect_output(print(summary(fit, report_space = "internal")),
+                  "Fixed Effects \\(log k\\)")
+  })
+
   it("summary notes flag non-convergence / missing SEs", {
     fit <- .get_fit_for_methods()
     s <- summary(fit)

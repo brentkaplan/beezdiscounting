@@ -292,7 +292,7 @@ NULL
   if (optimizer == "nlminb") {
     opt <- tryCatch(
       withCallingHandlers(
-        nlminb(
+        stats::nlminb(
           start      = start,
           objective  = obj$fn,
           gradient   = obj$gr,

@@ -17,13 +17,20 @@
 # RE prior is accounted for explicitly on the R side (re_prior below).
 
 # Build a single-subject, intercept-only TMB data/parameter set and the
-# matching R-side prediction for a given equation/family.
-.gate_setup <- function(eqn_type, family, beta0, aux) {
-  delays <- c(7, 30, 180, 365, 730, 1460, 2920)
-  y <- c(0.95, 0.80, 0.50, 0.35, 0.20, 0.08, 0.00)
+# matching R-side prediction for a given equation/family/s. The parameter list
+# always includes log_s (the C++ template now declares it); 1-parameter
+# equations map it (held at s = 1) via .gate_nll(has_s = FALSE).
+.gate_setup <- function(eqn_type, family, beta0, aux, s = 1,
+                        delays = c(7, 30, 180, 365, 730, 1460, 2920),
+                        y = c(0.95, 0.80, 0.50, 0.35, 0.20, 0.08, 0.00)) {
   n_obs <- length(delays)
   k <- exp(beta0)
-  mu_raw <- if (eqn_type == 0L) 1 / (1 + k * delays) else exp(-k * delays)
+  mu_raw <- switch(as.character(eqn_type),
+    "0" = 1 / (1 + k * delays),
+    "1" = exp(-k * delays),
+    "2" = (1 + k * delays)^(-s),
+    "3" = ifelse(delays > 0, 1 / (1 + k * delays^s), 1)
+  )
   mu <- pmin(pmax(mu_raw, 1e-6), 1 - 1e-6)
   list(
     data = list(
@@ -38,18 +45,21 @@
       beta_k = beta0,
       log_sigma_u = log(0.5),     # arbitrary; RE drops out because u = 0
       log_aux = log(aux),
+      log_s = log(s),
       u = matrix(0, nrow = 1L, ncol = 1L)
     ),
     mu = mu, y = y
   )
 }
 
-# Flatten parameters list to a named numeric vector matching TMB's par order.
-.gate_par <- function(g) {
-  c(beta_k = g$parameters$beta_k,
-    log_sigma_u = g$parameters$log_sigma_u,
-    log_aux = g$parameters$log_aux,
-    u = 0)
+# Build the joint (conditional) -nll at the setup's true values. For
+# 1-parameter equations log_s is map-fixed; obj$par then excludes it, so
+# obj$fn(obj$par) evaluates at exactly the intended point in both cases.
+.gate_nll <- function(g, has_s) {
+  map <- if (isTRUE(has_s)) NULL else list(log_s = factor(NA))
+  obj <- TMB::MakeADFun(data = g$data, parameters = g$parameters,
+                        map = map, DLL = "beezdiscounting", silent = TRUE)
+  as.numeric(obj$fn(obj$par))
 }
 
 describe("MixedDiscounting compile gate", {
@@ -57,40 +67,98 @@ describe("MixedDiscounting compile gate", {
   skip_if_not_installed("TMB")
 
   it("compiles and links the MixedDiscounting template", {
-    # Loading the installed package DLL is enough; if devtools::load_all was
-    # used, the DLL is already loaded. getLoadedDLLs() must list beezdiscounting.
     expect_true("beezdiscounting" %in% names(getLoadedDLLs()))
   })
 
   it("C++ -nll matches the R SLT log-density to 1e-8 (mazur, sltb)", {
     g <- .gate_setup(eqn_type = 0L, family = 0L, beta0 = log(0.01), aux = 8)
-    # No random = "u": obj$fn returns the JOINT (conditional) nll so the
-    # comparison against the R obs density + RE prior is exact.
-    obj <- TMB::MakeADFun(data = g$data, parameters = g$parameters,
-                          DLL = "beezdiscounting", silent = TRUE)
-    cpp_nll <- obj$fn(.gate_par(g))
-    re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))           # one subject, u = 0
+    cpp_nll <- .gate_nll(g, has_s = FALSE)
+    re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
     r_nll <- sum(-.dd_slt_logpdf(g$y, g$mu, 8)) + re_prior
-    expect_equal(as.numeric(cpp_nll), r_nll, tolerance = 1e-8)
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
   })
 
   it("C++ -nll matches the R SLT log-density to 1e-8 (exponential, sltb)", {
     g <- .gate_setup(eqn_type = 1L, family = 0L, beta0 = log(2e-4), aux = 8)
-    obj <- TMB::MakeADFun(data = g$data, parameters = g$parameters,
-                          DLL = "beezdiscounting", silent = TRUE)
-    cpp_nll <- obj$fn(.gate_par(g))
+    cpp_nll <- .gate_nll(g, has_s = FALSE)
     re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
     r_nll <- sum(-.dd_slt_logpdf(g$y, g$mu, 8)) + re_prior
-    expect_equal(as.numeric(cpp_nll), r_nll, tolerance = 1e-8)
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
   })
 
   it("C++ -nll matches the R Gaussian density to 1e-8 (mazur, gaussian)", {
     g <- .gate_setup(eqn_type = 0L, family = 1L, beta0 = log(0.01), aux = 0.1)
-    obj <- TMB::MakeADFun(data = g$data, parameters = g$parameters,
-                          DLL = "beezdiscounting", silent = TRUE)
-    cpp_nll <- obj$fn(.gate_par(g))
+    cpp_nll <- .gate_nll(g, has_s = FALSE)
     re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
     r_nll <- sum(-dnorm(g$y, g$mu, 0.1, log = TRUE)) + re_prior
-    expect_equal(as.numeric(cpp_nll), r_nll, tolerance = 1e-8)
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
+  })
+
+  it("C++ -nll matches the R Gaussian density to 1e-8 (exponential, gaussian)", {
+    g <- .gate_setup(eqn_type = 1L, family = 1L, beta0 = log(2e-4), aux = 0.1)
+    cpp_nll <- .gate_nll(g, has_s = FALSE)
+    re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
+    r_nll <- sum(-dnorm(g$y, g$mu, 0.1, log = TRUE)) + re_prior
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
+  })
+
+  it("C++ -nll matches R SLT density at s != 1 (green-myerson, sltb)", {
+    g <- .gate_setup(eqn_type = 2L, family = 0L, beta0 = log(0.01), aux = 8,
+                     s = 0.7)
+    cpp_nll <- .gate_nll(g, has_s = TRUE)
+    re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
+    r_nll <- sum(-.dd_slt_logpdf(g$y, g$mu, 8)) + re_prior
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
+  })
+
+  it("C++ -nll matches R Gaussian density at s != 1 (green-myerson, gaussian)", {
+    g <- .gate_setup(eqn_type = 2L, family = 1L, beta0 = log(0.01), aux = 0.1,
+                     s = 0.7)
+    cpp_nll <- .gate_nll(g, has_s = TRUE)
+    re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
+    r_nll <- sum(-dnorm(g$y, g$mu, 0.1, log = TRUE)) + re_prior
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
+  })
+
+  it("C++ -nll matches R SLT density at s != 1 (rachlin, sltb)", {
+    g <- .gate_setup(eqn_type = 3L, family = 0L, beta0 = log(0.01), aux = 8,
+                     s = 1.3)
+    cpp_nll <- .gate_nll(g, has_s = TRUE)
+    re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
+    r_nll <- sum(-.dd_slt_logpdf(g$y, g$mu, 8)) + re_prior
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
+  })
+
+  it("C++ -nll matches R Gaussian density at s != 1 (rachlin, gaussian)", {
+    g <- .gate_setup(eqn_type = 3L, family = 1L, beta0 = log(0.01), aux = 0.1,
+                     s = 1.3)
+    cpp_nll <- .gate_nll(g, has_s = TRUE)
+    re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
+    r_nll <- sum(-dnorm(g$y, g$mu, 0.1, log = TRUE)) + re_prior
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
+  })
+
+  it("rachlin handles an x = 0 row (mu = 1; pow(0,s) AD guard), sltb", {
+    g <- .gate_setup(eqn_type = 3L, family = 0L, beta0 = log(0.01), aux = 8,
+                     s = 1.3,
+                     delays = c(0, 7, 30, 180, 365, 730, 1460),
+                     y = c(1.00, 0.95, 0.80, 0.50, 0.35, 0.20, 0.08))
+    cpp_nll <- .gate_nll(g, has_s = TRUE)
+    re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
+    r_nll <- sum(-.dd_slt_logpdf(g$y, g$mu, 8)) + re_prior
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
+    expect_true(is.finite(cpp_nll))
+  })
+
+  it("rachlin handles an x = 0 row (mu = 1; pow(0,s) AD guard), gaussian", {
+    g <- .gate_setup(eqn_type = 3L, family = 1L, beta0 = log(0.01), aux = 0.1,
+                     s = 1.3,
+                     delays = c(0, 7, 30, 180, 365, 730, 1460),
+                     y = c(1.00, 0.95, 0.80, 0.50, 0.35, 0.20, 0.08))
+    cpp_nll <- .gate_nll(g, has_s = TRUE)
+    re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
+    r_nll <- sum(-dnorm(g$y, g$mu, 0.1, log = TRUE)) + re_prior
+    expect_equal(cpp_nll, r_nll, tolerance = 1e-8)
+    expect_true(is.finite(cpp_nll))
   })
 })

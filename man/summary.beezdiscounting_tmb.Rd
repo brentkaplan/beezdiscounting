@@ -28,7 +28,7 @@ Summarize a TMB mixed-effects discounting fit
 }
 \examples{
 \donttest{
-dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb",
                   random_effects = k ~ 1, verbose = 0)
 summary(fit)

@@ -284,7 +284,7 @@ describe(".dd_tmb_multi_start()", {
   it("returns a finite-nll fit with a sane intercept on clean data", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    sim <- .simulate_dd_ip_mixed(n_subjects = 30, log_k_pop = log(0.02),
+    sim <- simulate_dd_ip(n_subjects = 30, log_k_pop = log(0.02),
                                  sigma_u = 0.5, phi = 10, family = "sltb",
                                  equation = "mazur", seed = 11)
     prep     <- .dd_tmb_prepare_data(sim, "y", "x", "id")
@@ -309,7 +309,7 @@ describe(".dd_tmb_multi_start()", {
     # likelihood prefer phi->0, k->inf. The log_aux lower bound (log(0.1))
     # makes that optimum unreachable, so the fit stays sane.
     set.seed(70)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 25, log_k_pop = log(0.01),
+    sim <- simulate_dd_ip(n_subjects = 25, log_k_pop = log(0.01),
                                  sigma_u = 0.6, phi = 8, family = "sltb",
                                  equation = "mazur", seed = 70)
     bad <- data.frame(
@@ -343,7 +343,7 @@ describe(".dd_tmb_multi_start()", {
     # True phi = 2 is low precision but well above the 0.1 floor: the bound
     # must NOT discard it. Recovered phi should land near 2, not be pinned to
     # the floor and not be rejected.
-    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.02),
+    sim <- simulate_dd_ip(n_subjects = 60, log_k_pop = log(0.02),
                                  sigma_u = 0.5, phi = 2, family = "sltb",
                                  equation = "mazur", seed = 202)
     prep     <- .dd_tmb_prepare_data(sim, "y", "x", "id")
@@ -372,7 +372,7 @@ describe(".dd_tmb_extract_estimates()", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(21)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 30, log_k_pop = log(0.02),
+    sim <- simulate_dd_ip(n_subjects = 30, log_k_pop = log(0.02),
                                  sigma_u = 0.5, phi = 10, family = "sltb",
                                  equation = "mazur", seed = 21)
     prep <- .dd_tmb_prepare_data(sim, "y", "x", "id")
@@ -400,7 +400,7 @@ describe(".dd_tmb_extract_estimates()", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(22)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 25, log_k_pop = log(0.02),
+    sim <- simulate_dd_ip(n_subjects = 25, log_k_pop = log(0.02),
                                  sigma_u = 0.5, sigma_e = 0.08,
                                  family = "gaussian", equation = "mazur",
                                  seed = 22)
@@ -493,7 +493,7 @@ describe("fit_dd_tmb() recovery", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(101)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.01),
+    sim <- simulate_dd_ip(n_subjects = 60, log_k_pop = log(0.01),
                                  sigma_u = 0.6, phi = 10, family = "sltb",
                                  equation = "mazur", seed = 101)
     fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", verbose = 0)
@@ -511,7 +511,7 @@ describe("fit_dd_tmb() recovery", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(102)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.01),
+    sim <- simulate_dd_ip(n_subjects = 60, log_k_pop = log(0.01),
                                  sigma_u = 0.6, sigma_e = 0.08,
                                  family = "gaussian", equation = "mazur",
                                  seed = 102)
@@ -528,7 +528,7 @@ describe("fit_dd_tmb() recovery", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(103)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.005),
+    sim <- simulate_dd_ip(n_subjects = 60, log_k_pop = log(0.005),
                                  sigma_u = 0.5, phi = 12, family = "sltb",
                                  equation = "exponential", seed = 103)
     fit <- fit_dd_tmb(sim, equation = "exponential", family = "sltb",
@@ -545,7 +545,7 @@ describe("fit_dd_tmb() recovery", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(104)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.005),
+    sim <- simulate_dd_ip(n_subjects = 60, log_k_pop = log(0.005),
                                  sigma_u = 0.5, sigma_e = 0.06,
                                  family = "gaussian", equation = "exponential",
                                  seed = 104)
@@ -565,7 +565,7 @@ describe("fit_dd_tmb() object shape", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(105)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 40, family = "sltb",
+    sim <- simulate_dd_ip(n_subjects = 40, family = "sltb",
                                  equation = "mazur", seed = 105)
     fit <- fit_dd_tmb(sim, verbose = 0)
     expect_s3_class(fit, "beezdiscounting_tmb")
@@ -593,7 +593,7 @@ describe("fit_dd_tmb() object shape", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(106)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 40, family = "sltb",
+    sim <- simulate_dd_ip(n_subjects = 40, family = "sltb",
                                  equation = "mazur", seed = 106)
     sim$grp <- factor(rep(c("ctrl", "trt"),
                           length.out = length(unique(sim$id)))[
@@ -611,7 +611,7 @@ describe("fit_dd_tmb() object shape", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(70)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 25, log_k_pop = log(0.01),
+    sim <- simulate_dd_ip(n_subjects = 25, log_k_pop = log(0.01),
                                  sigma_u = 0.6, phi = 8, family = "sltb",
                                  equation = "mazur", seed = 70)
     bad <- data.frame(
@@ -638,7 +638,7 @@ describe("fit_dd_tmb() se_available requires a PD Hessian (R1)", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(201)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 50, log_k_pop = log(0.01),
+    sim <- simulate_dd_ip(n_subjects = 50, log_k_pop = log(0.01),
                                  sigma_u = 0.6, phi = 12, family = "sltb",
                                  equation = "mazur", seed = 201)
     fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", verbose = 0)
@@ -650,7 +650,7 @@ describe("fit_dd_tmb() se_available requires a PD Hessian (R1)", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(202)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 40, family = "sltb",
+    sim <- simulate_dd_ip(n_subjects = 40, family = "sltb",
                                  equation = "mazur", seed = 202)
     fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", verbose = 0)
     # The R1 contract: se_available => hessian_pd. (A non-PD Hessian must flip
@@ -670,7 +670,7 @@ describe("fit_dd_tmb() factor-correct subject k (B1)", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     # Two conditions with a real shift on log k (C2 discounts faster).
-    sim <- .simulate_dd_ip_mixed(n_subjects = 40, n_conditions = 2,
+    sim <- simulate_dd_ip(n_subjects = 40, n_conditions = 2,
                                  delta_k = c(0, 0.7), log_k_pop = log(0.01),
                                  sigma_u = 0.5, phi = 12, family = "sltb",
                                  equation = "mazur", seed = 4242)
@@ -719,7 +719,7 @@ describe("fit_dd_tmb() factor-correct subject k (B1)", {
   it("predict(type='parameters') and ranef() reflect the corrected k", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    sim <- .simulate_dd_ip_mixed(n_subjects = 30, n_conditions = 2,
+    sim <- simulate_dd_ip(n_subjects = 30, n_conditions = 2,
                                  delta_k = c(0, 0.7), log_k_pop = log(0.01),
                                  sigma_u = 0.5, phi = 12, family = "sltb",
                                  equation = "mazur", seed = 99)
@@ -743,7 +743,7 @@ describe("fit_dd_tmb() factor-correct subject k (B1)", {
   it("continuous covariate: subject k reflects the covariate contribution", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    sim <- .simulate_dd_ip_mixed(n_subjects = 40, log_k_pop = log(0.01),
+    sim <- simulate_dd_ip(n_subjects = 40, log_k_pop = log(0.01),
                                  sigma_u = 0.5, phi = 12, family = "sltb",
                                  equation = "mazur", seed = 77)
     # Between-subject covariate (constant within subject).
@@ -777,7 +777,7 @@ describe("fit_dd_tmb() phi floor on single path (B3)", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(71)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 25, log_k_pop = log(0.01),
+    sim <- simulate_dd_ip(n_subjects = 25, log_k_pop = log(0.01),
                                  sigma_u = 0.6, phi = 8, family = "sltb",
                                  equation = "mazur", seed = 71)
     bad <- data.frame(
@@ -798,7 +798,7 @@ describe("fit_dd_tmb() phi floor on single path (B3)", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     set.seed(72)
-    sim <- .simulate_dd_ip_mixed(n_subjects = 30, family = "sltb",
+    sim <- simulate_dd_ip(n_subjects = 30, family = "sltb",
                                  equation = "mazur", seed = 72)
     # A user-supplied log_aux lower bound wins over the default floor; just
     # confirm the fit runs and respects the (looser) override.

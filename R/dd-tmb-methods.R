@@ -291,7 +291,7 @@ ranef.beezdiscounting_tmb <- function(object, ...) {
 #'
 #' @examples
 #' \donttest{
-#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 #' fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb",
 #'                   random_effects = k ~ 1, verbose = 0)
 #'
@@ -415,7 +415,7 @@ predict.beezdiscounting_tmb <- function(object,
 #'
 #' @examples
 #' \donttest{
-#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 #' fit <- fit_dd_tmb(dd, verbose = 0)
 #' head(fitted(fit))
 #' }
@@ -440,7 +440,7 @@ fitted.beezdiscounting_tmb <- function(object,
 #'
 #' @examples
 #' \donttest{
-#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 #' fit <- fit_dd_tmb(dd, verbose = 0)
 #' head(residuals(fit))
 #' head(residuals(fit, type = "pearson"))
@@ -479,7 +479,7 @@ residuals.beezdiscounting_tmb <- function(object,
 #'
 #' @examples
 #' \donttest{
-#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 #' fit <- fit_dd_tmb(dd, verbose = 0)
 #' head(augment(fit))
 #' }
@@ -702,7 +702,7 @@ glance.beezdiscounting_tmb <- function(x, ...) {
 #'
 #' @examples
 #' \donttest{
-#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 #' fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb",
 #'                   random_effects = k ~ 1, verbose = 0)
 #' confint(fit)
@@ -775,7 +775,7 @@ confint.beezdiscounting_tmb <- function(object,
 #'
 #' @examples
 #' \donttest{
-#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 #' fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb",
 #'                   random_effects = k ~ 1, verbose = 0)
 #' summary(fit)
@@ -877,7 +877,7 @@ summary.beezdiscounting_tmb <- function(object,
 #'
 #' @examples
 #' \donttest{
-#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 #' fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb",
 #'                   random_effects = k ~ 1, verbose = 0)
 #' print(fit)

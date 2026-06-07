@@ -75,6 +75,16 @@ optionally, as multiplicative ratios (\code{ratio = exp(est_log)}). The
 returned container mirrors the beezdemand \code{beezdemand_comparison} shape,
 so \code{\link[=tidy.beezdiscounting_comparison]{tidy.beezdiscounting_comparison()}} gives a flat, cross-backend frame.
 }
+\examples{
+\donttest{
+sim <- simulate_dd_ip(
+  n_subjects = 30, n_conditions = 2, delta_k = c(0, log(3)), seed = 1
+)
+fit <- fit_dd_tmb(sim, factors = "condition", verbose = 0)
+get_dd_comparisons(fit, contrast_type = "pairwise")
+}
+
+}
 \seealso{
 \code{\link[=tidy.beezdiscounting_comparison]{tidy.beezdiscounting_comparison()}} for the cross-backend frame.
 }

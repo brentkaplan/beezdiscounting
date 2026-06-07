@@ -1,6 +1,11 @@
-describe(".simulate_dd_ip_mixed()", {
+describe("simulate_dd_ip()", {
+  it("is an exported function (public simulator API)", {
+    expect_true("simulate_dd_ip" %in% getNamespaceExports("beezdiscounting"))
+    expect_true(is.function(simulate_dd_ip))
+  })
+
   it("returns the long-format column contract (id, x, y) with no condition by default", {
-    sim <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+    sim <- simulate_dd_ip(n_subjects = 20, seed = 1)
     expect_s3_class(sim, "tbl_df")
     expect_identical(names(sim), c("id", "x", "y"))
     expect_s3_class(sim$id, "factor")
@@ -11,7 +16,7 @@ describe(".simulate_dd_ip_mixed()", {
   })
 
   it("adds a condition factor when n_conditions > 1", {
-    sim <- .simulate_dd_ip_mixed(
+    sim <- simulate_dd_ip(
       n_subjects = 12, n_conditions = 2, delta_k = c(0, log(3)), seed = 2
     )
     expect_identical(names(sim), c("id", "condition", "x", "y"))
@@ -21,14 +26,14 @@ describe(".simulate_dd_ip_mixed()", {
 
   it("errors when delta_k length does not match n_conditions", {
     expect_error(
-      .simulate_dd_ip_mixed(n_subjects = 5, n_conditions = 3, delta_k = c(0, 1)),
+      simulate_dd_ip(n_subjects = 5, n_conditions = 3, delta_k = c(0, 1)),
       "delta_k"
     )
   })
 
   it("SLT draws recover the population mean curve in expectation (mazur)", {
     set.seed(99)
-    sim <- .simulate_dd_ip_mixed(
+    sim <- simulate_dd_ip(
       n_subjects = 400, log_k_pop = log(0.01), sigma_u = 1e-6, phi = 40,
       family = "sltb", equation = "mazur", seed = 99
     )
@@ -41,14 +46,14 @@ describe(".simulate_dd_ip_mixed()", {
   })
 
   it("gaussian draws clamp to [0,1]", {
-    sim <- .simulate_dd_ip_mixed(
+    sim <- simulate_dd_ip(
       n_subjects = 50, family = "gaussian", sigma_e = 0.4, seed = 7
     )
     expect_true(all(sim$y >= 0 & sim$y <= 1))
   })
 })
 
-describe(".simulate_dd_ip_mixed() recovery through fit_dd_tmb()", {
+describe("simulate_dd_ip() recovery through fit_dd_tmb()", {
   it("recovers population k within 0.15 relative (sltb, mazur)", {
     skip_on_cran()
     skip_if_not_installed("TMB")
@@ -76,7 +81,7 @@ describe(".simulate_dd_ip_mixed() recovery through fit_dd_tmb()", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     # exponential is less identifiable; use the identifiable regime + looser bar
-    sim <- .simulate_dd_ip_mixed(
+    sim <- simulate_dd_ip(
       n_subjects = 120, log_k_pop = log(3e-4), sigma_u = 0.6, phi = 12,
       family = "sltb", equation = "exponential", seed = 103
     )

@@ -21,7 +21,7 @@ Fitted values for a beezdiscounting_tmb fit
 }
 \examples{
 \donttest{
-dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 fit <- fit_dd_tmb(dd, verbose = 0)
 head(fitted(fit))
 }

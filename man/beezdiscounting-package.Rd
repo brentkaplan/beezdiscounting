@@ -11,7 +11,9 @@ Facilitates some of the analyses performed in studies of behavioral economic dis
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://brentkaplan.github.io/beezdiscounting/}
   \item \url{https://github.com/brentkaplan/beezdiscounting}
+  \item Report bugs at \url{https://github.com/brentkaplan/beezdiscounting/issues}
 }
 
 }

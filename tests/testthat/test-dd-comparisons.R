@@ -13,7 +13,7 @@ skip_if_not_installed("TMB")
 describe(".dd_build_emm_ref_grid()", {
 
   it("returns is_intercept_only for a factor-free, covariate-free fit", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 40, family = "gaussian", equation = "mazur", seed = 1
     )
     fit <- fit_dd_tmb(dat, equation = "mazur", family = "gaussian",
@@ -25,7 +25,7 @@ describe(".dd_build_emm_ref_grid()", {
   })
 
   it("builds ref_X = A %*% X_full with equal averaging weights over fitted cols", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 60, family = "gaussian", equation = "mazur",
       n_conditions = 2, delta_k = c(0, 0.8), seed = 2
     )
@@ -53,7 +53,7 @@ describe(".dd_build_emm_ref_grid()", {
   })
 
   it("marginalizes an omitted factor with equal weights (A row sums to 1)", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 60, family = "gaussian", equation = "mazur",
       n_conditions = 2, delta_k = c(0, 0.8), seed = 3
     )
@@ -75,7 +75,7 @@ describe(".dd_build_emm_ref_grid()", {
 
   it("pins the FITTED contrasts so a changed options('contrasts') cannot mis-multiply", {
     # Fit with default treatment contrasts.
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 60, family = "gaussian", equation = "mazur",
       n_conditions = 2, delta_k = c(0, 0.8), seed = 21
     )
@@ -101,7 +101,7 @@ describe(".dd_build_emm_ref_grid()", {
   })
 
   it("aborts when the rebuilt design cannot reproduce the fitted column set", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 60, family = "gaussian", equation = "mazur",
       n_conditions = 2, delta_k = c(0, 0.8), seed = 22
     )
@@ -119,7 +119,7 @@ describe(".dd_build_emm_ref_grid()", {
   })
 
   it("validates `at` at the public boundary (.dd_validate_at)", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 60, family = "gaussian", equation = "mazur",
       n_conditions = 2, delta_k = c(0, 0.8), seed = 23
     )
@@ -143,7 +143,7 @@ describe(".dd_build_emm_ref_grid()", {
 describe("get_dd_param_emms()", {
 
   it("returns the contract columns and back-transforms log k to k = exp(k_log)", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 60, family = "gaussian", equation = "mazur",
       n_conditions = 2, delta_k = c(0, 0.8), seed = 10
     )
@@ -159,7 +159,7 @@ describe("get_dd_param_emms()", {
   })
 
   it("recomputes per-cell log-k means NON-CIRCULARLY from coef %*% model.matrix", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 60, family = "gaussian", equation = "mazur",
       n_conditions = 2, delta_k = c(0, 0.8), seed = 11
     )
@@ -181,7 +181,7 @@ describe("get_dd_param_emms()", {
   })
 
   it("intercept-only fit returns a single (Intercept) row equal to exp(beta_k[1])", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 40, family = "sltb", equation = "mazur", seed = 12
     )
     fit <- fit_dd_tmb(dat, equation = "mazur", family = "sltb",
@@ -195,7 +195,7 @@ describe("get_dd_param_emms()", {
   })
 
   it("marginalizes an omitted factor: factors_in_emm = character(0) gives one cell", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 60, family = "gaussian", equation = "mazur",
       n_conditions = 2, delta_k = c(0, 0.8), seed = 13
     )
@@ -209,7 +209,7 @@ describe("get_dd_param_emms()", {
   })
 
   it("conditions on a continuous covariate via `at` (exp(beta_int + beta_cov*value))", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 80, family = "gaussian", equation = "mazur", seed = 30
     )
     # Attach a deterministic continuous covariate (constant within subject).
@@ -245,7 +245,7 @@ describe("get_dd_param_emms()", {
   })
 
   it("uses the beta_k block of sdr\\$cov.fixed for the SE (not the full vcov)", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 60, family = "gaussian", equation = "mazur",
       n_conditions = 2, delta_k = c(0, 0.8), seed = 14
     )
@@ -281,7 +281,7 @@ describe("get_dd_param_emms()", {
 # Helper: fit a k-condition model and return list(fit, beta, Xc) where Xc is the
 # per-condition design (one row per level), independently rebuilt.
 .dd_cmp_fit <- function(n_conditions, delta_k, seed) {
-  dat <- .simulate_dd_ip_mixed(
+  dat <- simulate_dd_ip(
     n_subjects = 30 * n_conditions, family = "gaussian", equation = "mazur",
     n_conditions = n_conditions, delta_k = delta_k, seed = seed
   )
@@ -433,7 +433,7 @@ describe("get_dd_comparisons()", {
     # Build a 2-factor interaction model so within-condition contrasts differ
     # across by-cells (site). The simulator emits one factor; attach a second
     # balanced one keyed to subject so it is constant within id.
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 120, family = "gaussian", equation = "mazur",
       n_conditions = 3, delta_k = c(0, 0.5, 1.0), seed = 110
     )
@@ -505,7 +505,7 @@ describe("tidy.beezdiscounting_comparison()", {
   })
 
   it("carries by-columns through the flat frame when contrast_by is active", {
-    dat <- .simulate_dd_ip_mixed(
+    dat <- simulate_dd_ip(
       n_subjects = 120, family = "gaussian", equation = "mazur",
       n_conditions = 3, delta_k = c(0, 0.5, 1.0), seed = 122
     )

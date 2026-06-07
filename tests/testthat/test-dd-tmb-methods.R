@@ -193,7 +193,7 @@ describe("predict", {
   it("exponential fit yields .fitted = exp(-k * x) at population level", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    d2 <- .simulate_dd_ip_mixed(n_subjects = 25, family = "gaussian",
+    d2 <- simulate_dd_ip(n_subjects = 25, family = "gaussian",
                                 equation = "exponential", seed = 7)
     f2 <- fit_dd_tmb(d2, equation = "exponential", family = "gaussian",
                      random_effects = k ~ 1, verbose = 0)
@@ -208,7 +208,7 @@ describe("predict", {
   it("ERRORS on an unseen factor level in newdata (no silent zero-pad)", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    d3 <- .simulate_dd_ip_mixed(n_subjects = 30, family = "sltb",
+    d3 <- simulate_dd_ip(n_subjects = 30, family = "sltb",
                                 equation = "mazur", seed = 31)
     d3$grp <- factor(rep(c("ctrl", "trt"),
                          length.out = length(unique(d3$id)))[
@@ -259,7 +259,7 @@ describe("augment", {
   it("gaussian fit uses constant sigma_e for .std_resid", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    d2 <- .simulate_dd_ip_mixed(n_subjects = 25, family = "gaussian",
+    d2 <- simulate_dd_ip(n_subjects = 25, family = "gaussian",
                                 equation = "mazur", seed = 9)
     f2 <- fit_dd_tmb(d2, equation = "mazur", family = "gaussian",
                      random_effects = k ~ 1, verbose = 0)
@@ -433,7 +433,7 @@ describe("glance", {
   it("reports family = gaussian for a gaussian fit", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    d2 <- .simulate_dd_ip_mixed(n_subjects = 25, family = "gaussian",
+    d2 <- simulate_dd_ip(n_subjects = 25, family = "gaussian",
                                 equation = "mazur", seed = 11)
     f2 <- fit_dd_tmb(d2, equation = "mazur", family = "gaussian",
                      random_effects = k ~ 1, verbose = 0)

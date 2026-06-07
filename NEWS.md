@@ -42,8 +42,6 @@
   clamps mild out-of-range values, **warning loudly** and naming the number of
   values coerced or clamped.
 
-# beezdiscounting (development version)
-
 ### Bug Fixes
 
 - **`score_dd()`** and **`ans_dd()`**: Fixed incorrect response classification for

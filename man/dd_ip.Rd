@@ -9,7 +9,9 @@ A data frame with 600 rows and 3 columns:
 \describe{
 \item{id}{Subject identifier.}
 \item{x}{Delay until the larger, later reward (in days).}
-\item{y}{Indifference point as a proportion of the larger reward, in \link{0, 1}.}
+\item{y}{Indifference point, expressed as a proportion of the larger, later
+reward (these synthetic values are near, but not strictly within, the unit
+interval).}
 }
 }
 \usage{

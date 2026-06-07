@@ -40,6 +40,20 @@ describe(".dd_validate_ip", {
     expect_error(.dd_validate_ip(dat, "y", "x", "id"), "[Aa]mbiguous")
   })
 
+  it("B9 edge cases: all-zero passes; <=1.5 clamps not divides; max>100 aborts", {
+    # all zeros -> proportion, no detection
+    expect_identical(
+      suppressWarnings(.dd_validate_ip(make_ip(c(0, 0, 0, 0, 0)))$coercion_info$scale_detected),
+      "proportion"
+    )
+    # 1.2 (<= 1.5) -> proportion; clamped to 1, NOT percent-divided
+    res <- suppressWarnings(.dd_validate_ip(make_ip(c(0.9, 1.2, 0.5, 0.3, 0.1))))
+    expect_identical(res$coercion_info$scale_detected, "proportion")
+    expect_equal(max(res$data$y), 1)
+    # values > 100 are not percent -> ambiguous abort
+    expect_error(.dd_validate_ip(make_ip(c(150, 50, 30, 10, 0))), "[Aa]mbiguous")
+  })
+
   it("divides by a supplied larger-later reward (amount) and WARNS", {
     dat <- make_ip(c(900, 600, 300, 100, 0))
     expect_warning(

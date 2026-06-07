@@ -527,6 +527,16 @@ describe("summary / print", {
                  tolerance = 1e-8)
   })
 
+  it("summary(report_space = 'log') == 'internal' for beta_k (B11)", {
+    fit <- .get_fit_for_methods()
+    sl <- summary(fit, report_space = "log")
+    si <- summary(fit, report_space = "internal")
+    expect_equal(sl$coefficients$estimate, si$coefficients$estimate)
+    krow <- sl$coefficients[sl$coefficients$term == "k:(Intercept)", ]
+    expect_equal(krow$estimate, unname(fit$model$coefficients["beta_k"][1]),
+                 tolerance = 1e-8)
+  })
+
   it("print() and print.summary() run without error and return invisibly", {
     fit <- .get_fit_for_methods()
     expect_invisible(print(fit))

@@ -1,0 +1,366 @@
+# Estimated marginal means (and, later, comparisons) of the discount rate k.
+#
+# The discounting model is linear in the fixed-effect coefficients on the log
+# scale: log k = X beta_k. Every marginal mean is therefore a deterministic
+# averaging matrix A applied to a REBUILT design basis X_full, then exp()
+# back-transformed -- no emmeans / emm_basis / recover_data machinery is needed.
+# `%||%` is the single package-level definition in R/utils.R; do NOT redefine it
+# here.
+
+# Resolve user-requested retained factors against the fit's fitted factor set.
+# Single-parameter analogue of beezdemand .tmb_resolve_retained_factors()
+# (no collapse_levels / per-param suffixing in the discounting model).
+.dd_resolve_retained_factors <- function(requested, fitted_factors) {
+  unresolved <- setdiff(requested, fitted_factors)
+  if (length(unresolved) > 0L) {
+    cli::cli_abort(c(
+      "{cli::qty(unresolved)}Requested factor{?s} {.val {unresolved}} {?is/are} not in the model.",
+      "i" = "Fitted factors: {.val {fitted_factors}}."
+    ))
+  }
+  unique(intersect(requested, fitted_factors))
+}
+
+# Validate the `at` list for the discounting EMM/comparison helpers. Aborts on
+# unnamed entries, names not in (factors u continuous_covariates), factor values
+# not observed, or non-finite continuous values; warns once on multi-value
+# continuous entries (first value used). Single-parameter simplification of
+# beezdemand .tmb_validate_at() (no param_scope / collapse alias logic).
+.dd_validate_at <- function(fit_obj, at) {
+  if (is.null(at)) return(invisible(NULL))
+  if (is.null(names(at)) || any(!nzchar(names(at)))) {
+    cli::cli_abort(
+      "All elements of {.arg at} must be named (use {.code list(factor = level, cov = value)})."
+    )
+  }
+  cov_names <- fit_obj$param_info$continuous_covariates %||% character(0)
+  all_factors <- fit_obj$param_info$factors %||% character(0)
+  all_factors <- all_factors[nzchar(all_factors) & !is.na(all_factors)]
+  valid_names <- c(all_factors, cov_names)
+  bad_names <- setdiff(names(at), valid_names)
+  if (length(bad_names) > 0L) {
+    cli::cli_abort(c(
+      "Unknown name{?s} in {.arg at}: {.field {bad_names}}.",
+      "i" = "Valid names are the fit's factors and continuous covariates: {.field {valid_names}}.",
+      "x" = "Did you mistype a factor or covariate name?"
+    ))
+  }
+  data_used <- fit_obj$data
+  for (nm in names(at)) {
+    v <- at[[nm]]
+    if (length(v) < 1L) {
+      cli::cli_abort(c(
+        "{.field {nm}} has length 0.",
+        "i" = "Each {.arg at} entry must be a non-empty vector."
+      ))
+    }
+    if (nm %in% all_factors) {
+      observed <- sort(unique(as.character(data_used[[nm]])))
+      bad_vals <- setdiff(as.character(v), observed)
+      if (length(bad_vals) > 0L) {
+        cli::cli_abort(c(
+          "{.field {nm}} = {.val {bad_vals}} not an observed level.",
+          "i" = "Observed levels: {.val {observed}}."
+        ))
+      }
+    } else {
+      v_num <- suppressWarnings(as.numeric(v))
+      if (any(is.na(v_num)) || any(!is.finite(v_num))) {
+        cli::cli_abort(c(
+          "{.field {nm}} value{?s} {.val {as.character(v)}} not finite numeric.",
+          "i" = "Continuous-covariate {.arg at} entries must be a single finite numeric value."
+        ))
+      }
+      if (length(v) > 1L) {
+        cli::cli_warn(c(
+          "{.arg at${nm}} has length {length(v)}; using first value {.val {v_num[1]}}.",
+          "i" = "Pass a single numeric value per continuous covariate."
+        ))
+      }
+    }
+  }
+  invisible(NULL)
+}
+
+# Build the conditioned reference grid (level_combos) and the averaging-matrix
+# design (ref_X = A %*% X_full) for k EMMs/comparisons. Single-parameter port of
+# beezdemand .tmb_build_emm_ref_grid() (R/tmb-methods.R:3186); the only fitted
+# design is fit_obj$formula_details$X and the only factor set is
+# fit_obj$param_info$factors.
+.dd_build_emm_ref_grid <- function(
+  fit_obj,
+  at = NULL,
+  factors_in_emm = NULL,
+  validate = TRUE
+) {
+  cov_names <- fit_obj$param_info$continuous_covariates %||% character(0)
+  fitted_factors <- fit_obj$param_info$factors %||% character(0)
+  fitted_factors <- fitted_factors[nzchar(fitted_factors) & !is.na(fitted_factors)]
+
+  use_factors <- fitted_factors
+  if (!is.null(factors_in_emm)) {
+    if (length(factors_in_emm) == 0L) {
+      use_factors <- character(0)            # ~ 1: marginalize everything
+    } else {
+      use_factors <- .dd_resolve_retained_factors(factors_in_emm, fitted_factors)
+    }
+  }
+
+  if (isTRUE(validate)) .dd_validate_at(fit_obj, at)
+
+  retained_factors <- use_factors
+  is_intercept_only <- length(fitted_factors) == 0L && length(cov_names) == 0L
+
+  if (is_intercept_only) {
+    return(list(
+      level_combos = NULL, ref_X = NULL, use_factors = character(0),
+      cov_names = character(0), is_intercept_only = TRUE
+    ))
+  }
+
+  data_used <- fit_obj$data
+
+  factor_level_set <- function(f) {
+    lv <- levels(data_used[[f]])
+    if (is.null(lv)) lv <- sort(unique(as.character(data_used[[f]])))
+    if (!is.null(at) && f %in% names(at)) lv <- lv[lv %in% as.character(at[[f]])]
+    lv
+  }
+  fitted_levels <- stats::setNames(
+    lapply(fitted_factors, factor_level_set), fitted_factors
+  )
+  if (length(fitted_factors) > 0L &&
+      any(vapply(fitted_levels, length, integer(1)) == 0L)) {
+    cli::cli_abort(c(
+      "{.arg at} filter produced an empty reference grid.",
+      "i" = "Check that the supplied factor levels exist in the data."
+    ))
+  }
+
+  make_key <- function(df, cols) {
+    if (length(cols) == 0L) return(rep("", nrow(df)))
+    do.call(paste, c(lapply(cols, function(cc) as.character(df[[cc]])),
+                     list(sep = "\r")))
+  }
+  as_training_factor <- function(values, f) {
+    factor(values, levels = levels(data_used[[f]]) %||%
+             sort(unique(as.character(data_used[[f]]))))
+  }
+
+  # Full factorial grid over ALL fitted factors (equal-weight averaging target).
+  if (length(fitted_factors) > 0L) {
+    full_combos <- do.call(expand.grid, c(
+      lapply(fitted_factors, function(f) as_training_factor(fitted_levels[[f]], f)),
+      list(KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+    ))
+    names(full_combos) <- fitted_factors
+  } else {
+    full_combos <- data_used[1L, integer(0), drop = FALSE]
+  }
+
+  # Retained reference grid: crossing of retained factors, ordered by level
+  # index, filtered to OBSERVED combinations (semi_join analog).
+  if (length(retained_factors) > 0L) {
+    level_combos <- do.call(expand.grid, c(
+      lapply(retained_factors, function(f) as_training_factor(fitted_levels[[f]], f)),
+      list(KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+    ))
+    names(level_combos) <- retained_factors
+    ord <- do.call(order, lapply(retained_factors,
+                                 function(f) as.integer(level_combos[[f]])))
+    level_combos <- level_combos[ord, , drop = FALSE]
+    observed_keys <- make_key(
+      unique(data_used[, retained_factors, drop = FALSE]), retained_factors
+    )
+    level_combos <- level_combos[
+      make_key(level_combos, retained_factors) %in% observed_keys, , drop = FALSE
+    ]
+    if (nrow(level_combos) == 0L) {
+      cli::cli_abort(c(
+        "{.arg at} filter produced an empty reference grid.",
+        "i" = "Check that the supplied factor levels are not mutually exclusive."
+      ))
+    }
+    rownames(level_combos) <- NULL
+  } else {
+    level_combos <- data_used[1L, integer(0), drop = FALSE]
+  }
+
+  # Continuous covariates: training mean unless overridden via `at`.
+  if (length(cov_names) > 0L) {
+    for (cv in cov_names) {
+      cv_value <- mean(data_used[[cv]], na.rm = TRUE)
+      if (!is.null(at) && cv %in% names(at)) cv_value <- as.numeric(at[[cv]][1])
+      full_combos[[cv]] <- cv_value
+      level_combos[[cv]] <- cv_value
+    }
+  }
+
+  # Rebuild the grid basis through the SAME build_fixed_rhs route as the fit
+  # (B1) and pin it to the STORED contrasts, then verify (and reorder to) the
+  # fitted column set -- abort loudly on mismatch. Using the identical RHS +
+  # contrasts route is what guarantees the EMM columns align with beta_k.
+  fitted_X <- fit_obj$formula_details$X
+  emm_rhs <- build_fixed_rhs(
+    factors = fitted_factors,
+    factor_interaction = fit_obj$param_info$factor_interaction,
+    continuous_covariates = cov_names,
+    data = data_used
+  )
+  X_full <- stats::model.matrix(
+    emm_rhs,
+    data = full_combos,
+    contrasts.arg = fit_obj$formula_details$contrasts
+  )
+  fitted_cols <- colnames(fitted_X)
+  if (!is.null(fitted_cols)) {
+    if (!setequal(colnames(X_full), fitted_cols)) {
+      cli::cli_abort(c(
+        "Could not reproduce the fitted design matrix for the EMM grid.",
+        "i" = "Rebuilt columns: {.val {colnames(X_full)}}.",
+        "i" = "Fitted columns: {.val {fitted_cols}}.",
+        "x" = "This can happen if the model's factor levels or contrasts changed after fitting."
+      ))
+    }
+    X_full <- X_full[, fitted_cols, drop = FALSE]
+  }
+
+  # Averaging matrix A (n_retained x n_full): equal weight 1/m on the m
+  # full-grid rows matching each retained cell. ref_X = A %*% X_full keeps
+  # ncol == length(beta_k).
+  full_keys <- make_key(full_combos, retained_factors)
+  ret_keys <- make_key(level_combos, retained_factors)
+  A <- matrix(0, nrow = nrow(level_combos), ncol = nrow(full_combos))
+  for (r in seq_len(nrow(level_combos))) {
+    sel <- which(full_keys == ret_keys[r])
+    A[r, sel] <- 1 / length(sel)
+  }
+  ref_X <- A %*% X_full
+  colnames(ref_X) <- colnames(X_full)
+
+  list(
+    level_combos = level_combos,
+    ref_X = ref_X,
+    use_factors = retained_factors,
+    cov_names = cov_names,
+    is_intercept_only = FALSE
+  )
+}
+
+
+#' Estimated marginal means of the discount rate \code{k}
+#'
+#' @description
+#' Computes estimated marginal means (EMMs) of the discount rate \code{k} from a
+#' fitted \code{beezdiscounting_tmb} model. EMMs are computed on the
+#' \code{log k} scale (linear in the fixed-effect coefficients) using the
+#' averaging-matrix reference grid, then back-transformed with \code{exp()} so
+#' that \code{k = exp(k_log)}. Standard errors use the \code{beta_k} block of
+#' \code{TMB::sdreport()}'s fixed-effect covariance; intervals are Wald on the
+#' log scale and exponentiated.
+#'
+#' @param fit A \code{beezdiscounting_tmb} object.
+#' @param factors_in_emm Character vector of factors to retain in the EMM
+#'   reference grid. A strict subset marginalizes the omitted factors with equal
+#'   weights across the full crossing of their levels (emmeans' default
+#'   \code{weights = "equal"}); \code{NULL} (default) retains all fitted factors;
+#'   \code{character(0)} marginalizes everything to a single grand-mean cell.
+#' @param at Named list specifying factor levels and/or continuous-covariate
+#'   values for conditional EMMs (one numeric per covariate; multiple values
+#'   warn and use the first). \code{at} on an omitted factor restricts the
+#'   level set averaged over.
+#' @param ci_level Numeric confidence level for intervals (default 0.95).
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return A tibble with columns \code{level}, \code{k}, \code{k_log},
+#'   \code{std.error}, \code{conf.low}, \code{conf.high}. \code{k_log} is the
+#'   marginal mean on the \code{log k} scale; \code{k = exp(k_log)};
+#'   \code{std.error} is the SE of \code{k_log}; the intervals are on the
+#'   \code{k} (natural) scale.
+#'
+#' @export
+get_dd_param_emms <- function(
+  fit,
+  factors_in_emm = NULL,
+  at = NULL,
+  ci_level = 0.95,
+  ...
+) {
+  coefs <- fit$model$coefficients
+  beta_idx <- which(names(coefs) == "beta_k")
+  beta <- unname(coefs[beta_idx])
+
+  # beta_k block of the fixed-effect covariance (sdr$cov.fixed), aligned by the
+  # opt$par naming. Falls back to a diagonal of squared SEs if sdreport failed.
+  vcov_mat <- NULL
+  sdr <- fit$sdr
+  if (!is.null(sdr) && !is.null(sdr$cov.fixed)) {
+    full_vcov <- as.matrix(sdr$cov.fixed)
+    par_names <- names(fit$opt$par)
+    target_idx <- which(par_names == "beta_k")
+    if (length(target_idx) == length(beta)) {
+      vcov_mat <- full_vcov[target_idx, target_idx, drop = FALSE]
+    }
+  }
+  if (is.null(vcov_mat)) {
+    se_vals <- fit$model$se[beta_idx]
+    vcov_mat <- diag(se_vals^2, nrow = length(se_vals))
+  }
+
+  .dd_validate_at(fit, at)
+
+  grid <- .dd_build_emm_ref_grid(
+    fit, at = at, factors_in_emm = factors_in_emm, validate = FALSE
+  )
+  z <- stats::qnorm((1 + ci_level) / 2)
+
+  if (isTRUE(grid$is_intercept_only)) {
+    est <- beta[1L]
+    se <- sqrt(vcov_mat[1L, 1L])
+    return(tibble::tibble(
+      level = "(Intercept)",
+      k = exp(est),
+      k_log = est,
+      std.error = se,
+      conf.low = exp(est - z * se),
+      conf.high = exp(est + z * se)
+    ))
+  }
+
+  use_factors <- grid$use_factors
+  cov_names <- grid$cov_names
+  level_combos <- grid$level_combos
+  ref_X <- grid$ref_X
+
+  if (ncol(ref_X) != length(beta)) {
+    cli::cli_abort(c(
+      "Reference-grid design has {ncol(ref_X)} column{?s} but the fitted \\
+       coefficient vector has {length(beta)}.",
+      "x" = "Design basis mismatch; cannot evaluate EMMs."
+    ))
+  }
+
+  level_label_for <- function(i) {
+    if (length(use_factors) > 0L) {
+      paste(vapply(use_factors, function(f)
+        paste0(f, "=", level_combos[[f]][i]), character(1)), collapse = ", ")
+    } else if (length(cov_names) > 0L) {
+      paste(vapply(cov_names, function(cv)
+        paste0(cv, "=", level_combos[[cv]][i]), character(1)), collapse = ", ")
+    } else {
+      "(Intercept)"
+    }
+  }
+
+  cell_est <- as.numeric(ref_X %*% beta)
+  cell_se <- sqrt(diag(ref_X %*% vcov_mat %*% t(ref_X)))
+
+  tibble::tibble(
+    level = vapply(seq_len(nrow(ref_X)), level_label_for, character(1)),
+    k = exp(cell_est),
+    k_log = cell_est,
+    std.error = cell_se,
+    conf.low = exp(cell_est - z * cell_se),
+    conf.high = exp(cell_est + z * cell_se)
+  )
+}

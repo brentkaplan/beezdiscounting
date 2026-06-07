@@ -40,3 +40,13 @@ that \code{k = exp(k_log)}. Standard errors use the \code{beta_k} block of
 \code{TMB::sdreport()}'s fixed-effect covariance; intervals are Wald on the
 log scale and exponentiated.
 }
+\examples{
+\donttest{
+sim <- simulate_dd_ip(
+  n_subjects = 30, n_conditions = 2, delta_k = c(0, log(3)), seed = 1
+)
+fit <- fit_dd_tmb(sim, factors = "condition", verbose = 0)
+get_dd_param_emms(fit)
+}
+
+}

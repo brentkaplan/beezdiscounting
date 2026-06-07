@@ -34,10 +34,20 @@
 #'   `condition` (factor; only when `n_conditions > 1`), `x` (delay), and
 #'   `y` (indifference proportion in `[0, 1]`).
 #'
-#' @keywords internal
+#' @examples
+#' # A small SLT-beta mixed-effects discounting dataset (id, x, y)
+#' sim <- simulate_dd_ip(n_subjects = 8, seed = 1)
+#' head(sim)
+#'
+#' # Two between-subject conditions with a log-k shift on the second level
+#' sim2 <- simulate_dd_ip(
+#'   n_subjects = 8, n_conditions = 2, delta_k = c(0, log(3)), seed = 2
+#' )
+#'
+#' @export
 #' @importFrom stats rnorm runif qbeta pbeta
 #' @importFrom tibble tibble
-.simulate_dd_ip_mixed <- function(
+simulate_dd_ip <- function(
   n_subjects = 60,
   delays = c(7, 30, 180, 365, 730, 1460, 2920),
   log_k_pop = log(0.01),

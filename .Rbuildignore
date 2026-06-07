@@ -23,3 +23,9 @@ hex-beezdiscounting.png
 ^src/.*\.dll$
 ^src/symbols\.rds$
 ^\.vscode$
+^\.claude$
+^personal_tests$
+\.DS_Store$
+^\.Rhistory$
+^\.Rprofile$
+^docs/handoff.*

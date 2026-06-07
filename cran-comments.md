@@ -14,8 +14,9 @@ that admits indifference points at exactly 0 and 1, with the accompanying broom 
 
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note (locally an additional environmental install
-warning, explained below).
+Locally: 0 errors | 1 warning | 1 note. On CRAN's build machines we expect
+0 errors | 0 warnings | 1 note -- the single local warning is environmental
+(R's own header under a very recent Apple 'clang'), explained below.
 
 * **NOTE — possibly invalid URL** `https://brentkaplan.github.io/beezdiscounting/`:
   this is the package's 'pkgdown' documentation site, which is (re)deployed by the

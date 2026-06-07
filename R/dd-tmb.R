@@ -657,3 +657,244 @@ NULL
     stringsAsFactors = FALSE
   )
 }
+
+
+# ==============================================================================
+# P.8  Public entry point: fit_dd_tmb()
+# ==============================================================================
+
+#' Fit an indifference-point mixed-effects discounting model via TMB
+#'
+#' Fits a 1-parameter discounting model (Mazur hyperbolic or exponential) with a
+#' random intercept on `log k`, between-subject fixed effects, and either an
+#' SLT-beta or Gaussian observation family, using Template Model Builder for
+#' exact AD + Laplace approximation.
+#'
+#' @param data Long data frame with subject id, delay, and indifference
+#'   proportion columns.
+#' @param y_var,x_var,id_var Column names (defaults `"y"`, `"x"`, `"id"`).
+#' @param equation One of `"mazur"`, `"exponential"`.
+#' @param family Observation family: `"sltb"` (default) or `"gaussian"`.
+#' @param random_effects RE formula (MVP: `k ~ 1`).
+#' @param factors Character vector of between-subject factor names.
+#' @param factor_interaction Logical; include a pairwise factor interaction.
+#' @param continuous_covariates Character vector of covariate names.
+#' @param ll Optional larger-later reward for `amount`-scale coercion.
+#' @param response_scale One of `"proportion"`, `"percent"`, `"amount"`.
+#' @param start_values Optional named list overriding defaults.
+#' @param tmb_control Optimizer control list.
+#' @param multi_start Logical; if `TRUE` (default), run the 3-set guarded
+#'   multi-start.
+#' @param verbose Integer verbosity (0 silent, 1 progress, 2 debug).
+#' @param ... Reserved.
+#' @return An object of class `beezdiscounting_tmb` with components:
+#'   \describe{
+#'     \item{call}{The matched call.}
+#'     \item{opt}{Normalized optimizer result (`par`, `objective`,
+#'       `convergence`, `message`).}
+#'     \item{model}{List of `coefficients`, `se`, and `variance_components`.}
+#'     \item{sdr}{TMB `sdreport` object (or `NULL` if SE computation failed).}
+#'     \item{hessian_pd}{Logical positive-definiteness of the Hessian.}
+#'     \item{param_info}{Model metadata (equation, family, dimensions, factor
+#'       spec, parsed random effects).}
+#'     \item{formula_details}{Fixed-effect design (`X`, `rhs`, `contrasts`).}
+#'     \item{subject_pars}{Data frame of subject-level `id`, `u_i`, `k`.}
+#'     \item{loglik, AIC, BIC}{Fit statistics.}
+#'     \item{converged, se_available}{Convergence / SE-availability flags.}
+#'     \item{opt_warnings}{Character vector of optimizer warnings.}
+#'     \item{data}{The single filtered model frame (id/x/y + retained design
+#'       columns), row-aligned with the design matrix.}
+#'     \item{data_all}{The validated frame before complete-casing.}
+#'     \item{coercion_info}{Scale-coercion/clamping audit list.}
+#'   }
+#' @examples
+#' \donttest{
+#' # Small two-subject long-format indifference-point data frame.
+#' dd <- data.frame(
+#'   id = rep(c("s1", "s2"), each = 5),
+#'   x  = rep(c(7, 30, 180, 365, 730), times = 2),
+#'   y  = c(0.95, 0.80, 0.45, 0.30, 0.15,
+#'          0.90, 0.70, 0.40, 0.25, 0.10)
+#' )
+#' fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb", verbose = 0)
+#' exp(fit$model$coefficients[["beta_k"]])  # population k
+#' }
+#' @export
+fit_dd_tmb <- function(data,
+                       y_var = "y", x_var = "x", id_var = "id",
+                       equation = c("mazur", "exponential"),
+                       family = c("sltb", "gaussian"),
+                       random_effects = k ~ 1,
+                       factors = NULL,
+                       factor_interaction = FALSE,
+                       continuous_covariates = NULL,
+                       ll = NULL,
+                       response_scale = c("proportion", "percent", "amount"),
+                       start_values = NULL,
+                       tmb_control = list(iter_max = 1000, eval_max = 2000),
+                       multi_start = TRUE,
+                       verbose = 1,
+                       ...) {
+  cl <- match.call()
+  equation <- match.arg(equation)
+  family <- match.arg(family)
+  response_scale <- match.arg(response_scale)
+
+  # The union of factor + covariate columns is the set of EXTRA modeling
+  # columns that must travel with id/x/y through one complete-case pass
+  # (row-coherence). The validator retains them, prepare_data complete-cases
+  # them ONCE, and the design + TMB arrays are derived from that single frame.
+  extra_cols <- unique(c(factors, continuous_covariates))
+
+  # 1. Validate + coerce/clamp (warns; errors on missing/NA y). Retains the
+  #    factor/covariate columns alongside canonical id/x/y.
+  validated <- .dd_validate_ip(data, y_var = y_var, x_var = x_var,
+                               id_var = id_var, ll = ll,
+                               extra_cols = extra_cols,
+                               response_scale = response_scale)
+  long <- validated$data            # canonical id/x/y + retained extras
+  coercion_info <- validated$coercion_info
+
+  # 2. Random-effects normalization (MVP: single intercept-only block).
+  re_norm <- .dd_normalize_re(random_effects, data = long)
+  n_random_effects <- 1L
+
+  # 3. Prepare data: ONE complete-case pass over id/x/y + extra_cols, building
+  #    the 0-indexed subject_id. prepared$data is the single filtered model
+  #    frame (id/x/y + retained extras) that everything else derives from.
+  prepared <- .dd_tmb_prepare_data(long, y_var = "y", x_var = "x",
+                                   id_var = "id", extra_cols = extra_cols)
+
+  # 4. Fixed-effect design for log k, built on the SAME filtered frame
+  #    (prepared$data) so X's rows align 1:1 with the prepared y/x/subject_id.
+  design <- .dd_tmb_build_design(prepared$data, factors = factors,
+                                 factor_interaction = factor_interaction,
+                                 continuous_covariates = continuous_covariates)
+
+  # 5. TMB data + default starts.
+  tmb_data <- .dd_tmb_build_tmb_data(prepared, design, equation, family)
+  default_starts <- .dd_tmb_default_starts(prepared, design, family, equation)
+  if (!is.null(start_values)) {
+    for (nm in names(start_values)) {
+      if (nm %in% names(default_starts)) default_starts[[nm]] <- start_values[[nm]]
+    }
+  }
+
+  # 6. Merge control defaults.
+  default_control <- list(
+    iter_max = 1000, eval_max = 2000, optimizer = "nlminb",
+    rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0
+  )
+  user_specified <- names(tmb_control)
+  tmb_control <- utils::modifyList(default_control, tmb_control)
+
+  if (verbose >= 1) {
+    message(sprintf("Fitting TMB mixed-effects discounting model (%s, %s)...",
+                    equation, family))
+    message(sprintf("  Subjects: %d, Observations: %d",
+                    prepared$n_subjects, prepared$n_obs))
+  }
+
+  # 7. Optimize (multi-start or single).
+  opt_warnings <- character(0)
+  if (isTRUE(multi_start)) {
+    result <- .dd_tmb_multi_start(tmb_data, default_starts, tmb_control,
+                                  user_specified, verbose)
+    obj <- result$obj
+    opt <- result$opt
+    opt_warnings <- result$opt_warnings %||% character(0)
+  } else {
+    obj <- TMB::MakeADFun(tmb_data, default_starts, random = "u",
+                          DLL = "beezdiscounting", silent = verbose < 2)
+    opt_res <- .dd_tmb_run_optimizer(obj, obj$par, tmb_control,
+                                     user_specified, verbose)
+    opt <- opt_res$opt
+    opt_warnings <- opt_res$warnings
+  }
+
+  converged <- isTRUE(opt$convergence == 0)
+  try(obj$fn(opt$par), silent = TRUE)
+
+  # 8. Extract estimates (sdreport, pdHess gate, log_aux rename).
+  estimates <- .dd_tmb_extract_estimates(obj, opt,
+                                         n_subjects = prepared$n_subjects,
+                                         family = family, verbose = verbose)
+
+  # 9. Subject-specific parameters (id/u_i/k; no phi -- phi is population-level).
+  subject_pars <- .dd_tmb_compute_subject_pars(
+    coefficients = estimates$coefficients,
+    u_hat = estimates$u_hat,
+    subject_levels = prepared$subject_levels,
+    equation = equation,
+    family = family
+  )
+
+  # 10. Likelihood / IC.
+  nll <- opt$objective
+  loglik <- -nll
+  n_fixed_params <- length(opt$par)
+  aic <- 2 * nll + 2 * n_fixed_params
+  bic <- 2 * nll + n_fixed_params * log(prepared$n_obs)
+
+  has_phi <- identical(family, "sltb")
+
+  result_obj <- structure(
+    list(
+      call = cl,
+      opt = opt,
+      model = list(
+        coefficients = estimates$coefficients,
+        se = estimates$se,
+        variance_components = estimates$variance_components
+      ),
+      sdr = estimates$sdr,
+      hessian_pd = estimates$hessian_pd,
+      param_info = list(
+        equation = equation,
+        family = family,
+        has_phi = has_phi,
+        n_obs = prepared$n_obs,
+        n_subjects = prepared$n_subjects,
+        n_random_effects = n_random_effects,
+        subject_levels = prepared$subject_levels,
+        id_var = id_var,
+        x_var = x_var,
+        y_var = y_var,
+        # Factor metadata persisted so predict()/emmeans can rebuild a
+        # column-aligned design via build_fixed_rhs + stored contrasts (B3).
+        factors = factors,
+        factor_interaction = factor_interaction,
+        continuous_covariates = continuous_covariates,
+        random_effects_parsed = re_norm
+      ),
+      # Store rhs + contrasts so .dd_build_emm_ref_grid (E.1) and predict (M.3)
+      # rebuild the design through the SAME build_fixed_rhs route as the fit.
+      formula_details = list(X = design$X, rhs = design$rhs,
+                             contrasts = design$contrasts),
+      subject_pars = subject_pars,
+      loglik = loglik,
+      AIC = aic,
+      BIC = bic,
+      converged = converged,
+      se_available = !is.null(estimates$sdr),
+      opt_warnings = opt_warnings,
+      # fit$data is the SINGLE filtered model frame (id/x/y + retained factor/
+      # covariate columns), row-aligned with X and the prepared arrays (B3).
+      data = prepared$data,
+      data_all = long,
+      coercion_info = coercion_info
+    ),
+    class = "beezdiscounting_tmb"
+  )
+
+  if (verbose >= 1) {
+    if (converged) {
+      message(sprintf("  Converged (NLL = %.2f). Done.", nll))
+    } else {
+      message(sprintf("  WARNING: Did not converge (code %s: %s).",
+                      opt$convergence, opt$message))
+    }
+  }
+
+  result_obj
+}

@@ -453,3 +453,138 @@ describe(".dd_tmb_compute_subject_pars()", {
     expect_false("phi" %in% names(sp))
   })
 })
+
+# ==============================================================================
+# P.8: fit_dd_tmb() — public API: recovery + object shape + degenerate guard
+# ==============================================================================
+
+describe("fit_dd_tmb() recovery", {
+  it("recovers population k within 0.15 (sltb x mazur)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(101)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.01),
+                                 sigma_u = 0.6, phi = 10, family = "sltb",
+                                 equation = "mazur", seed = 101)
+    fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", verbose = 0)
+    expect_s3_class(fit, "beezdiscounting_tmb")
+    beta0 <- unname(fit$model$coefficients[names(fit$model$coefficients) == "beta_k"][1])
+    expect_equal(exp(beta0), 0.01, tolerance = 0.15)
+    expect_true(fit$converged)
+    expect_true(fit$se_available)
+  })
+
+  it("recovers population k within 0.15 (gaussian x mazur)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(102)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.01),
+                                 sigma_u = 0.6, sigma_e = 0.08,
+                                 family = "gaussian", equation = "mazur",
+                                 seed = 102)
+    fit <- fit_dd_tmb(sim, equation = "mazur", family = "gaussian", verbose = 0)
+    beta0 <- unname(fit$model$coefficients[names(fit$model$coefficients) == "beta_k"][1])
+    expect_equal(exp(beta0), 0.01, tolerance = 0.15)
+    expect_true(fit$converged)
+  })
+
+  it("recovers k for the exponential equation (sltb, looser tol)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(103)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.005),
+                                 sigma_u = 0.5, phi = 12, family = "sltb",
+                                 equation = "exponential", seed = 103)
+    fit <- fit_dd_tmb(sim, equation = "exponential", family = "sltb",
+                      verbose = 0)
+    expect_true(fit$converged)
+    # correlation of subject log-k recovery over the grid (looser per contract)
+    truth_k <- 0.005
+    beta0 <- unname(fit$model$coefficients[names(fit$model$coefficients) == "beta_k"][1])
+    expect_equal(exp(beta0), truth_k, tolerance = 0.30)
+  })
+
+  it("recovers k for gaussian x exponential", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(104)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.005),
+                                 sigma_u = 0.5, sigma_e = 0.06,
+                                 family = "gaussian", equation = "exponential",
+                                 seed = 104)
+    fit <- fit_dd_tmb(sim, equation = "exponential", family = "gaussian",
+                      verbose = 0)
+    expect_true(fit$converged)
+    beta0 <- unname(fit$model$coefficients[names(fit$model$coefficients) == "beta_k"][1])
+    expect_equal(exp(beta0), 0.005, tolerance = 0.30)
+  })
+})
+
+describe("fit_dd_tmb() object shape", {
+  it("assembles the contract fields and subject_pars", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(105)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 40, family = "sltb",
+                                 equation = "mazur", seed = 105)
+    fit <- fit_dd_tmb(sim, verbose = 0)
+    expect_s3_class(fit, "beezdiscounting_tmb")
+    expect_true(all(c("call", "opt", "model", "sdr", "param_info",
+                      "formula_details", "subject_pars", "loglik", "AIC", "BIC",
+                      "converged", "se_available", "data", "data_all",
+                      "coercion_info") %in% names(fit)))
+    # subject_pars carries NO phi column (phi is population-level in the MVP)
+    expect_named(fit$subject_pars, c("id", "u_i", "k"))
+    expect_false("phi" %in% names(fit$subject_pars))
+    expect_equal(nrow(fit$subject_pars), 40L)
+    expect_equal(fit$param_info$family, "sltb")
+    expect_equal(fit$param_info$equation, "mazur")
+    expect_equal(fit$param_info$n_random_effects, 1L)
+    expect_equal(fit$param_info$id_var, "id")
+    expect_true("log_phi" %in% names(fit$model$coefficients))
+    # call is stored (used by summary() in M.8)
+    expect_false(is.null(fit$call))
+    expect_true(is.call(fit$call))
+    # formula_details stores rhs + contrasts for the emmeans ref grid (E.1)
+    expect_true(all(c("X", "rhs", "contrasts") %in% names(fit$formula_details)))
+  })
+
+  it("persists factor metadata in param_info and retains design cols in data", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(106)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 40, family = "sltb",
+                                 equation = "mazur", seed = 106)
+    sim$grp <- factor(rep(c("ctrl", "trt"),
+                          length.out = length(unique(sim$id)))[
+                            match(sim$id, unique(sim$id))])
+    fit <- fit_dd_tmb(sim, factors = "grp", verbose = 0)
+    expect_equal(fit$param_info$factors, "grp")
+    expect_false(fit$param_info$factor_interaction)
+    expect_null(fit$param_info$continuous_covariates)
+    # the design factor column survives onto fit$data (row-coherent frame)
+    expect_true("grp" %in% names(fit$data))
+    expect_equal(nrow(fit$data), nrow(fit$formula_details$X))
+  })
+
+  it("keeps a sane population k on a boundary-heavy dataset (regression)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(70)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 25, log_k_pop = log(0.01),
+                                 sigma_u = 0.6, phi = 8, family = "sltb",
+                                 equation = "mazur", seed = 70)
+    bad <- data.frame(
+      id = "boundary",
+      x = c(7, 30, 180, 365, 730, 1460, 2920),
+      y = c(1, 1, 1, 0, 0, 0, 0)
+    )
+    sim2 <- rbind(
+      data.frame(id = as.character(sim$id), x = sim$x, y = sim$y), bad)
+    fit <- fit_dd_tmb(sim2, equation = "mazur", family = "sltb", verbose = 0)
+    beta0 <- fit$model$coefficients[names(fit$model$coefficients) == "beta_k"][1]
+    # NOT the k -> 414000 collapse; population k stays plausible
+    expect_lt(exp(beta0), 1)
+    expect_gt(exp(fit$model$coefficients[["log_phi"]]), 0.1)
+  })
+})

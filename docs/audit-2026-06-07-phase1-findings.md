@@ -211,8 +211,29 @@ If it **is** bundled, the above can lean on it. Either way, exporting the simula
 0 ERROR; Codex plan review **APPROVE-WITH-CHANGES** (incorporated) and Codex capstone re-review
 **APPROVE-WITH-CHANGES** (incorporated: `newdata` doc + guards, warning wording).
 
-**DEFERRED to the Phase-B CRAN-readiness pass (not check-blocking):** drop the manual DESCRIPTION
-`Maintainer:` (Authors@R has `cre`); `inn()` / `score_one_mcq27()` documented-but-unexported →
-`@keywords internal`; `dd_ip` `\format` `\describe{}`; `@examples` on `long_to_wide_mcq` /
-`wide_to_long_mcq`; spelling/urlchecker; lintr pass. **Plus all P1/P2 items (B4–B11) and the 9
-test-coverage gaps** are a separate follow-up branch.
+## Resolution log — branch `fix/phase1-tranche2-p1-tests` (2026-06-07)
+
+**RESOLVED (committed, verified):** the P1 contract guards + the audit's coverage-gap backfill.
+- **B4** — warn (not abort) when a declared predictor varies within a subject
+  (`.dd_check_between_subject`), naming the column(s) + affected-subject count.
+- **B5** — coerce declared `factors` to factor (numeric "factor" no longer fits as a slope);
+  require `continuous_covariates` numeric AND finite; reject predictors that name the
+  id/delay/response column.
+- **B6** — reserve canonical `id/x/y` in `.dd_validate_ip` (remapped-role collision).
+- **B7** — generalize the blow-up guard to `max|X %*% beta_k|` (`.dd_logk_blowup`) on both the
+  multi-start and single-start paths.
+- **B8** — `predict()` errors cleanly when `newdata` omits a factor/covariate column.
+- **Coverage gaps 1–7** backfilled as non-circular regression tests (factors+covariate together;
+  3-factor additive AND interaction end-to-end; `at=` on a marginalized factor; predict on a
+  non-reference cell; `trt.vs.ctrl`×`contrast_by` with per-by-cell p-adjust; unbalanced full-rank
+  equal-weight averaging; boundary-heavy SLT-beta fit, jarvis-independent). Gap 8 (phi-floor on
+  `multi_start=FALSE`) was already covered; gap 9 (relative-error asserts) is optional polish.
+
+**Verification:** full local suite **711 pass / 0 fail**; `R CMD check --as-cran` unchanged
+(1 env WARNING + 1 Pages NOTE); Codex plan + capstone reviews **APPROVE-WITH-CHANGES**
+(incorporated). Merged `--ff-only` to `develop`.
+
+**STILL DEFERRED:** P2 (B9 percent-detect robustness, B10 RE-LHS tighten, B11 `report_space="log"`);
+the Phase-B CRAN-polish items (manual `Maintainer:`, `inn()`/`score_one_mcq27()` `@keywords
+internal`, `dd_ip` `\format`, `@examples` on the mcq reshapers, spelling/urlchecker/lintr); gap-9
+relative-error asserts. Then handoff phases B/C/D/E/F.

@@ -1,0 +1,3 @@
+# Windows compiler/linker flags for the beezdiscounting TMB template.
+# TMB and RcppEigen supply their include paths via LinkingTo in DESCRIPTION,
+# so no PKG_CPPFLAGS/PKG_LIBS are required here (mirrors beezdemand 0.3.0).

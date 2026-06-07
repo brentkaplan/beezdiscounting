@@ -154,6 +154,8 @@ NULL
   eqn_type <- switch(equation,
     mazur = 0L,
     exponential = 1L,
+    `green-myerson` = 2L,
+    rachlin = 3L,
     stop("Unknown equation: ", equation, call. = FALSE)
   )
   fam_type <- switch(family,
@@ -188,7 +190,8 @@ NULL
 #' @param family One of "sltb", "gaussian".
 #' @param equation One of "mazur", "exponential" (for the start inversion).
 #' @return A parameters list: `beta_k` (length `ncol(X)`), `log_sigma_u`,
-#'   `log_aux`, `u` (matrix `n_subjects` x 1).
+#'   `log_aux`, `log_s` (always present; held fixed for 1-parameter equations),
+#'   `u` (matrix `n_subjects` x 1).
 #' @keywords internal
 .dd_tmb_default_starts <- function(prepared, design, family,
                                    equation = "mazur") {
@@ -224,6 +227,7 @@ NULL
     beta_k = beta_k,
     log_sigma_u = log(0.5),
     log_aux = log_aux,
+    log_s = 0,                       # s = 1 start; map-fixed for 1-param eqns
     u = matrix(0, nrow = n_subjects, ncol = 1L)
   )
 }
@@ -445,6 +449,56 @@ NULL
 }
 
 
+# Soft (wide) optimizer bounds on log_s for the 2-parameter equations; a
+# numerical guard, NOT a constraint of scientific interest (no hard s <= 1 cap).
+.dd_s_log_lower <- log(0.05)
+.dd_s_log_upper <- log(20)
+
+
+#' Build the TMB `map` for the discounting shape parameter
+#'
+#' For the 1-parameter equations (`!has_s`) `log_s` is held fixed (never
+#' estimated) via `map = list(log_s = factor(NA))`; for the 2-parameter
+#' equations (`has_s`) `map` is `NULL` so `log_s` is free. The returned value is
+#' passed verbatim to EVERY `TMB::MakeADFun()` call so a 1-parameter fit can
+#' never try to estimate an unidentified `log_s` (singular Hessian, wrong df).
+#'
+#' @param has_s Logical; `TRUE` for green-myerson / rachlin.
+#' @return `NULL` (free) or `list(log_s = factor(NA))` (fixed).
+#' @keywords internal
+.dd_tmb_build_map <- function(has_s) {
+  if (isTRUE(has_s)) return(NULL)
+  list(log_s = factor(NA))
+}
+
+
+#' Impose wide optimizer bounds on log_s for the 2-parameter equations
+#'
+#' Mirrors [.dd_apply_phi_floor()]: adds `log_s` lower/upper entries to
+#' `tmb_control$lower`/`$upper` (wide numerical guards `[log(0.05), log(20)]`)
+#' only when `has_s` and only when the caller has not already set a `log_s`
+#' bound (user value wins). For 1-parameter equations `log_s` is mapped out of
+#' the optimizer vector, so no bound is added (and `.expand_bounds` would
+#' otherwise warn about an unknown parameter).
+#'
+#' @param tmb_control Merged control list (may carry user `lower`/`upper`).
+#' @param has_s Logical; `TRUE` for green-myerson / rachlin.
+#' @return The (possibly augmented) `tmb_control` list.
+#' @keywords internal
+.dd_apply_s_bounds <- function(tmb_control, has_s) {
+  if (!isTRUE(has_s)) return(tmb_control)
+  lo <- tmb_control$lower
+  if (is.null(lo) || !("log_s" %in% names(lo))) {
+    tmb_control$lower <- c(lo, log_s = .dd_s_log_lower)
+  }
+  up <- tmb_control$upper
+  if (is.null(up) || !("log_s" %in% names(up))) {
+    tmb_control$upper <- c(up, log_s = .dd_s_log_upper)
+  }
+  tmb_control
+}
+
+
 #' Multi-start optimization for the TMB discounting model
 #'
 #' Builds 3 starting sets (data-driven, low-k, high-k) and runs each through
@@ -474,11 +528,14 @@ NULL
 #'   `opt_warnings`.
 #' @keywords internal
 .dd_tmb_multi_start <- function(tmb_data, start_values,
-                                 tmb_control, user_specified, verbose) {
+                                 tmb_control, user_specified, verbose,
+                                 has_s = FALSE) {
   # Impose the phi floor as a log_aux lower bound for sltb (shared helper used by
   # both optimizer paths; tmb_data$family == 0L encodes "sltb").
   family_str <- if (identical(tmb_data$family, 0L)) "sltb" else "gaussian"
   tmb_control <- .dd_apply_phi_floor(tmb_control, family_str)
+  tmb_control <- .dd_apply_s_bounds(tmb_control, has_s)
+  map <- .dd_tmb_build_map(has_s)
 
   # 3 starting sets: data-driven (default), low-k, high-k.
   start_sets      <- vector("list", 3L)
@@ -493,6 +550,13 @@ NULL
   s3$beta_k[1]    <- start_values$beta_k[1] + 1.5
   s3$log_sigma_u  <- log(0.8)
   start_sets[[3]] <- s3
+
+  # For the 2-parameter equations also perturb the (poorly-identified) log_s
+  # axis across the low-k / high-k restarts.
+  if (isTRUE(has_s)) {
+    start_sets[[2]]$log_s <- log(0.7)
+    start_sets[[3]]$log_s <- log(1.4)
+  }
 
   # Sanity NaN/blowup guard on the FULL fitted log-k predictor (B7) -- no phi
   # rejection (the log_aux lower bound already prevents the degenerate phi->0
@@ -511,6 +575,7 @@ NULL
       obj_i <- TMB::MakeADFun(
         data       = tmb_data,
         parameters = starts_i,
+        map        = map,
         random     = "u",
         DLL        = "beezdiscounting",
         silent     = verbose < 2
@@ -585,10 +650,13 @@ NULL
 #' @param opt Normalized optimizer result (from [.dd_tmb_run_optimizer()]).
 #' @param n_subjects Integer number of subjects.
 #' @param family One of "sltb", "gaussian".
+#' @param has_s Logical; `TRUE` for the 2-parameter equations (green-myerson /
+#'   rachlin), where `log_s` is a free coefficient.
 #' @param verbose Integer verbosity.
 #' @return list(coefficients, se, sdr, variance_components, u_hat, hessian_pd).
 #' @keywords internal
-.dd_tmb_extract_estimates <- function(obj, opt, n_subjects, family, verbose = 1) {
+.dd_tmb_extract_estimates <- function(obj, opt, n_subjects, family,
+                                      has_s = FALSE, verbose = 1) {
   sdr <- tryCatch(
     TMB::sdreport(obj),
     error = function(e1) {
@@ -618,6 +686,14 @@ NULL
   par_full <- opt$par
   par_names <- names(par_full)
 
+  # The presence of a FREE log_s in opt$par is authoritative: it must match
+  # has_s (a 1-parameter fit maps log_s out; a 2-parameter fit leaves it free).
+  free_log_s <- "log_s" %in% par_names
+  if (!identical(free_log_s, isTRUE(has_s))) {
+    stop("internal: free log_s (", free_log_s, ") does not match has_s (",
+         isTRUE(has_s), "); check map threading.", call. = FALSE)
+  }
+
   coefficients <- par_full
   se_vec <- rep(NA_real_, length(par_full))
   names(se_vec) <- par_names
@@ -633,6 +709,7 @@ NULL
     .fill_vector_se("beta_k")
     .fill_vector_se("log_sigma_u")
     .fill_vector_se("log_aux")
+    .fill_vector_se("log_s")   # no-op when log_s is mapped/absent
 
     re_summary <- tryCatch(summary(sdr, "random"), error = function(e) NULL)
     if (!is.null(re_summary)) {
@@ -788,7 +865,10 @@ NULL
 #' @param data Long data frame with subject id, delay, and indifference
 #'   proportion columns.
 #' @param y_var,x_var,id_var Column names (defaults `"y"`, `"x"`, `"id"`).
-#' @param equation One of `"mazur"`, `"exponential"`.
+#' @param equation One of `"mazur"`, `"exponential"`, `"green-myerson"`, or
+#'   `"rachlin"`. The two 2-parameter (hyperboloid) forms add a single
+#'   population nonlinearity exponent `s` (estimated on the log scale) and
+#'   reduce to `"mazur"` at `s = 1`.
 #' @param family Observation family: `"sltb"` (default) or `"gaussian"`.
 #' @param random_effects RE formula (MVP: `k ~ 1`).
 #' @param factors Character vector of between-subject factor names.
@@ -837,7 +917,8 @@ NULL
 #' @export
 fit_dd_tmb <- function(data,
                        y_var = "y", x_var = "x", id_var = "id",
-                       equation = c("mazur", "exponential"),
+                       equation = c("mazur", "exponential",
+                                    "green-myerson", "rachlin"),
                        family = c("sltb", "gaussian"),
                        random_effects = k ~ 1,
                        factors = NULL,
@@ -854,6 +935,7 @@ fit_dd_tmb <- function(data,
   equation <- match.arg(equation)
   family <- match.arg(family)
   response_scale <- match.arg(response_scale)
+  has_s <- equation %in% c("green-myerson", "rachlin")
 
   # The union of factor + covariate columns is the set of EXTRA modeling
   # columns that must travel with id/x/y through one complete-case pass
@@ -935,6 +1017,14 @@ fit_dd_tmb <- function(data,
   tmb_data <- .dd_tmb_build_tmb_data(prepared, design, equation, family)
   default_starts <- .dd_tmb_default_starts(prepared, design, family, equation)
   if (!is.null(start_values)) {
+    # Public alias: users pass `s` (natural); convert to the optimizer's log_s.
+    if (!is.null(start_values$s)) {
+      if (!is.null(start_values$log_s)) {
+        stop("start_values: supply either 's' or 'log_s', not both.", call. = FALSE)
+      }
+      start_values$log_s <- log(start_values$s)
+      start_values$s <- NULL
+    }
     for (nm in names(start_values)) {
       if (nm %in% names(default_starts)) default_starts[[nm]] <- start_values[[nm]]
     }
@@ -959,7 +1049,7 @@ fit_dd_tmb <- function(data,
   opt_warnings <- character(0)
   if (isTRUE(multi_start)) {
     result <- .dd_tmb_multi_start(tmb_data, default_starts, tmb_control,
-                                  user_specified, verbose)
+                                  user_specified, verbose, has_s = has_s)
     obj <- result$obj
     opt <- result$opt
     opt_warnings <- result$opt_warnings %||% character(0)
@@ -968,8 +1058,10 @@ fit_dd_tmb <- function(data,
     # shared log_aux lower bound the multi-start path uses, so multi_start=FALSE
     # cannot collapse into the degenerate phi->0 / k->inf optimum.
     tmb_control <- .dd_apply_phi_floor(tmb_control, family)
+    tmb_control <- .dd_apply_s_bounds(tmb_control, has_s)
     obj <- TMB::MakeADFun(tmb_data, default_starts, random = "u",
-                          DLL = "beezdiscounting", silent = verbose < 2)
+                          DLL = "beezdiscounting", silent = verbose < 2,
+                          map = .dd_tmb_build_map(has_s))
     opt_res <- .dd_tmb_run_optimizer(obj, obj$par, tmb_control,
                                      user_specified, verbose)
     opt <- opt_res$opt
@@ -992,7 +1084,8 @@ fit_dd_tmb <- function(data,
   # 8. Extract estimates (sdreport, pdHess gate, log_aux rename).
   estimates <- .dd_tmb_extract_estimates(obj, opt,
                                          n_subjects = prepared$n_subjects,
-                                         family = family, verbose = verbose)
+                                         family = family, has_s = has_s,
+                                         verbose = verbose)
 
   # 9. Subject-specific parameters (id/u_i/k; no phi -- phi is population-level).
   #    Factor/covariate-correct: each subject's k uses that subject's design row
@@ -1029,6 +1122,7 @@ fit_dd_tmb <- function(data,
       hessian_pd = estimates$hessian_pd,
       param_info = list(
         equation = equation,
+        has_s = has_s,
         family = family,
         has_phi = has_phi,
         n_obs = prepared$n_obs,

@@ -129,7 +129,6 @@ reference:
     desc: Built-in datasets for examples and testing.
     contents:
       - dd_ip
-      - jarvis2019
       - mcq27
       - five.fivetrial_dd
       - five.fivetrial_pd

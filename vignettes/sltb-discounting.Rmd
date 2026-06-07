@@ -27,9 +27,9 @@ $[0, 1]$:
   reward (**no discounting**).
 - $y = 0$: any immediate amount, however small, is preferred (**complete discounting**).
 
-Real data pile up at both ends. In the Jarvis et al. (2019) data shipped with this package
-(`data(jarvis2019)`), a meaningful fraction of observations sit *exactly* at 0 or 1. That
-single fact rules out the two error distributions people reach for first:
+Real titration data pile up at both ends, and the example data shipped with this package
+(`data(dd_ip)`) reproduce the pattern: a meaningful fraction of observations sit *exactly* at
+0 or 1. That single fact rules out the two error distributions people reach for first:
 
 - **Gaussian / nonlinear least squares** treats residuals as unbounded and homoscedastic.
   It can predict an IP below 0 or above 1, and it assumes the noise is the same size near the
@@ -89,24 +89,32 @@ Because the variance of a beta is $\mu(1-\mu)/(\phi+1)$, the SLT-beta automatica
 **less** noise near the floor and ceiling and **more** in the middle: the heteroscedastic
 pattern real IP data actually show, and exactly what a Gaussian model gets wrong.
 
-## The boundary problem, on real data
+## The boundary problem, in the example data
+
+The package ships `dd_ip`, a synthetic delay-discounting dataset (100 subjects across six
+delays, in the `id`, `x` (delay), `y` (indifference point) long format) that reproduces the
+boundary pattern of real titration data. A handful of synthetic values fall just above 1 and
+are clamped to the ceiling.
 
 ```{r load-data}
-data(jarvis2019)
-knitr::kable(as.data.frame(table(IP = jarvis2019$y)),
-             caption = "Observed indifference points")
+data(dd_ip)
+dd_ip$id <- factor(dd_ip$id)
+dd_ip$y  <- pmin(dd_ip$y, 1)            # clamp a few synthetic values to the [0, 1] ceiling
+c(observations        = nrow(dd_ip),
+  subjects            = nlevels(dd_ip$id),
+  at_floor_or_ceiling = sum(dd_ip$y %in% c(0, 1)))
 ```
 
-The titration grid produces many observations at exactly 0 and 1. Counting subjects with at
-least one boundary value, and asking which error models can even evaluate them:
+Many observations sit at exactly 0 and 1. Counting subjects with at least one boundary value,
+and asking which error models can even evaluate them:
 
 ```{r boundary-demo}
 beta_logpdf <- function(y, mu, phi) {          # ordinary beta: -Inf at y in {0,1}
   a <- mu * phi; b <- (1 - mu) * phi
   lgamma(a + b) - lgamma(a) - lgamma(b) + (a - 1) * log(y) + (b - 1) * log(1 - y)
 }
-ids <- levels(jarvis2019$id)
-yof <- function(i) jarvis2019$y[jarvis2019$id == i]
+ids <- levels(dd_ip$id)
+yof <- function(i) dd_ip$y[dd_ip$id == i]
 bnd     <- vapply(ids, function(i) any(yof(i) %in% c(0, 1)), logical(1))
 beta_ok <- vapply(ids, function(i) all(is.finite(beta_logpdf(yof(i), 0.5, 8))), logical(1))
 slt_ok  <- vapply(ids, function(i) all(is.finite(slt_logpdf(yof(i), 0.5, 8))), logical(1))
@@ -140,7 +148,7 @@ nls_k <- function(y, D) {                        # multi-start NLS (single start
   }
   NA_real_
 }
-xof <- function(i) jarvis2019$x[jarvis2019$id == i]
+xof <- function(i) dd_ip$x[dd_ip$id == i]
 k_slt <- vapply(ids, function(i) fit_slt(yof(i), xof(i)), numeric(1))
 k_nls <- vapply(ids, function(i) nls_k(yof(i), xof(i)), numeric(1))
 sprintf("cor(log k): SLT vs NLS = %.3f   |   median k: SLT = %.4f, NLS = %.4f",
@@ -165,7 +173,7 @@ The following chunks require TMB (a compiled C++ template; `has_tmb = TRUE` on t
 
 ```{r fit-tmb, eval = has_tmb}
 fit <- fit_dd_tmb(
-  data           = jarvis2019,       # columns: id, x (delay), y (indifference point)
+  data           = dd_ip,            # columns: id, x (delay), y (indifference point)
   equation       = "mazur",          # or "exponential"
   family         = "sltb",           # default; "gaussian" reproduces the NLS-style fit
   random_effects = k ~ 1             # random intercept on log k (fit internally on log scale)
@@ -182,11 +190,11 @@ The example below adds a synthetic two-group factor for illustration:
 ```{r emmeans, eval = has_tmb}
 set.seed(2)
 grp <- data.frame(
-  id    = levels(jarvis2019$id),
-  group = factor(sample(c("A", "B"), nlevels(jarvis2019$id), replace = TRUE))
+  id    = levels(dd_ip$id),
+  group = factor(sample(c("A", "B"), nlevels(dd_ip$id), replace = TRUE))
 )
-jarvis_grp <- merge(jarvis2019, grp, by = "id")
-fit_grp <- fit_dd_tmb(jarvis_grp, equation = "mazur", factors = "group")
+dd_grp <- merge(dd_ip, grp, by = "id")
+fit_grp <- fit_dd_tmb(dd_grp, equation = "mazur", factors = "group")
 get_dd_param_emms(fit_grp)                                        # EMM of k per group
 get_dd_comparisons(fit_grp, compare_specs = ~group, adjust = "holm")  # ratio-of-k contrasts
 ```
@@ -207,8 +215,8 @@ classic least-squares discounting analysis is required or as a quick baseline.
 
 The SLT-beta density was validated before release: it integrates to one, has finite density
 at both boundaries, reproduces the published moments, and recovers known discount rates from
-simulated data (rank correlation 0.99 for Mazur, 0.95 for the exponential). On the Jarvis
-(2019) data, every boundary subject is fit successfully where ordinary beta regression cannot
+simulated data (rank correlation 0.99 for Mazur, 0.95 for the exponential). On the bundled
+example data, every boundary subject is fit successfully where ordinary beta regression cannot
 be evaluated at all. The full Monte-Carlo study lives in the package's `dev/` directory.
 
 ## References
@@ -218,4 +226,3 @@ be evaluated at all. The full Monte-Carlo study lives in the package's `dev/` di
   Using Common Discounting Functions.*
 - Kim, M., Kaplan, B. A., Koffarnus, M. N., & Franck, C. T. (2025). *Scale-Location-Truncated
   Beta Regression: Expanding Beta Regression to Accommodate 0 and 1.* arXiv:2509.13167.
-- Jarvis, B. P., et al. (2019). Delay-discounting dataset (N = 126; 1 week – 8 years).

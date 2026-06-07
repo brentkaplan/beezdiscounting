@@ -557,9 +557,10 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #' @param report_space `"natural"`, `"log10"`, or `"internal"` — reporting
 #'   scale for fixed-effect `estimate`/`std.error`. Default is `"natural"`.
 #' @param ... Unused.
-#' @return A tibble with columns `term`, `estimate`, `std.error`, `statistic`,
-#'   `p.value`, `component`, `estimate_scale`, `term_display`. Fixed-effect rows
-#'   carry `component == "fixed"`; variance rows carry `component == "variance"`.
+#' @return A tibble with exactly 8 columns in this order: `term`, `estimate`,
+#'   `std.error`, `statistic`, `p.value`, `component`, `estimate_scale`,
+#'   `term_display`. Fixed-effect rows carry `component == "fixed"`; variance
+#'   rows carry `component == "variance"`.
 #'
 #' @importFrom generics tidy
 #' @export
@@ -613,6 +614,10 @@ tidy.beezdiscounting_tmb <- function(x,
       report_space   = report_space,
       internal_space = "log"
     )
+    # Drop the internal sentinel column added by .dd_transform_coef_table —
+    # other callers need it, but tidy()'s broom contract specifies exactly 8
+    # columns and estimate_internal is not among them.
+    fixed <- fixed[, setdiff(names(fixed), "estimate_internal"), drop = FALSE]
 
     result <- dplyr::bind_rows(result, fixed)
   }

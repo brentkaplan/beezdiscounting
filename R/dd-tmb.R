@@ -206,3 +206,320 @@ NULL
     u = matrix(0, nrow = n_subjects, ncol = 1L)
   )
 }
+
+
+# ==============================================================================
+# P.4  Optimizer dispatch + bounds expansion (verbatim port from beezdemand)
+# ==============================================================================
+
+#' Expand partial optimizer bounds to the full parameter vector
+#'
+#' Ported verbatim from beezdemand `.expand_bounds`. Given a named vector of
+#' user-specified bounds (possibly partial, possibly `NULL`), expands it to the
+#' full length of `par_names` by filling unspecified positions with
+#' `default_val`. Repeated parameter names (e.g. `beta_k`, `beta_k`) are each
+#' filled when the corresponding name appears in `bounds`.
+#'
+#' @param bounds Named numeric vector of user-specified bounds, or `NULL`.
+#' @param par_names Character vector of optimizer parameter names (from
+#'   `names(obj$par)`). May contain repeated names for vector parameters.
+#' @param default_val Default bound value: `-Inf` for lower, `Inf` for upper.
+#' @return Numeric vector of length `length(par_names)`.
+#' @keywords internal
+.expand_bounds <- function(bounds, par_names, default_val) {
+  if (is.null(bounds)) return(rep(default_val, length(par_names)))
+  result <- rep(default_val, length(par_names))
+  names(result) <- par_names
+  for (nm in names(bounds)) {
+    idx <- which(par_names == nm)
+    if (length(idx) > 0) {
+      result[idx] <- bounds[nm]
+    } else {
+      warning("Bounds specified for unknown parameter '", nm, "' (ignored)",
+              call. = FALSE)
+    }
+  }
+  result
+}
+
+
+#' Run a single TMB optimization (nlminb or L-BFGS-B), family-agnostic
+#'
+#' Ported verbatim from beezdemand `.tmb_run_optimizer` (renamed only).
+#' Dispatches to `nlminb` (default) or `optim(method = "L-BFGS-B")` and
+#' normalizes the return value so downstream code always sees identical field
+#' names regardless of optimizer: `$par`, `$objective`, `$convergence`,
+#' `$message` (guaranteed non-`NULL` character).
+#'
+#' Optimizer warnings are captured via `withCallingHandlers` and returned in
+#' `$warnings`; errors yield `convergence = 99L, objective = Inf`.
+#'
+#' @param obj TMB objective function object (from `TMB::MakeADFun`), with
+#'   `$fn`, `$gr`, and `$par`.
+#' @param start Named numeric vector of starting parameter values.
+#' @param tmb_control Merged control list; must have fields `optimizer`,
+#'   `iter_max`, `eval_max`, `rel_tol`, `lower`, `upper`, `trace`.
+#' @param user_specified Character vector of fields the user explicitly set in
+#'   `tmb_control` (governs `trace` precedence).
+#' @param verbose Integer verbosity level (0 = silent, 1 = progress,
+#'   2 = full trace).
+#' @return A list with `opt` (list of `par`, `objective`, `convergence`,
+#'   `message`) and `warnings` (character vector).
+#' @keywords internal
+.dd_tmb_run_optimizer <- function(obj, start, tmb_control, user_specified,
+                                   verbose) {
+  optimizer <- tmb_control$optimizer
+  iter_max  <- tmb_control$iter_max
+  eval_max  <- tmb_control$eval_max
+  rel_tol   <- tmb_control$rel_tol
+
+  # Effective trace: user-specified takes precedence, then verbose.
+  trace <- if ("trace" %in% user_specified) {
+    as.integer(tmb_control$trace)
+  } else if (verbose >= 2) {
+    1L
+  } else {
+    0L
+  }
+
+  # Expand bounds to the full parameter length.
+  par_names <- names(start)
+  lower <- .expand_bounds(tmb_control$lower, par_names, -Inf)
+  upper <- .expand_bounds(tmb_control$upper, par_names,  Inf)
+
+  opt_warnings <- character(0)
+
+  if (optimizer == "nlminb") {
+    opt <- tryCatch(
+      withCallingHandlers(
+        nlminb(
+          start      = start,
+          objective  = obj$fn,
+          gradient   = obj$gr,
+          lower      = lower,
+          upper      = upper,
+          control    = list(
+            eval.max = eval_max,
+            iter.max = iter_max,
+            rel.tol  = rel_tol,
+            trace    = trace
+          )
+        ),
+        warning = function(w) {
+          opt_warnings <<- c(opt_warnings, conditionMessage(w))
+          invokeRestart("muffleWarning")
+        }
+      ),
+      error = function(e) {
+        list(
+          par         = start,
+          objective   = Inf,
+          convergence = 99L,
+          message     = conditionMessage(e)
+        )
+      }
+    )
+  } else {
+    # L-BFGS-B via stats::optim
+    opt <- tryCatch(
+      {
+        raw <- withCallingHandlers(
+          stats::optim(
+            par     = start,
+            fn      = obj$fn,
+            gr      = obj$gr,
+            method  = "L-BFGS-B",
+            lower   = lower,
+            upper   = upper,
+            control = list(
+              maxit = iter_max,
+              trace = trace
+            )
+          ),
+          warning = function(w) {
+            opt_warnings <<- c(opt_warnings, conditionMessage(w))
+            invokeRestart("muffleWarning")
+          }
+        )
+        # Normalize optim's $value/$convergence to nlminb field names.
+        list(
+          par         = raw$par,
+          objective   = raw$value,
+          convergence = raw$convergence,
+          message     = raw$message %||% "maximum iterations reached"
+        )
+      },
+      error = function(e) {
+        list(
+          par         = start,
+          objective   = Inf,
+          convergence = 99L,
+          message     = conditionMessage(e)
+        )
+      }
+    )
+  }
+
+  # Guarantee $message is a non-NULL character string.
+  if (is.null(opt$message)) opt$message <- "unknown"
+
+  list(opt = opt, warnings = opt_warnings)
+}
+
+
+# ==============================================================================
+# P.5  Multi-start + degenerate-optimum guard
+# ==============================================================================
+
+# phi floor for the sltb family: imposed as an OPTIMIZER LOWER BOUND on
+# log_aux (log_aux >= log(.dd_phi_min)) so the optimizer can never reach the
+# phi->0 / k->inf collapse (spec section 4.8). Overridable via
+# tmb_control$lower$log_aux; the user value then wins.
+.dd_phi_min <- 0.1
+
+# Sanity NaN/blowup guard on the log-k intercept ONLY (not a phi rejection).
+# A fit where |beta_k[1]| > 20 implies k outside [exp(-20), exp(20)] ~ [2e-9, 5e8],
+# which is numerically nonsensical for any discounting experiment.
+.dd_beta_k_abs_max <- 20
+
+
+#' Multi-start optimization for the TMB discounting model
+#'
+#' Builds 3 starting sets (data-driven, low-k, high-k) and runs each through
+#' [.dd_tmb_run_optimizer()]. Keeps the lowest **finite** nll among candidates
+#' passing a NaN/blowup sanity check on `beta_k[1]`.
+#'
+#' **Degenerate-optimum guard (phi->0 / k->inf, spec section 4.8):**
+#' For `family == "sltb"` (i.e. `tmb_data$family == 0L`) a **lower bound on
+#' `log_aux`** of `log(.dd_phi_min)` (= `log(0.1)`) is inserted into
+#' `tmb_control$lower` before every optimizer call so the optimizer can never
+#' walk into the degenerate phi->0 optimum. The bound is overridable: if the
+#' caller already provides a `log_aux` entry in `tmb_control$lower` that value
+#' wins (merged before the floor check). Genuine low-precision fits (true phi
+#' above the floor, e.g. phi = 2) are retained — the bound only blocks the
+#' pathological phi->0 sink. There is **no post-hoc phi-based rejection**.
+#'
+#' If every candidate trips the blowup guard the lowest-nll fit overall is
+#' returned with a warning. If every candidate fails entirely (error or
+#' non-finite nll) the function stops.
+#'
+#' @param tmb_data TMB data list from [.dd_tmb_build_tmb_data()].
+#' @param start_values Default starting list from [.dd_tmb_default_starts()].
+#' @param tmb_control Merged control list (may carry user `lower`/`upper`).
+#' @param user_specified Character vector of user-set `tmb_control` fields.
+#' @param verbose Integer verbosity level.
+#' @return A list with elements `obj`, `opt`, `nll`, `start_idx`,
+#'   `opt_warnings`.
+#' @keywords internal
+.dd_tmb_multi_start <- function(tmb_data, start_values,
+                                 tmb_control, user_specified, verbose) {
+  is_sltb <- identical(tmb_data$family, 0L)
+
+  # Impose the phi floor as a log_aux lower bound for sltb, unless the user
+  # already supplied a log_aux lower bound (their value wins).
+  if (is_sltb) {
+    user_lower        <- tmb_control$lower
+    has_user_log_aux  <- !is.null(user_lower) &&
+                           "log_aux" %in% names(user_lower)
+    if (!has_user_log_aux) {
+      floor_bound          <- c(log_aux = log(.dd_phi_min))
+      tmb_control$lower    <- c(user_lower, floor_bound)
+    }
+  }
+
+  # 3 starting sets: data-driven (default), low-k, high-k.
+  start_sets      <- vector("list", 3L)
+  start_sets[[1]] <- start_values                    # data-driven
+
+  s2               <- start_values                   # low-k
+  s2$beta_k[1]    <- start_values$beta_k[1] - 1.5
+  s2$log_sigma_u  <- log(0.3)
+  start_sets[[2]] <- s2
+
+  s3               <- start_values                   # high-k
+  s3$beta_k[1]    <- start_values$beta_k[1] + 1.5
+  s3$log_sigma_u  <- log(0.8)
+  start_sets[[3]] <- s3
+
+  # Sanity NaN/blowup guard on the log-k intercept ONLY (no phi rejection: the
+  # log_aux lower bound already prevents the degenerate phi->0 optimum).
+  .is_blowup <- function(opt) {
+    par   <- opt$par
+    beta0 <- par[names(par) == "beta_k"][1]
+    !is.finite(beta0) || abs(beta0) > .dd_beta_k_abs_max
+  }
+
+  best_kept_nll <- Inf
+  best_kept     <- NULL
+  best_any_nll  <- Inf
+  best_any      <- NULL
+
+  for (s in seq_along(start_sets)) {
+    starts_i <- start_sets[[s]]
+
+    result <- tryCatch({
+      obj_i <- TMB::MakeADFun(
+        data       = tmb_data,
+        parameters = starts_i,
+        random     = "u",
+        DLL        = "beezdiscounting",
+        silent     = verbose < 2
+      )
+      opt_res_i <- .dd_tmb_run_optimizer(
+        obj_i, obj_i$par, tmb_control, user_specified, verbose
+      )
+      list(
+        obj         = obj_i,
+        opt         = opt_res_i$opt,
+        nll         = opt_res_i$opt$objective,
+        start_idx   = s,
+        opt_warnings = opt_res_i$warnings
+      )
+    }, error = function(e) {
+      if (verbose >= 2) {
+        message(sprintf("  Start set %d failed: %s", s, e$message))
+      }
+      NULL
+    })
+
+    if (is.null(result) || !is.finite(result$nll)) next
+
+    if (result$nll < best_any_nll) {
+      best_any_nll <- result$nll
+      best_any     <- result
+    }
+    if (!.is_blowup(result$opt) && result$nll < best_kept_nll) {
+      best_kept_nll <- result$nll
+      best_kept     <- result
+    }
+  }
+
+  if (is.null(best_any)) {
+    stop(
+      "All starting value sets failed. ",
+      "Check data quality or try different start values.",
+      call. = FALSE
+    )
+  }
+
+  if (!is.null(best_kept)) {
+    best_result <- best_kept
+  } else {
+    best_result <- best_any
+    warning(
+      "All multi-start fits tripped the beta_k sanity guard ",
+      "(k -> Inf / non-finite intercept); returning the lowest-nll fit. ",
+      "Inspect data for boundary-heavy subjects.",
+      call. = FALSE
+    )
+  }
+
+  if (verbose >= 1) {
+    message(sprintf(
+      "  Multi-start: best NLL = %.2f (start set %d of %d)",
+      best_result$nll, best_result$start_idx, length(start_sets)
+    ))
+  }
+
+  best_result
+}

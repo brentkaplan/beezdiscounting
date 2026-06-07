@@ -169,18 +169,25 @@ ranef.beezdiscounting_tmb <- function(object, ...) {
 
 #' Discounting function value mu = E[y] for a vector of k and x
 #'
-#' Mazur: `mu = 1 / (1 + k * x)`; exponential: `mu = exp(-k * x)`. Guards mu
-#' to `[1e-6, 1 - 1e-6]` to match the C++ template bounds.
+#' Mazur: `mu = 1 / (1 + k * x)`; exponential: `mu = exp(-k * x)`;
+#' Green-Myerson: `mu = (1 + k * x)^(-s)`; Rachlin: `mu = 1 / (1 + k * x^s)`
+#' with `x = 0 -> mu = 1`. Guards mu to `[1e-6, 1 - 1e-6]` to match the C++
+#' template bounds. The two 2-parameter forms reduce to Mazur at `s = 1`.
 #'
 #' @param k Numeric vector of discount rates.
 #' @param x Numeric vector of delays (same length as `k`).
-#' @param equation Character, `"mazur"` or `"exponential"`.
+#' @param equation Character: `"mazur"`, `"exponential"`, `"green-myerson"`,
+#'   or `"rachlin"`.
+#' @param s Numeric nonlinearity exponent (Green-Myerson / Rachlin). Default
+#'   `1` so 1-parameter callers are unchanged.
 #' @return Numeric vector of mu values clamped to `[1e-6, 1-1e-6]`.
 #' @keywords internal
-.dd_discount_mu <- function(k, x, equation) {
+.dd_discount_mu <- function(k, x, equation, s = 1) {
   mu <- switch(equation,
     mazur = 1 / (1 + k * x),
     exponential = exp(-k * x),
+    `green-myerson` = (1 + k * x)^(-s),
+    rachlin = ifelse(x > 0, 1 / (1 + k * x^s), 1),
     stop("unknown equation '", equation, "'", call. = FALSE)
   )
   pmin(pmax(mu, 1e-6), 1 - 1e-6)
@@ -396,8 +403,8 @@ predict.beezdiscounting_tmb <- function(object,
 #' Per-row response SD on the `[0,1]` scale for standardized residuals
 #'
 #' Gaussian: constant `sigma_e = exp(log_sigma_e)`. SLT-beta: the
-#' delta-method SLT SD `s * sqrt(mu * (1 - mu) / (phi + 1))` (the SLT
-#' variance at `s ~ 1`), so residuals near the bounds are down-weighted.
+#' delta-method SLT SD `s_slt * sqrt(mu * (1 - mu) / (phi + 1))` (the SLT
+#' variance at `s_slt ~ 1`), so residuals near the bounds are down-weighted.
 #'
 #' @param object A `beezdiscounting_tmb` fit.
 #' @param mu Numeric vector of fitted mu values (from `.dd_discount_mu`).
@@ -409,12 +416,12 @@ predict.beezdiscounting_tmb <- function(object,
   if (family == "gaussian") {
     return(rep(exp(coefs[["log_sigma_e"]]), length(mu)))
   }
-  # sltb: delta-method SD with s ~ 1 (s is the SLT scale parameter; the MVP
-  # fixes it implicitly at 1).  The SLT variance is s^2 * mu*(1-mu)/(phi+1),
-  # so SD = s * sqrt(mu*(1-mu)/(phi+1)).
-  s   <- 1
+  # sltb: delta-method SD with the SLT-beta scale constant s_slt ~ 1 (fixed at 1
+  # in the MVP), NOT the discounting exponent. The SLT variance is
+  # s_slt^2 * mu*(1-mu)/(phi+1), so SD = s_slt * sqrt(mu*(1-mu)/(phi+1)).
+  s_slt <- 1
   phi <- exp(coefs[["log_phi"]])
-  s * sqrt(mu * (1 - mu) / (phi + 1))
+  s_slt * sqrt(mu * (1 - mu) / (phi + 1))
 }
 
 

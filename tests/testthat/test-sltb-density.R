@@ -120,3 +120,44 @@ describe(".dd_gaussian_logpdf", {
     expect_true(all(is.finite(out)))
   })
 })
+
+describe(".dd_discount_mu (2-parameter equations)", {
+  it("green-myerson reduces to mazur at s = 1", {
+    k <- 0.01; x <- c(0, 7, 30, 180, 365, 730, 2920)
+    expect_equal(
+      .dd_discount_mu(k, x, "green-myerson", s = 1),
+      .dd_discount_mu(k, x, "mazur"),
+      tolerance = 1e-12
+    )
+  })
+
+  it("rachlin reduces to mazur at s = 1", {
+    k <- 0.01; x <- c(0, 7, 30, 180, 365, 730, 2920)
+    expect_equal(
+      .dd_discount_mu(k, x, "rachlin", s = 1),
+      .dd_discount_mu(k, x, "mazur"),
+      tolerance = 1e-12
+    )
+  })
+
+  it("green-myerson uses (1 + k*x)^(-s) (before the [1e-6,1-1e-6] guard)", {
+    k <- 0.02; x <- c(7, 180, 730); s <- 0.6
+    raw <- (1 + k * x)^(-s)
+    expect_equal(.dd_discount_mu(k, x, "green-myerson", s = s),
+                 pmin(pmax(raw, 1e-6), 1 - 1e-6), tolerance = 1e-12)
+  })
+
+  it("rachlin uses 1/(1 + k*x^s) with x = 0 -> mu = 1", {
+    k <- 0.02; x <- c(0, 7, 180, 730); s <- 1.4
+    raw <- ifelse(x > 0, 1 / (1 + k * x^s), 1)
+    expect_equal(.dd_discount_mu(k, x, "rachlin", s = s),
+                 pmin(pmax(raw, 1e-6), 1 - 1e-6), tolerance = 1e-12)
+    # x = 0 row is exactly the guarded upper bound (mu = 1 -> 1 - 1e-6)
+    expect_equal(.dd_discount_mu(k, 0, "rachlin", s = s), 1 - 1e-6,
+                 tolerance = 1e-12)
+  })
+
+  it("still errors on an unknown equation", {
+    expect_error(.dd_discount_mu(0.01, 7, "bogus"), "unknown equation")
+  })
+})

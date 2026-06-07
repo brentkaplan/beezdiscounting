@@ -20,17 +20,19 @@
 #' @param mu Numeric (scalar or vector recycled against `y`); the mean on the
 #'   identity link (a discounting function value).
 #' @param phi Numeric (scalar or vector); SLT-beta precision (> 0).
-#' @param s,l SLT scale/location constants; defaults are the verified values.
+#' @param s_slt,l SLT scale/location constants; defaults are the verified values.
+#'   (`s_slt` was previously named `s`; renamed so `s` denotes the discounting
+#'   exponent package-wide.)
 #' @return Numeric vector of log-density values, the same length as the
 #'   recycled inputs.
 #' @keywords internal
 #' @noRd
-.dd_slt_logpdf <- function(y, mu, phi, s = 1.0000001, l = 1e-8) {
+.dd_slt_logpdf <- function(y, mu, phi, s_slt = 1.0000001, l = 1e-8) {
   a <- mu * phi
   b <- (1 - mu) * phi
   lgamma(a + b) - lgamma(b) - lgamma(a) +
-    (a - 1) * log(y / s + l) + (b - 1) * log(1 - (y / s + l)) -
-    log(s) - log(stats::pbeta(1 / s + l, a, b) - stats::pbeta(l, a, b))
+    (a - 1) * log(y / s_slt + l) + (b - 1) * log(1 - (y / s_slt + l)) -
+    log(s_slt) - log(stats::pbeta(1 / s_slt + l, a, b) - stats::pbeta(l, a, b))
 }
 
 # .dd_gaussian_logpdf(y, mu, sigma_e)

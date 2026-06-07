@@ -632,6 +632,12 @@ get_dd_comparisons <- function(
     # remaining comparison factor; ignore the by-grouping for this case.
     if (length(use_factors) == 1L &&
         identical(sort(use_factors), sort(effective_by))) {
+      cli::cli_inform(c(
+        "i" = "{.arg contrast_by} = {.val {contrast_by}} matches the sole \\
+               comparison factor and was ignored.",
+        " " = "The contrasts are computed over all levels of \\
+               {.val {use_factors}} without by-grouping."
+      ))
       effective_by <- character(0)
     }
   }
@@ -733,10 +739,15 @@ get_dd_comparisons <- function(
 #'
 #' @description
 #' [generics::tidy()] method for \code{beezdiscounting_comparison} objects
-#' (returned by [get_dd_comparisons()]). Produces a flat long tibble with the
-#' same column names and order as the beezdemand \code{beezdemand_comparison}
-#' tidier, so downstream consumers can treat both backends uniformly. The
-#' nested object itself keeps the native dialect (see [get_dd_comparisons()]).
+#' (returned by [get_dd_comparisons()]). Produces a flat long tibble whose
+#' \strong{column names and order} match the beezdemand
+#' \code{beezdemand_comparison} tidier, enabling downstream consumers to bind
+#' rows from both backends into a single frame. Note that the \code{contrast}
+#' label dialect differs: beezdiscounting emits native \code{factor=level}
+#' labels (e.g. \code{"condition=C1 - condition=C2"}), while beezdemand emits
+#' bare level labels (e.g. \code{"C1 - C2"}). Fully uniform emmeans-style
+#' contrast labels across backends are a future cross-backend item.
+#' The nested object keeps the native dialect (see [get_dd_comparisons()]).
 #'
 #' @param x A \code{beezdiscounting_comparison} object.
 #' @param exponentiate Logical. If \code{TRUE}, return base-invariant ratios

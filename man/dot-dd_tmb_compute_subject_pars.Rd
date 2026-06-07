@@ -8,6 +8,8 @@
   coefficients,
   u_hat,
   subject_levels,
+  design_X,
+  subject_id,
   equation,
   family
 )
@@ -20,6 +22,12 @@ and \code{log_phi} or \code{log_sigma_e}).}
 
 \item{subject_levels}{Character vector of subject ids (length n_subjects).}
 
+\item{design_X}{Fixed-effect design matrix (rows aligned with the prepared
+arrays); columns correspond 1:1 with the \code{beta_k} entries.}
+
+\item{subject_id}{Integer 0-indexed subject map (length \code{n_obs}), aligned
+row-for-row with \code{design_X}. Used to locate each subject's first design row.}
+
 \item{equation}{One of "mazur", "exponential" (reserved; k is equation-free).}
 
 \item{family}{One of "sltb", "gaussian".}
@@ -28,21 +36,23 @@ and \code{log_phi} or \code{log_sigma_e}).}
 data.frame(id, u_i, k) — no phi column.
 }
 \description{
-Reconstructs each subject's \code{k_i = exp(beta_k[1] + sigma_u * u_i)} using the
-non-centered predictor that matches the C++ template
-(\code{log_k_i = X.row(i)*beta_k + sigma_u * u(subj,0)}). For the intercept-only
-MVP, \code{Xbeta} equals the intercept for all subjects; subject k differs via
-\code{u_i}. The auxiliary scalar \code{phi} is population-level in the MVP, so it is
-\strong{not} a subject-level parameter and is never returned here (for either
-family).
+Reconstructs each subject's \code{k_i = exp(eta_i)} where
+\code{eta_i = X_i \%*\% beta_k + sigma_u * u_i}, exactly matching the C++ template's
+non-centered predictor (\code{log_k_i = X.row(i)*beta_k + sigma_u * u(subj,0)}).
+\code{X_i} is subject \code{i}'s fixed-effect design ROW. For between-subject
+factors/covariates the design is constant within a subject, so the first
+design-matrix row for each subject is used. This makes per-subject \code{k}
+factor/covariate-correct: subjects in non-reference groups pick up their
+group's \code{beta_k} contribution rather than the reference-group intercept.
+}
+\details{
+The auxiliary scalar \code{phi} is population-level in the MVP, so it is \strong{not}
+a subject-level parameter and is never returned here (for either family).
 }
 \note{
-For factor designs with multiple \code{beta_k} columns, only \code{beta_k[1]}
-(the population intercept) is used when computing per-subject k. Between-
-subject factor contributions to the log-k linear predictor are therefore
-ignored. This is the correct MVP behavior for the intercept-only design
-(single \code{beta_k}), but will under-estimate k for subjects in non-reference
-factor groups in multi-factor designs. Use \code{predict()} for cell-level values
-once factor support is added in a future phase.
+Subject-level \code{k} assumes between-subject predictors: the first design
+row per subject defines that subject's fixed-effect contribution. A
+within-subject-varying covariate would make a single per-subject \code{k}
+ill-defined; in that case the first observed row is used.
 }
 \keyword{internal}

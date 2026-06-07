@@ -282,9 +282,12 @@ calc_aucs <- function(dat) {
 #' construction. Single-level factors contribute no contrasts and are dropped
 #' with a message note.
 #'
-#' @param factors Character vector of factor names (can be `NULL`).
-#' @param factor_interaction Logical. If `TRUE` and two factors are supplied,
-#'   include their interaction (`a * b`); otherwise additive main effects.
+#' @param factors Character vector of factor names (can be `NULL`). Any number
+#'   of factors is supported (all are placed in the design, not just the first
+#'   two).
+#' @param factor_interaction Logical. If `TRUE` and two or more factors are
+#'   supplied, include their full crossing (`a * b * ...`); otherwise additive
+#'   main effects (`a + b + ...`).
 #' @param continuous_covariates Character vector of continuous covariate names.
 #' @param data Optional data frame used to detect/drop single-level factors.
 #' @return A one-sided formula (e.g. `~ grp + age`); `~ 1` when empty.
@@ -321,16 +324,16 @@ build_fixed_rhs <- function(factors = NULL,
     }
   }
 
+  # Place ALL supplied factors in the design (additive `+`, or the full
+  # crossing `*` when factor_interaction = TRUE) regardless of count. The
+  # earlier two-factor cap silently dropped the 3rd+ factor.
   if (!is.null(valid_factors) && length(valid_factors) > 0) {
     if (length(valid_factors) == 1) {
       rhs_parts <- c(rhs_parts, valid_factors[1])
-    } else if (length(valid_factors) >= 2) {
-      if (isTRUE(factor_interaction)) {
-        rhs_parts <- c(rhs_parts,
-          paste0(valid_factors[1], " * ", valid_factors[2]))
-      } else {
-        rhs_parts <- c(rhs_parts, valid_factors[1], valid_factors[2])
-      }
+    } else if (isTRUE(factor_interaction)) {
+      rhs_parts <- c(rhs_parts, paste(valid_factors, collapse = " * "))
+    } else {
+      rhs_parts <- c(rhs_parts, valid_factors)
     }
   }
 

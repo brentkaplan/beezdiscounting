@@ -613,3 +613,47 @@ NULL
     hessian_pd = hessian_pd
   )
 }
+
+
+#' Compute subject-specific discounting parameters
+#'
+#' Reconstructs each subject's `k_i = exp(beta_k[1] + sigma_u * u_i)` using the
+#' non-centered predictor that matches the C++ template
+#' (`log_k_i = X.row(i)*beta_k + sigma_u * u(subj,0)`). For the intercept-only
+#' MVP, `Xbeta` equals the intercept for all subjects; subject k differs via
+#' `u_i`. The auxiliary scalar `phi` is population-level in the MVP, so it is
+#' **not** a subject-level parameter and is never returned here (for either
+#' family).
+#'
+#' @param coefficients Named coefficient vector (with `beta_k`, `log_sigma_u`,
+#'   and `log_phi` or `log_sigma_e`).
+#' @param u_hat Matrix `n_subjects` x 1 of standardized random effects.
+#' @param subject_levels Character vector of subject ids (length n_subjects).
+#' @param equation One of "mazur", "exponential" (reserved; k is equation-free).
+#' @param family One of "sltb", "gaussian".
+#' @return data.frame(id, u_i, k) — no phi column.
+#' @note For factor designs with multiple `beta_k` columns, only `beta_k[1]`
+#'   (the population intercept) is used when computing per-subject k. Between-
+#'   subject factor contributions to the log-k linear predictor are therefore
+#'   ignored. This is the correct MVP behavior for the intercept-only design
+#'   (single `beta_k`), but will under-estimate k for subjects in non-reference
+#'   factor groups in multi-factor designs. Use `predict()` for cell-level values
+#'   once factor support is added in a future phase.
+#' @keywords internal
+.dd_tmb_compute_subject_pars <- function(coefficients, u_hat, subject_levels,
+                                         equation, family) {
+  beta_k <- unname(coefficients[names(coefficients) == "beta_k"])
+  beta0 <- beta_k[1]
+  sigma_u <- exp(unname(coefficients[["log_sigma_u"]]))
+  u_i <- as.numeric(u_hat[, 1L])
+
+  log_k_i <- beta0 + sigma_u * u_i
+  k_i <- exp(log_k_i)
+
+  data.frame(
+    id = subject_levels,
+    u_i = u_i,
+    k = k_i,
+    stringsAsFactors = FALSE
+  )
+}

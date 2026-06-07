@@ -1208,12 +1208,12 @@ This phase builds the compiled heart of the package: the `MixedDiscounting` TMB 
 edits that turn `beezdiscounting` into a compiled package, and the compile gate that
 cross-checks the C++ `-nll` against the R SLT log-density to `1e-8`.
 
-**Prerequisite assumed from an earlier phase:** `R/dd-param-space.R` defines the pure-R SLT
-log-density helper `.dd_slt_logpdf(y, mu, phi, s = 1.0000001, l = 1e-8)` (the verbatim port of
-`slt_logpdf` from `dev/sltb-verification/verify_sltb.R`). The cross-check test in Task T.5
-**uses** that helper as the source of truth. If it is not yet present when this phase runs,
-Task T.5 includes the minimal inline definition needed for the gate (see Step 1 of T.5), but
-the canonical home is `R/dd-param-space.R`.
+**Prerequisite from Phase F:** `R/dd-density.R` (Task F.1) defines the pure-R SLT log-density
+helper `.dd_slt_logpdf(y, mu, phi, s = 1.0000001, l = 1e-8)` (the verbatim port of `slt_logpdf`
+from `dev/sltb-verification/verify_sltb.R`). The cross-check test in Task T.5 sources that
+helper (via `devtools::load_all`) as the single source of truth — there is **no** inline
+fallback and **no** `R/dd-param-space.R` density copy. (`R/dd-param-space.R` holds the
+param-space transforms, not the density.)
 
 ---
 
@@ -7097,13 +7097,13 @@ describe("fit_dd_tmb() ties out to per-subject NLS", {
     # and it is demonstrably BELOW the arithmetic mean by ~ exp(sigma^2/2):
     # with sigma_u = 0.6, exp(sigma^2/2) = exp(0.18) ~ 1.197, so arith > geo.
     expect_gt(arith, geo)
-    sigma_u_hat <- unname(fit$model$coefficients[["sigma_u"]])
+    sigma_u_hat <- unname(exp(fit$model$coefficients[["log_sigma_u"]]))
     expect_lt(abs((arith / geo) - exp(sigma_u_hat^2 / 2)) / exp(sigma_u_hat^2 / 2), 0.35)
   })
 })
 ```
 
-Note: `sigma_u` appears in `fit$model$coefficients` as the ADREPORTed `sigma_u = exp(log_sigma_u)` per the TMB phase. If that phase exposes it only under `fit$model$coefficients[["log_sigma_u"]]`, replace `sigma_u_hat <- ...["sigma_u"]` with `sigma_u_hat <- exp(...[["log_sigma_u"]])`. Reconcile against the TMB phase symbol table; keep exactly one form.
+Note (reconciled): `fit$model$coefficients` stores `log_sigma_u` (optimizer scale); the natural-scale `sigma_u` is ADREPORTed into `fit$variance_components`, not `coefficients`. So the tie-out reads `sigma_u_hat <- exp(coefficients[["log_sigma_u"]])` — the single canonical form. (Same applies anywhere a test needs `sigma_u`.)
 
 - [ ] **Step 2: Run (expect pass once the TMB engine exists; skip without TMB).**
 

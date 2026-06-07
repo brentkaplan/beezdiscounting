@@ -266,3 +266,263 @@ describe("get_dd_param_emms()", {
     expect_equal(emm$std.error, as.numeric(se_expected), tolerance = 1e-10)
   })
 })
+
+# ---------------------------------------------------------------------------
+# E.3 get_dd_comparisons() and E.4 tidy.beezdiscounting_comparison()
+#
+# Contrasts of log k between EMM cells. The discount rate is linear in beta on
+# the natural-log scale (log k = X beta_k); contrasts are REPORTED on the log10
+# scale (estimate = est_log / log(10)) and, optionally, as multiplicative ratios
+# (ratio = exp(est_log)). Every check recomputes the contrast estimate
+# INDEPENDENTLY (beta %*% (model.matrix row_i - row_j)) and never trusts the
+# engine against itself.
+# ---------------------------------------------------------------------------
+
+# Helper: fit a k-condition model and return list(fit, beta, Xc) where Xc is the
+# per-condition design (one row per level), independently rebuilt.
+.dd_cmp_fit <- function(n_conditions, delta_k, seed) {
+  dat <- .simulate_dd_ip_mixed(
+    n_subjects = 30 * n_conditions, family = "gaussian", equation = "mazur",
+    n_conditions = n_conditions, delta_k = delta_k, seed = seed
+  )
+  fit <- fit_dd_tmb(dat, equation = "mazur", family = "gaussian",
+                    factors = "condition", multi_start = FALSE, verbose = 0)
+  beta <- unname(
+    fit$model$coefficients[names(fit$model$coefficients) == "beta_k"]
+  )
+  lv <- levels(fit$data$condition)
+  nd <- data.frame(condition = factor(lv, levels = lv))
+  Xc <- stats::model.matrix(~ condition, data = nd,
+                            contrasts.arg = fit$formula_details$contrasts)
+  Xc <- Xc[, colnames(fit$formula_details$X), drop = FALSE]
+  list(fit = fit, beta = beta, Xc = Xc, levels = lv)
+}
+
+describe("get_dd_comparisons()", {
+
+  it("returns a classed list(k = list(emmeans, contrasts_log10, contrasts_ratio))", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 101)
+    res <- get_dd_comparisons(f$fit)
+    expect_s3_class(res, "beezdiscounting_comparison")
+    expect_named(res, "k")
+    expect_named(res$k, c("emmeans", "contrasts_log10", "contrasts_ratio"))
+    expect_named(
+      res$k$contrasts_log10,
+      c("contrast", "estimate", "std.error", "statistic", "df",
+        "conf.low", "conf.high", "p.value")
+    )
+    expect_named(
+      res$k$contrasts_ratio,
+      c("contrast", "ratio", "conf.low", "conf.high", "p.value")
+    )
+    # Metadata attributes.
+    expect_equal(attr(res, "backend"), "tmb")
+    expect_equal(attr(res, "adjustment_method"), "holm")
+    expect_equal(attr(res, "contrast_type_used"), "pairwise")
+    expect_equal(attr(res, "contrast_by_used"), "NULL")
+  })
+
+  it("pairwise gives choose(n, 2) rows; trt.vs.ctrl gives n - 1", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 102)
+    pw <- get_dd_comparisons(f$fit, contrast_type = "pairwise")
+    tvc <- get_dd_comparisons(f$fit, contrast_type = "trt.vs.ctrl")
+    expect_equal(nrow(pw$k$contrasts_log10), choose(3L, 2L))
+    expect_equal(nrow(tvc$k$contrasts_log10), 3L - 1L)
+    expect_equal(attr(tvc, "contrast_type_used"), "trt.vs.ctrl")
+  })
+
+  it("EMM<->contrast invariance: log10 estimate == (k_log[i] - k_log[j]) / log(10)", {
+    f <- .dd_cmp_fit(3, c(0, 0.6, 1.2), seed = 103)
+    emm <- get_dd_param_emms(f$fit)            # natural-log k_log per cell
+    res <- get_dd_comparisons(f$fit, contrast_type = "pairwise")
+    cl <- res$k$contrasts_log10
+
+    # The pairwise order is utils::combn(n, 2) over the EMM cell order. Rebuild
+    # the same (i, j) index pairs and compare element-by-element.
+    cmb <- utils::combn(nrow(emm), 2L)
+    expected_log10 <- (emm$k_log[cmb[1L, ]] - emm$k_log[cmb[2L, ]]) / log(10)
+    expect_equal(cl$estimate, expected_log10, tolerance = 1e-8)
+  })
+
+  it("recomputes est_log NON-CIRCULARLY from beta %*% (row_i - row_j)", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 104)
+    res <- get_dd_comparisons(f$fit, contrast_type = "pairwise")
+    cl <- res$k$contrasts_log10
+
+    cmb <- utils::combn(nrow(f$Xc), 2L)
+    est_log_truth <- vapply(seq_len(ncol(cmb)), function(k) {
+      dx <- f$Xc[cmb[1L, k], ] - f$Xc[cmb[2L, k], ]
+      sum(dx * f$beta)
+    }, numeric(1))
+    # log10 scale.
+    expect_equal(cl$estimate, est_log_truth / log(10), tolerance = 1e-8)
+    # The ratio block is exp(est_log) on the natural scale.
+    expect_equal(res$k$contrasts_ratio$ratio, exp(est_log_truth),
+                 tolerance = 1e-8)
+  })
+
+  it("non-circular SE: se == sqrt(t(dx) V dx) on the beta_k vcov block", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 105)
+    skip_if(is.null(f$fit$sdr) || is.null(f$fit$sdr$cov.fixed))
+    res <- get_dd_comparisons(f$fit, contrast_type = "pairwise")
+    cl <- res$k$contrasts_log10
+
+    V_full <- as.matrix(f$fit$sdr$cov.fixed)
+    bk <- which(names(f$fit$opt$par) == "beta_k")
+    V <- V_full[bk, bk, drop = FALSE]
+    cmb <- utils::combn(nrow(f$Xc), 2L)
+    se_truth <- vapply(seq_len(ncol(cmb)), function(k) {
+      dx <- f$Xc[cmb[1L, k], ] - f$Xc[cmb[2L, k], ]
+      sqrt(as.numeric(t(dx) %*% V %*% dx))
+    }, numeric(1))
+    # contrasts_log10 SE is se / log(10).
+    expect_equal(cl$std.error, se_truth / log(10), tolerance = 1e-8)
+    # statistic is the z on the natural-log scale (scale-invariant ratio).
+    expect_equal(cl$statistic, (cl$estimate / cl$std.error), tolerance = 1e-10)
+    expect_true(all(is.infinite(cl$df)))
+  })
+
+  it("ratio CI brackets the ratio and back-transforms the log CI", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 106)
+    res <- get_dd_comparisons(f$fit, ci_level = 0.95)
+    cr <- res$k$contrasts_ratio
+    expect_true(all(cr$conf.low <= cr$ratio & cr$ratio <= cr$conf.high))
+    # ratio CI = exp(log10_CI * log(10)) (same Wald quantile, both scales).
+    cl <- res$k$contrasts_log10
+    expect_equal(cr$conf.low, exp(cl$conf.low * log(10)), tolerance = 1e-8)
+    expect_equal(cr$conf.high, exp(cl$conf.high * log(10)), tolerance = 1e-8)
+  })
+
+  it("report_ratios = FALSE omits the contrasts_ratio block", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 107)
+    res <- get_dd_comparisons(f$fit, report_ratios = FALSE)
+    expect_null(res$k$contrasts_ratio)
+    expect_named(res$k, c("emmeans", "contrasts_log10"))
+  })
+
+  it("adjust rejects emmeans-only methods and accepts base-R methods", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 108)
+    expect_error(get_dd_comparisons(f$fit, adjust = "tukey"),
+                 "not a valid p-value adjustment method")
+    expect_error(get_dd_comparisons(f$fit, adjust = "sidak"),
+                 "not a valid p-value adjustment method")
+    # Accepts holm / BH / none.
+    expect_s3_class(get_dd_comparisons(f$fit, adjust = "holm"),
+                    "beezdiscounting_comparison")
+    expect_s3_class(get_dd_comparisons(f$fit, adjust = "BH"),
+                    "beezdiscounting_comparison")
+    none <- get_dd_comparisons(f$fit, adjust = "none")
+    # adjust = "none" leaves raw two-sided z p-values untouched.
+    cl <- none$k$contrasts_log10
+    expect_equal(cl$p.value, 2 * stats::pnorm(-abs(cl$statistic)),
+                 tolerance = 1e-12)
+  })
+
+  it("compare_specs picks the retained factor set; unknown names abort", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 109)
+    res <- get_dd_comparisons(f$fit, compare_specs = ~ condition)
+    expect_equal(nrow(res$k$contrasts_log10), choose(3L, 2L))
+    expect_equal(attr(res, "compare_specs_used"), "~condition")
+    expect_error(get_dd_comparisons(f$fit, compare_specs = ~ nope),
+                 "not in the fit")
+    expect_error(get_dd_comparisons(f$fit, compare_specs = "condition"),
+                 "one-sided formula")
+  })
+
+  it("contrast_by: contrasts restricted per by-cell; p adjusted per cell", {
+    # Build a 2-factor interaction model so within-condition contrasts differ
+    # across by-cells (site). The simulator emits one factor; attach a second
+    # balanced one keyed to subject so it is constant within id.
+    dat <- .simulate_dd_ip_mixed(
+      n_subjects = 120, family = "gaussian", equation = "mazur",
+      n_conditions = 3, delta_k = c(0, 0.5, 1.0), seed = 110
+    )
+    subj <- levels(dat$id)
+    site_lab <- stats::setNames(
+      factor(paste0("S", rep_len(1:2, length(subj))), levels = c("S1", "S2")),
+      subj
+    )
+    dat$site <- site_lab[as.character(dat$id)]
+    fit <- fit_dd_tmb(dat, equation = "mazur", family = "gaussian",
+                      factors = c("condition", "site"),
+                      factor_interaction = TRUE,
+                      multi_start = FALSE, verbose = 0)
+
+    res <- get_dd_comparisons(
+      fit, compare_specs = ~ condition * site,
+      contrast_by = "site", adjust = "holm"
+    )
+    cl <- res$k$contrasts_log10
+    # Within each of 2 sites: choose(3, 2) = 3 condition contrasts => 6 rows.
+    expect_equal(nrow(cl), 2L * choose(3L, 2L))
+    expect_true("site" %in% names(cl))
+    expect_setequal(unique(cl$site), c("S1", "S2"))
+    expect_equal(attr(res, "contrast_by_used"), "site")
+
+    # Per-cell p-adjustment: each site's holm adjustment uses only that site's
+    # 3 raw p-values. Recompute the S1 block's holm-adjusted p independently and
+    # confirm it matches (i.e. S2's p-values did not enter S1's adjustment).
+    s1 <- cl[cl$site == "S1", , drop = FALSE]
+    raw_s1 <- 2 * stats::pnorm(-abs(s1$statistic))
+    expect_equal(s1$p.value, stats::p.adjust(raw_s1, method = "holm"),
+                 tolerance = 1e-12)
+    # And the GLOBAL holm over all 6 would generally differ -> confirms per-cell.
+    raw_all <- 2 * stats::pnorm(-abs(cl$statistic))
+    global_holm <- stats::p.adjust(raw_all, method = "holm")
+    expect_false(isTRUE(all.equal(cl$p.value, global_holm)))
+  })
+})
+
+describe("tidy.beezdiscounting_comparison()", {
+
+  it("returns a flat tibble with the cross-backend contract columns", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 120)
+    res <- get_dd_comparisons(f$fit)
+    td <- generics::tidy(res)
+    expect_s3_class(td, "tbl_df")
+    expect_named(
+      td,
+      c("param", "contrast", "estimate", "std.error", "statistic", "df",
+        "conf.low", "conf.high", "p.value")
+    )
+    expect_true(all(td$param == "k"))
+    expect_equal(nrow(td), choose(3L, 2L))
+    # Flat estimates are the log10 contrasts (default).
+    expect_equal(td$estimate, res$k$contrasts_log10$estimate, tolerance = 1e-12)
+  })
+
+  it("exponentiate = TRUE presents the ratio scale (10^estimate) with NA SE", {
+    f <- .dd_cmp_fit(3, c(0, 0.5, 1.0), seed = 121)
+    res <- get_dd_comparisons(f$fit)
+    td_log <- generics::tidy(res)
+    td_exp <- generics::tidy(res, exponentiate = TRUE)
+    expect_equal(td_exp$estimate, 10^td_log$estimate, tolerance = 1e-12)
+    expect_equal(td_exp$conf.low, 10^td_log$conf.low, tolerance = 1e-12)
+    expect_equal(td_exp$conf.high, 10^td_log$conf.high, tolerance = 1e-12)
+    expect_true(all(is.na(td_exp$std.error)))
+    # 10^log10 == exp(natural-log) == the ratio block.
+    expect_equal(td_exp$estimate, res$k$contrasts_ratio$ratio, tolerance = 1e-8)
+  })
+
+  it("carries by-columns through the flat frame when contrast_by is active", {
+    dat <- .simulate_dd_ip_mixed(
+      n_subjects = 120, family = "gaussian", equation = "mazur",
+      n_conditions = 3, delta_k = c(0, 0.5, 1.0), seed = 122
+    )
+    subj <- levels(dat$id)
+    dat$site <- factor(paste0("S", rep_len(1:2, length(subj))),
+                       levels = c("S1", "S2"))[
+      match(as.character(dat$id), subj)
+    ]
+    fit <- fit_dd_tmb(dat, equation = "mazur", family = "gaussian",
+                      factors = c("condition", "site"),
+                      factor_interaction = TRUE,
+                      multi_start = FALSE, verbose = 0)
+    res <- get_dd_comparisons(fit, compare_specs = ~ condition * site,
+                              contrast_by = "site")
+    td <- generics::tidy(res)
+    expect_true("site" %in% names(td))
+    expect_setequal(unique(td$site), c("S1", "S2"))
+    expect_equal(nrow(td), 2L * choose(3L, 2L))
+  })
+})

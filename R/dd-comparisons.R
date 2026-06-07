@@ -364,3 +364,449 @@ get_dd_param_emms <- function(
     conf.high = exp(cell_est + z * cell_se)
   )
 }
+
+
+#' Factor-level comparisons of the discount rate \code{k}
+#'
+#' @description
+#' Computes factor-level contrasts of the discount rate \code{k} from a fitted
+#' \code{beezdiscounting_tmb} model. \code{k} is linear in the fixed-effect
+#' coefficients on the natural-log scale (\code{log k = X beta_k}), so each
+#' contrast is a linear combination of \code{beta_k} with a Wald standard error
+#' from the \code{beta_k} block of \code{TMB::sdreport()}'s fixed-effect
+#' covariance. Contrasts are \strong{reported on the \code{log10} scale} and,
+#' optionally, as multiplicative ratios (\code{ratio = exp(est_log)}). The
+#' returned container mirrors the beezdemand \code{beezdemand_comparison} shape,
+#' so [tidy.beezdiscounting_comparison()] gives a flat, cross-backend frame.
+#'
+#' @param fit A \code{beezdiscounting_tmb} object.
+#' @param compare_specs Optional one-sided formula naming the factor subset to
+#'   contrast (e.g. \code{~ condition}). Omitted fitted factors are marginalized
+#'   over with equal weights across the full crossing of their levels. If
+#'   \code{NULL} (default), all fitted factors are retained. Unknown names abort.
+#' @param contrast_type Character. \code{"pairwise"} (all \code{choose(n, 2)}
+#'   pairs, factor-level order) or \code{"trt.vs.ctrl"} (each level vs. the
+#'   first/reference level).
+#' @param contrast_by Optional \code{NULL} (default) or character vector of
+#'   factor name(s) within \code{compare_specs} to condition the contrasts on.
+#'   Within each observed combination of by-level(s), pairwise (or
+#'   \code{trt.vs.ctrl}) contrasts are computed over the remaining (non-by)
+#'   factors, with p-value adjustment applied \strong{per by-cell}. A
+#'   \code{contrast_by} factor absent from \code{compare_specs} aborts.
+#' @param adjust Character. P-value adjustment method; must be one of
+#'   \code{stats::p.adjust.methods} (default \code{"holm"}). emmeans-only methods
+#'   such as \code{"tukey"}/\code{"sidak"} are rejected (the TMB backend uses an
+#'   asymptotic \emph{z} + \code{stats::p.adjust()}).
+#' @param at Named list specifying factor levels and/or continuous-covariate
+#'   values to condition on, as in [get_dd_param_emms()].
+#' @param ci_level Numeric. Confidence level for intervals (default 0.95).
+#' @param report_ratios Logical. If \code{TRUE} (default), include a
+#'   \code{contrasts_ratio} block (multiplicative ratios).
+#' @param ... Additional arguments (reserved; \code{factors_in_emm} is accepted
+#'   as a lower-level alternative to \code{compare_specs}).
+#'
+#' @return A \code{beezdiscounting_comparison} object: a list with a single
+#'   element \code{k}, itself a list with \code{emmeans} (the EMM tibble from
+#'   [get_dd_param_emms()]), \code{contrasts_log10} (columns \code{contrast},
+#'   \code{estimate}, \code{std.error}, \code{statistic}, \code{df},
+#'   \code{conf.low}, \code{conf.high}, \code{p.value}), and (if
+#'   \code{report_ratios}) \code{contrasts_ratio} (columns \code{contrast},
+#'   \code{ratio}, \code{conf.low}, \code{conf.high}, \code{p.value}). When
+#'   \code{contrast_by} is active, the contrast tables gain leading by-column(s)
+#'   before \code{contrast}. Attributes \code{backend}, \code{adjustment_method},
+#'   \code{compare_specs_used}, \code{contrast_type_used}, and
+#'   \code{contrast_by_used} describe the call.
+#'
+#' @seealso [tidy.beezdiscounting_comparison()] for the cross-backend frame.
+#'
+#' @export
+get_dd_comparisons <- function(
+  fit,
+  compare_specs = NULL,
+  contrast_type = c("pairwise", "trt.vs.ctrl"),
+  contrast_by = NULL,
+  adjust = "holm",
+  at = NULL,
+  ci_level = 0.95,
+  report_ratios = TRUE,
+  ...
+) {
+  contrast_type <- match.arg(contrast_type)
+
+  fitted_factors <- fit$param_info$factors %||% character(0)
+  fitted_factors <- fitted_factors[nzchar(fitted_factors) & !is.na(fitted_factors)]
+
+  # adjust: validate against the base-R set. emmeans-only methods
+  # (tukey/sidak/scheffe/mvt) are not implementable with stats::p.adjust().
+  if (!isTRUE(adjust %in% stats::p.adjust.methods)) {
+    cli::cli_abort(c(
+      "{.arg adjust} = {.val {adjust}} is not a valid p-value adjustment method.",
+      "i" = "Valid methods: {.val {stats::p.adjust.methods}}.",
+      "x" = "emmeans-only methods (e.g. {.val tukey}, {.val sidak}) are \\
+             unavailable on the TMB backend (asymptotic z + \\
+             {.fn stats::p.adjust})."
+    ))
+  }
+
+  # Resolve the retained factor set: `compare_specs` (canonical) wins, else the
+  # lower-level `factors_in_emm` via `...` (backward compatible).
+  dots <- list(...)
+  factors_in_emm <- NULL
+  if (!is.null(compare_specs)) {
+    if (!inherits(compare_specs, "formula")) {
+      cli::cli_abort("{.arg compare_specs} must be a one-sided formula (e.g. {.code ~ condition}).")
+    }
+    factors_in_emm <- all.vars(compare_specs)
+    bad <- setdiff(factors_in_emm, fitted_factors)
+    if (length(bad) > 0L) {
+      cli::cli_abort(c(
+        "{.arg compare_specs} names factor{?s} not in the fit: {.val {bad}}.",
+        "i" = "Fitted factors: {.val {fitted_factors}}."
+      ))
+    }
+  } else if (!is.null(dots$factors_in_emm)) {
+    factors_in_emm <- dots$factors_in_emm
+  }
+
+  # contrast_by: NULL or character(1+). Boundary validation (loud) catches typos
+  # against the fitted factor set; resolution against `compare_specs` happens in
+  # the worker (single-parameter model: no collapse aliasing).
+  if (!is.null(contrast_by)) {
+    if (!is.character(contrast_by)) {
+      cli::cli_abort(
+        "{.arg contrast_by} must be {.code NULL} or a character vector of \\
+         factor name(s)."
+      )
+    }
+    if (length(contrast_by) == 0L) {
+      contrast_by <- NULL
+    } else {
+      bad_by <- setdiff(contrast_by, fitted_factors)
+      if (length(bad_by) > 0L) {
+        cli::cli_abort(c(
+          "{.arg contrast_by} names factor{?s} not in the fit: {.val {bad_by}}.",
+          "i" = "Fitted factors: {.val {fitted_factors}}."
+        ))
+      }
+    }
+  }
+
+  # Validate `at` once at the public boundary (single multi-value warning).
+  .dd_validate_at(fit, at)
+
+  block <- .dd_compare_k(
+    fit, factors_in_emm, contrast_type, adjust, at, ci_level,
+    report_ratios, contrast_by
+  )
+
+  results_list <- list(k = block)
+  class(results_list) <- "beezdiscounting_comparison"
+  attr(results_list, "backend") <- "tmb"
+  attr(results_list, "adjustment_method") <- adjust
+  attr(results_list, "compare_specs_used") <- if (is.null(compare_specs)) {
+    "all fitted factors"
+  } else {
+    deparse(compare_specs)
+  }
+  attr(results_list, "contrast_type_used") <- contrast_type
+  # Record the user-requested name(s) only when by-grouping was actually applied
+  # (otherwise "NULL" so the flattener/print do not synthesize an all-NA col).
+  by_applied <- isTRUE(attr(block, "by_applied"))
+  attr(results_list, "contrast_by_used") <- if (is.null(contrast_by) || !by_applied) {
+    "NULL"
+  } else {
+    paste(contrast_by, collapse = ", ")
+  }
+  attr(results_list$k, "by_applied") <- NULL
+  results_list
+}
+
+# Build the single-parameter (k) comparison block for the TMB discounting
+# backend. Returns list(emmeans, contrasts_log10[, contrasts_ratio]); carries a
+# `by_applied` attribute so the public function can decide whether to surface
+# the `contrast_by_used` metadata. The discount rate is linear in beta_k on the
+# natural-log scale; contrasts are reported on the log10 scale and (optionally)
+# as multiplicative ratios on the natural scale.
+.dd_compare_k <- function(fit, factors_in_emm, contrast_type, adjust, at,
+                          ci_level, report_ratios, contrast_by = NULL) {
+  coefs <- fit$model$coefficients
+  beta <- unname(coefs[names(coefs) == "beta_k"])
+
+  # beta_k block of the fixed-effect covariance (sdr$cov.fixed), aligned by the
+  # opt$par naming. Falls back to a diagonal of squared SEs if sdreport failed.
+  vcov_mat <- NULL
+  sdr <- fit$sdr
+  if (!is.null(sdr) && !is.null(sdr$cov.fixed)) {
+    full_vcov <- as.matrix(sdr$cov.fixed)
+    par_names <- names(fit$opt$par)
+    target_idx <- which(par_names == "beta_k")
+    if (length(target_idx) == length(beta)) {
+      vcov_mat <- full_vcov[target_idx, target_idx, drop = FALSE]
+    }
+  }
+  if (is.null(vcov_mat)) {
+    se_vals <- fit$model$se[names(coefs) == "beta_k"]
+    vcov_mat <- diag(se_vals^2, nrow = length(se_vals))
+  }
+
+  grid <- .dd_build_emm_ref_grid(
+    fit, at = at, factors_in_emm = factors_in_emm, validate = FALSE
+  )
+  z <- stats::qnorm((1 + ci_level) / 2)
+  ln10 <- log(10)
+
+  # The native EMM block (same tibble get_dd_param_emms returns). `at` was
+  # already validated (and any multi-value warning emitted once) at the public
+  # boundary, so suppress the inner re-validation's duplicate warning.
+  emm_block <- withCallingHandlers(
+    get_dd_param_emms(
+      fit, factors_in_emm = factors_in_emm, at = at, ci_level = ci_level
+    ),
+    warning = function(w) {
+      if (grepl("using first value", conditionMessage(w))) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+
+  empty_log10 <- tibble::tibble(
+    contrast = character(), estimate = numeric(), std.error = numeric(),
+    statistic = numeric(), df = numeric(),
+    conf.low = numeric(), conf.high = numeric(), p.value = numeric()
+  )
+  empty_ratio <- tibble::tibble(
+    contrast = character(), ratio = numeric(),
+    conf.low = numeric(), conf.high = numeric(), p.value = numeric()
+  )
+  finish_empty <- function() {
+    out <- list(emmeans = emm_block, contrasts_log10 = empty_log10)
+    if (report_ratios) out$contrasts_ratio <- empty_ratio
+    attr(out, "by_applied") <- FALSE
+    out
+  }
+
+  # An intercept-only grid (or any single-cell grid) admits no contrasts.
+  if (isTRUE(grid$is_intercept_only) || nrow(emm_block) < 2L) {
+    return(finish_empty())
+  }
+
+  use_factors <- grid$use_factors
+  cov_names <- grid$cov_names
+  level_combos <- grid$level_combos
+  ref_X <- grid$ref_X
+  n <- nrow(ref_X)
+
+  # Cross-backend contrast labels are built from STRUCTURED ref-grid level
+  # values, parametrized by the factor subset used (by-vars are excluded so the
+  # within-cell label matches the `at = `-filtered route).
+  native_label_f <- function(i, fs) {
+    if (length(fs) > 0L) {
+      paste(vapply(fs, function(f)
+        paste0(f, "=", as.character(level_combos[[f]][i])), character(1)),
+        collapse = ", ")
+    } else if (length(cov_names) > 0L) {
+      paste(vapply(cov_names, function(cv)
+        paste0(cv, "=", level_combos[[cv]][i]), character(1)), collapse = ", ")
+    } else {
+      "(Intercept)"
+    }
+  }
+
+  # Resolve contrast_by against this model's retained factor set. Single-
+  # parameter discounting model: no collapse aliasing, so a by-var is either in
+  # `use_factors` or it aborts (it was already validated against the fit's
+  # factors at the public boundary).
+  effective_by <- character(0)
+  if (n >= 2L && !is.null(contrast_by)) {
+    if (!all(contrast_by %in% use_factors)) {
+      not_in <- setdiff(contrast_by, use_factors)
+      cli::cli_abort(c(
+        "{cli::qty(not_in)}{.arg contrast_by} factor{?s} {.val {not_in}} \\
+         {?is/are} not in {.arg compare_specs}.",
+        "i" = "{cli::qty(use_factors)}{.arg compare_specs} factor{?s}: {.val {use_factors}}.",
+        "x" = "Name the by-variable(s) in {.arg compare_specs} to condition contrasts on them."
+      ))
+    }
+    effective_by <- contrast_by
+    # Redundant-by: a length-1 compare_specs equal to the by-set yields no
+    # remaining comparison factor; ignore the by-grouping for this case.
+    if (length(use_factors) == 1L &&
+        identical(sort(use_factors), sort(effective_by))) {
+      effective_by <- character(0)
+    }
+  }
+
+  comparison_factors <- setdiff(use_factors, effective_by)
+
+  # Row blocks: one per observed by-cell (factor-level order preserved from the
+  # ref grid), or a single global block when no by-grouping is active.
+  if (length(effective_by) > 0L) {
+    by_key <- do.call(paste, c(
+      lapply(effective_by, function(f) as.character(level_combos[[f]])),
+      list(sep = "\r")
+    ))
+    blocks <- lapply(unique(by_key), function(k) which(by_key == k))
+  } else {
+    blocks <- list(seq_len(n))
+  }
+
+  # Compute pairwise / trt.vs.ctrl contrasts within one block of grid rows.
+  # p-values are adjusted WITHIN the block (per by-cell).
+  do_block <- function(rows) {
+    m <- length(rows)
+    if (m < 2L) return(NULL)
+    if (contrast_type == "pairwise") {
+      cmb <- utils::combn(m, 2L)
+      lhs <- rows[cmb[1L, ]]
+      rhs <- rows[cmb[2L, ]]
+    } else {
+      lhs <- rows[seq.int(2L, m)]
+      rhs <- rep(rows[1L], m - 1L)
+    }
+    est_log <- numeric(length(lhs))
+    se_log <- numeric(length(lhs))
+    label <- character(length(lhs))
+    for (k in seq_along(lhs)) {
+      dx <- ref_X[lhs[k], ] - ref_X[rhs[k], ]
+      est_log[k] <- sum(dx * beta)
+      se_log[k] <- sqrt(as.numeric(t(dx) %*% vcov_mat %*% dx))
+      label[k] <- paste(native_label_f(lhs[k], comparison_factors), "-",
+                        native_label_f(rhs[k], comparison_factors))
+    }
+    zstat <- est_log / se_log
+    p_adj <- stats::p.adjust(2 * stats::pnorm(-abs(zstat)), method = adjust)
+    est_log10 <- est_log / ln10
+    se_log10 <- se_log / ln10
+    list(
+      log10 = tibble::tibble(
+        contrast = label, estimate = est_log10, std.error = se_log10,
+        statistic = zstat, df = Inf,
+        conf.low = est_log10 - z * se_log10,
+        conf.high = est_log10 + z * se_log10, p.value = p_adj
+      ),
+      ratio = tibble::tibble(
+        contrast = label, ratio = exp(est_log),
+        conf.low = exp(est_log - z * se_log),
+        conf.high = exp(est_log + z * se_log), p.value = p_adj
+      ),
+      first_row = rows[1L]
+    )
+  }
+
+  # Build the by-column tibble for a block (user-requested by names).
+  by_cols_for <- function(first_row, nrows) {
+    if (length(effective_by) == 0L) return(NULL)
+    cols <- lapply(effective_by, function(f) {
+      rep(as.character(level_combos[[f]][first_row]), nrows)
+    })
+    tibble::as_tibble(stats::setNames(cols, effective_by))
+  }
+
+  block_results <- Filter(Negate(is.null), lapply(blocks, do_block))
+
+  if (length(block_results) == 0L) {
+    res <- finish_empty()
+    attr(res, "by_applied") <- length(effective_by) > 0L
+    return(res)
+  }
+
+  log10_parts <- lapply(block_results, function(r) {
+    bc <- by_cols_for(r$first_row, nrow(r$log10))
+    if (is.null(bc)) r$log10 else dplyr::bind_cols(bc, r$log10)
+  })
+  ratio_parts <- lapply(block_results, function(r) {
+    bc <- by_cols_for(r$first_row, nrow(r$ratio))
+    if (is.null(bc)) r$ratio else dplyr::bind_cols(bc, r$ratio)
+  })
+
+  out <- list(
+    emmeans = emm_block,
+    contrasts_log10 = dplyr::bind_rows(log10_parts)
+  )
+  if (report_ratios) out$contrasts_ratio <- dplyr::bind_rows(ratio_parts)
+  attr(out, "by_applied") <- length(effective_by) > 0L
+  out
+}
+
+
+#' Tidy a discounting comparison into a flat contrasts frame
+#'
+#' @description
+#' [generics::tidy()] method for \code{beezdiscounting_comparison} objects
+#' (returned by [get_dd_comparisons()]). Produces a flat long tibble with the
+#' same column names and order as the beezdemand \code{beezdemand_comparison}
+#' tidier, so downstream consumers can treat both backends uniformly. The
+#' nested object itself keeps the native dialect (see [get_dd_comparisons()]).
+#'
+#' @param x A \code{beezdiscounting_comparison} object.
+#' @param exponentiate Logical. If \code{TRUE}, return base-invariant ratios
+#'   (\code{estimate = 10^estimate}, CIs back-transformed); \code{std.error}
+#'   becomes \code{NA} following broom's convention for exponentiated fits.
+#'   Default \code{FALSE} (log10-scale contrasts).
+#' @param ... Unused.
+#'
+#' @return A tibble with columns \code{param}, \code{contrast},
+#'   \code{estimate}, \code{std.error}, \code{statistic}, \code{df},
+#'   \code{conf.low}, \code{conf.high}, \code{p.value} (with leading by-column(s)
+#'   inserted before \code{param} when \code{contrast_by} is active). Estimates
+#'   and CIs are on the log10 scale (or ratios when \code{exponentiate = TRUE}).
+#'   \code{statistic} is an asymptotic \emph{z} (\code{df = Inf}).
+#'
+#' @importFrom generics tidy
+#' @export
+tidy.beezdiscounting_comparison <- function(x, exponentiate = FALSE, ...) {
+  by_used <- attr(x, "contrast_by_used")
+  by_active <- !(is.null(by_used) || length(by_used) == 0L ||
+                   identical(by_used, "") || identical(by_used, "NULL"))
+  by_names <- if (by_active) trimws(strsplit(by_used, ",")[[1]]) else character(0)
+
+  base_cols <- list(
+    param = character(), contrast = character(), estimate = numeric(),
+    std.error = numeric(), statistic = numeric(), df = numeric(),
+    conf.low = numeric(), conf.high = numeric(), p.value = numeric()
+  )
+
+  rows <- lapply(names(x), function(p) {
+    cl <- x[[p]]$contrasts_log10
+    if (is.null(cl) || nrow(cl) == 0L || !("estimate" %in% names(cl))) {
+      return(NULL)
+    }
+    base <- tibble::tibble(
+      param = p, contrast = cl$contrast,
+      estimate = cl$estimate, std.error = cl$std.error,
+      statistic = cl$statistic, df = cl$df,
+      conf.low = cl$conf.low, conf.high = cl$conf.high,
+      p.value = cl$p.value
+    )
+    if (by_active) {
+      by_cols <- lapply(by_names, function(nm) {
+        if (nm %in% names(cl)) as.character(cl[[nm]]) else rep(NA_character_, nrow(cl))
+      })
+      base <- dplyr::bind_cols(
+        tibble::as_tibble(stats::setNames(by_cols, by_names)), base
+      )
+    }
+    base
+  })
+
+  out <- dplyr::bind_rows(rows)
+  if (nrow(out) == 0L) {
+    out <- tibble::as_tibble(base_cols)
+    if (by_active) {
+      by_empty <- stats::setNames(
+        rep(list(character()), length(by_names)), by_names
+      )
+      out <- dplyr::bind_cols(tibble::as_tibble(by_empty), out)
+    }
+  }
+
+  if (isTRUE(exponentiate)) {
+    # Base-invariant ratios; std.error is NA per broom's exponentiated-fit
+    # convention (the delta-method SE does not transform multiplicatively).
+    out$estimate <- 10^out$estimate
+    out$conf.low <- 10^out$conf.low
+    out$conf.high <- 10^out$conf.high
+    out$std.error <- NA_real_
+  }
+  out
+}

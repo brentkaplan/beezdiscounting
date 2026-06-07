@@ -18,6 +18,16 @@ describe(".dd_normalize_re", {
       regexp = "intercept-only|slope|single")
   })
 
+  it("rejects a transformed or non-k LHS; bare symbol k required (B10)", {
+    expect_error(.dd_normalize_re(log(k) ~ 1), "bare symbol|k`")
+    expect_error(.dd_normalize_re(I(k) ~ 1), "bare symbol|k`")
+    expect_error(.dd_normalize_re(phi ~ 1), "bare symbol|k`")
+    expect_error(.dd_normalize_re(k + phi ~ 1), "bare symbol|two-sided|k`")
+    # the bare symbol (including backticked) is accepted
+    expect_silent(.dd_normalize_re(k ~ 1))
+    expect_silent(.dd_normalize_re(`k` ~ 1))
+  })
+
   it("rejects a non-k LHS (phi ~ 1)", {
     expect_error(.dd_normalize_re(phi ~ 1), regexp = "k")
   })

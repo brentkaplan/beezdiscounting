@@ -27,6 +27,19 @@ describe(".dd_validate_ip", {
     expect_equal(res$coercion_info$divided_by, 100)
   })
 
+  it("auto-detects percent when most values are 0 (B9: c(100,0,0,0,0))", {
+    dat <- make_ip(c(100, 0, 0, 0, 0))
+    expect_warning(res <- .dd_validate_ip(dat, "y", "x", "id"), "percent|100")
+    expect_identical(res$coercion_info$scale_detected, "percent")
+    expect_equal(res$data$y, c(1, 0, 0, 0, 0))
+  })
+
+  it("aborts on an ambiguous mix of proportions + out-of-range outliers (B9)", {
+    # one stray 1.51 among valid proportions must NOT silently rescale the column
+    dat <- make_ip(c(0.9, 0.6, 1.51, 0.3, 0.2))
+    expect_error(.dd_validate_ip(dat, "y", "x", "id"), "[Aa]mbiguous")
+  })
+
   it("divides by a supplied larger-later reward (amount) and WARNS", {
     dat <- make_ip(c(900, 600, 300, 100, 0))
     expect_warning(

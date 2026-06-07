@@ -7,7 +7,7 @@
 \method{tidy}{beezdiscounting_tmb}(
   x,
   effects = c("fixed", "ran_pars"),
-  report_space = c("natural", "log10", "internal"),
+  report_space = c("natural", "log10", "internal", "log"),
   ...
 )
 }
@@ -18,8 +18,9 @@
 \code{"ran_pars"} (the RE SD and the auxiliary precision/scale parameter), or
 both (default).}
 
-\item{report_space}{\code{"natural"}, \code{"log10"}, or \code{"internal"} - reporting
-scale for fixed-effect \code{estimate}/\code{std.error}. Default is \code{"natural"}.}
+\item{report_space}{\code{"natural"}, \code{"log10"}, \code{"internal"}, or \code{"log"} -
+reporting scale for fixed-effect \code{estimate}/\code{std.error} (\code{"internal"} and
+\code{"log"} coincide for the log-k \code{beta_k} rows). Default is \code{"natural"}.}
 
 \item{...}{Unused.}
 }

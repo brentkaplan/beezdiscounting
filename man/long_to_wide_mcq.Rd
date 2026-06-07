@@ -11,11 +11,14 @@ long_to_wide_mcq(dat, q_col = "questionid", ans_col = "response")
 
 \item{q_col}{Name of the question column (default is "questionid")}
 
-\item{ans_col}{Name of the answer column (defualt is "response")}
+\item{ans_col}{Name of the answer column (default is "response")}
 }
 \value{
 Wide format data frame
 }
 \description{
 Reshape MCQ data long to wide
+}
+\examples{
+long_to_wide_mcq(mcq27)
 }

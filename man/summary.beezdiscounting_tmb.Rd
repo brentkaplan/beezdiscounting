@@ -4,16 +4,17 @@
 \alias{summary.beezdiscounting_tmb}
 \title{Summarize a TMB mixed-effects discounting fit}
 \usage{
-\method{summary}{beezdiscounting_tmb}(object, report_space = c("natural", "log10", "internal"), ...)
+\method{summary}{beezdiscounting_tmb}(object, report_space = c("natural", "log10", "internal", "log"), ...)
 }
 \arguments{
 \item{object}{A \code{beezdiscounting_tmb} object.}
 
 \item{report_space}{Scale for the fixed-effect (\code{beta_k}) estimates and
 standard errors in the coefficient table: \code{"natural"} (default; \code{k} on
-the natural scale via \code{exp()}), \code{"log10"} (log10-k), or \code{"internal"}
-(log-k, the estimation scale). \code{statistic} and \code{p.value} are always
-computed on the estimation (log-k) scale regardless of \code{report_space}.}
+the natural scale via \code{exp()}), \code{"log10"} (log10-k), \code{"internal"} or
+\code{"log"} (log-k, the estimation scale; the two coincide for \code{beta_k}).
+\code{statistic} and \code{p.value} are always computed on the estimation (log-k)
+scale regardless of \code{report_space}.}
 
 \item{...}{Unused.}
 }

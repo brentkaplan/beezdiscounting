@@ -34,13 +34,16 @@
     )
   }
 
-  lhs_vars <- all.vars(random_effects[[2]])
-  if (!identical(lhs_vars, "k")) {
+  # B10: the LHS must be the BARE symbol `k`. `all.vars()` strips function
+  # wrappers, so a plain `all.vars(lhs) == "k"` check would silently accept
+  # `log(k) ~ 1` / `I(k) ~ 1` as if they were `k ~ 1`. Require the symbol itself.
+  lhs <- random_effects[[2]]
+  if (!is.symbol(lhs) || !identical(lhs, quote(k))) {
     stop(
-      "The random-effects LHS must be exactly `k` (got ",
-      paste(shQuote(lhs_vars), collapse = ", "),
-      "). Subject-random phi and 2-parameter random effects are out of scope ",
-      "in this release.",
+      "The random-effects LHS must be exactly the bare symbol `k` (got `",
+      deparse1(lhs),
+      "`). Transforms of `k` (e.g. `log(k)`), subject-random phi, and ",
+      "2-parameter random effects are out of scope in this release.",
       call. = FALSE
     )
   }

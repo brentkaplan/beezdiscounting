@@ -387,13 +387,17 @@ describe("tidy", {
     expect_gt(nrow(td), 0L)
   })
 
-  it("all three report_space values preserve the row count", {
+  it("all four report_space values preserve the row count; log == internal (B11)", {
     fit <- .get_fit_for_methods()
     ni <- nrow(tidy(fit, report_space = "internal"))
-    nn <- nrow(tidy(fit, report_space = "natural"))
-    nl <- nrow(tidy(fit, report_space = "log10"))
-    expect_equal(ni, nn)
-    expect_equal(ni, nl)
+    expect_equal(ni, nrow(tidy(fit, report_space = "natural")))
+    expect_equal(ni, nrow(tidy(fit, report_space = "log10")))
+    expect_equal(ni, nrow(tidy(fit, report_space = "log")))
+    # B11: "log" is now requestable and coincides with "internal" for beta_k
+    tl <- tidy(fit, report_space = "log", effects = "fixed")
+    ti <- tidy(fit, report_space = "internal", effects = "fixed")
+    expect_equal(tl$estimate, ti$estimate)
+    expect_true(all(tl$estimate_scale == "log"))
   })
 })
 

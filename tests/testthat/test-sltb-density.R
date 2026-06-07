@@ -10,7 +10,7 @@ L_REF <- 1e-8
 Zof <- function(mu, phi, s = S_REF, l = L_REF) {
   a <- mu * phi
   b <- (1 - mu) * phi
-  pbeta(1 / s + l, a, b) - pbeta(l, a, b)
+  stats::pbeta(1 / s + l, a, b) - stats::pbeta(l, a, b)
 }
 
 # Exact reference function body from verify_sltb.R (sum of -ll over rows)
@@ -26,7 +26,7 @@ ref_nll_mazur <- function(data, par) {
   l <- 0.00000001
   ll_temp <- lgamma(alpha + beta) - lgamma(beta) - lgamma(alpha) +
     (alpha - 1) * log(ip / s + l) + (beta - 1) * log(1 - (ip / s + l)) -
-    log(s) - log(pbeta(1 / s + l, alpha, beta) - pbeta(l, alpha, beta))
+    log(s) - log(stats::pbeta(1 / s + l, alpha, beta) - stats::pbeta(l, alpha, beta))
   sum(-(ll_temp * ifelse(ip >= 0 & ip <= 1, 1, 0)))
 }
 
@@ -41,7 +41,7 @@ describe(".dd_slt_logpdf", {
       a <- mu * phi
       b <- (1 - mu) * phi
       num <- stats::integrate(
-        function(g) (1 / S_REF) * dbeta(g / S_REF + L_REF, a, b),
+        function(g) (1 / S_REF) * stats::dbeta(g / S_REF + L_REF, a, b),
         0, 1, rel.tol = 1e-10, subdivisions = 1000L
       )$value
       abs(num - Zof(mu, phi))
@@ -75,7 +75,7 @@ describe(".dd_slt_logpdf", {
     beta_lim_err <- mapply(function(mu, phi) {
       ips <- c(0.1, 0.3, 0.5, 0.7, 0.9)
       max(abs(exp(.dd_slt_logpdf(ips, mu, phi)) -
-        dbeta(ips, mu * phi, (1 - mu) * phi) / Zof(mu, phi)))
+        stats::dbeta(ips, mu * phi, (1 - mu) * phi) / Zof(mu, phi)))
     }, grid$mu, grid$phi)
     expect_lt(max(beta_lim_err), 1e-3)
   })

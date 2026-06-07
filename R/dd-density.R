@@ -30,13 +30,14 @@
   b <- (1 - mu) * phi
   lgamma(a + b) - lgamma(b) - lgamma(a) +
     (a - 1) * log(y / s + l) + (b - 1) * log(1 - (y / s + l)) -
-    log(s) - log(pbeta(1 / s + l, a, b) - pbeta(l, a, b))
+    log(s) - log(stats::pbeta(1 / s + l, a, b) - stats::pbeta(l, a, b))
 }
 
-#' @rdname dot-dd_slt_logpdf
-#' @param sigma_e Numeric (> 0); Gaussian residual standard deviation.
-#' @keywords internal
-#' @noRd
+# .dd_gaussian_logpdf(y, mu, sigma_e)
+# Internal Gaussian log-density (not exported; no Rd generated).
+# y       - Numeric vector of observed indifference proportions.
+# mu      - Numeric (scalar or vector); predicted mean on the identity link.
+# sigma_e - Numeric (> 0); Gaussian residual standard deviation.
 .dd_gaussian_logpdf <- function(y, mu, sigma_e) {
   stats::dnorm(y, mean = mu, sd = sigma_e, log = TRUE)
 }

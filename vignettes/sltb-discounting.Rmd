@@ -23,17 +23,17 @@ the smaller-sooner amount that feels equivalent to the later reward, expressed a
 *proportion of that later reward*. By construction an IP lives on the closed interval
 $[0, 1]$:
 
-- $y = 1$ — the person is indifferent only when the immediate amount equals the full later
-  reward: **no discounting**.
-- $y = 0$ — any immediate amount, however small, is preferred: **complete discounting**.
+- $y = 1$: the person is indifferent only when the immediate amount equals the full later
+  reward (**no discounting**).
+- $y = 0$: any immediate amount, however small, is preferred (**complete discounting**).
 
 Real data pile up at both ends. In the Jarvis et al. (2019) data shipped with this package
 (`data(jarvis2019)`), a meaningful fraction of observations sit *exactly* at 0 or 1. That
 single fact rules out the two error distributions people reach for first:
 
 - **Gaussian / nonlinear least squares** treats residuals as unbounded and homoscedastic.
-  It will happily predict an IP below 0 or above 1, and it assumes the noise is the same
-  size near the bounds as in the middle — which is never true for a proportion.
+  It can predict an IP below 0 or above 1, and it assumes the noise is the same size near the
+  bounds as in the middle, which is never true for a proportion.
 - **Standard beta regression** is the natural model for a proportion, but its density is
   *undefined* at exactly 0 and 1 (the log-likelihood is $-\infty$). Every boundary
   observation has to be discarded or nudged, which biases the fit.
@@ -44,9 +44,9 @@ assigns *finite probability* to the endpoints, so 0 and 1 are modeled rather tha
 
 ## What the SLT-beta density is
 
-Write the mean of the IP at delay $D$ as a discounting function of a single rate $k$ —
-Mazur's hyperbola $\mu = 1/(1 + kD)$ or the exponential $\mu = e^{-kD}$ — and let $\phi$
-be a precision parameter (larger $\phi$ = tighter spread around the curve). With shape
+Write the mean of the IP at delay $D$ as a discounting function of a single rate $k$, using
+either Mazur's hyperbola $\mu = 1/(1 + kD)$ or the exponential $\mu = e^{-kD}$, and let $\phi$
+be a precision parameter (larger $\phi$ gives a tighter spread around the curve). With shape
 parameters $a = \mu\phi$ and $b = (1-\mu)\phi$, and two *fixed* micro-constants
 $s = 1{+}10^{-7}$ and $l = 10^{-8}$, the log-density of an observed IP $y \in [0,1]$ is
 
@@ -63,8 +63,8 @@ where the truncation normalizer is $Z = \mathrm{pbeta}(\tfrac{1}{s}{+}l,\,a,\,b)
 \mathrm{pbeta}(l,\,a,\,b)$.
 
 The intuition is a *microscopic stretch*: the data window $y\in[0,1]$ is mapped just inside
-the open interval where the ordinary beta density is finite, so the kernel is never evaluated
-at exactly 0 or 1. As $s\to 1$ and $l\to 0$ the SLT-beta collapses to the ordinary beta.
+the open interval where the ordinary beta density is finite; the kernel is therefore never
+evaluated at exactly 0 or 1. As $s\to 1$ and $l\to 0$ the SLT-beta collapses to the ordinary beta.
 
 ```{r density, fig.cap = "SLT-beta (solid) vs. ordinary beta (dashed). The SLT-beta carries finite density to y = 0 and y = 1; the ordinary beta diverges or vanishes there."}
 slt_logpdf <- function(y, mu, phi, s = 1.0000001, l = 1e-8) {
@@ -86,7 +86,7 @@ par(op)
 ```
 
 Because the variance of a beta is $\mu(1-\mu)/(\phi+1)$, the SLT-beta automatically gives
-**less** noise near the floor and ceiling and **more** in the middle — the heteroscedastic
+**less** noise near the floor and ceiling and **more** in the middle: the heteroscedastic
 pattern real IP data actually show, and exactly what a Gaussian model gets wrong.
 
 ## The boundary problem, on real data
@@ -119,8 +119,8 @@ data.frame(
 ```
 
 Every subject with a boundary value is lost to ordinary beta regression and retained by the
-SLT-beta. Fitting each subject individually — estimating $\log k$ and $\log\phi$ so both
-stay positive — and comparing the recovered rate to nonlinear least squares confirms the
+SLT-beta. Fitting each subject individually (estimating $\log k$ and $\log\phi$ so that both
+stay positive) and comparing the recovered rate to nonlinear least squares confirms that the
 SLT-beta agrees with NLS on the bulk of subjects *and* succeeds on the boundary subjects
 that NLS-plus-beta could not model:
 
@@ -149,7 +149,7 @@ sprintf("cor(log k): SLT vs NLS = %.3f   |   median k: SLT = %.4f, NLS = %.4f",
 ```
 
 A caveat the next section resolves: fit *one subject at a time* and the SLT-beta likelihood
-can occasionally run off to a degenerate solution — for a person whose indifference points are
+can occasionally run off to a degenerate solution. For a person whose indifference points are
 almost all 0s and 1s, a fit with near-zero precision that places all its mass on the endpoints
 can score a higher likelihood than any sensible discounting curve. The fix is not to fit
 people in isolation.
@@ -157,9 +157,9 @@ people in isolation.
 ## Fitting the mixed-effects model
 
 A mixed-effects model shares information across people. The subject random intercept on
-$\log k$ acts as a prior that pulls each person's estimate toward the population, so the
-degenerate per-subject solutions described above are regularized away — one of the main
-reasons to prefer `fit_dd_tmb()` over fitting each subject separately.
+$\log k$ acts as a prior that pulls each person's estimate toward the population; the
+degenerate per-subject solutions described above are thus regularized away, which is one of
+the main reasons to prefer `fit_dd_tmb()` over fitting each subject separately.
 
 The following chunks require TMB (a compiled C++ template; `has_tmb = TRUE` on this build):
 

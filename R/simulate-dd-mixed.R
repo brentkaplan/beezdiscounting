@@ -4,16 +4,17 @@
 #' discounting model used by [fit_dd_tmb()]. Each subject `i` has a random
 #' discount rate `log k_i = log_k_pop + delta_k[condition] + u_i`,
 #' `u_i ~ N(0, sigma_u^2)`. The mean indifference proportion at delay `x` is the
-#' discounting function `mu` (Mazur hyperbola or exponential), and observed `y`
+#' discounting function `mu` (Mazur hyperbola, exponential, Green-Myerson, or
+#' Rachlin), and observed `y`
 #' is drawn from the scale-location-truncated beta (`family = "sltb"`) via the
 #' inverse-CDF on the truncated beta, or from a clamped Gaussian
 #' (`family = "gaussian"`).
 #'
 #' The SLT draw uses the same constants as the C++ template and the verified
-#' reference density: `s = 1.0000001`, `l = 1e-8`, with
+#' reference density: `s_slt = 1.0000001`, `l = 1e-8`, with
 #' `a = mu * phi`, `b = (1 - mu) * phi`, and
-#' `y = (qbeta(U, a, b) - l) * s` where
-#' `U ~ Uniform(pbeta(l, a, b), pbeta(1/s + l, a, b))`.
+#' `y = (qbeta(U, a, b) - l) * s_slt` where
+#' `U ~ Uniform(pbeta(l, a, b), pbeta(1/s_slt + l, a, b))`.
 #'
 #' @param n_subjects Integer; number of subjects.
 #' @param delays Numeric vector of delays (days) each subject is observed at.
@@ -22,7 +23,11 @@
 #' @param phi Numeric; SLT-beta precision (`family = "sltb"`).
 #' @param sigma_e Numeric; residual SD on `y` (`family = "gaussian"`).
 #' @param family One of `"sltb"` (default) or `"gaussian"`.
-#' @param equation One of `"mazur"` (default) or `"exponential"`.
+#' @param equation One of `"mazur"` (default), `"exponential"`,
+#'   `"green-myerson"`, or `"rachlin"`. The two 2-parameter forms use the
+#'   nonlinearity exponent `s` and reduce to `"mazur"` at `s = 1`.
+#' @param s Numeric nonlinearity exponent for the 2-parameter equations
+#'   (Green-Myerson / Rachlin); ignored by `"mazur"` / `"exponential"`.
 #' @param n_conditions Integer; number of between-subject condition levels. When
 #'   `> 1`, a `condition` factor is added and subjects are split across levels.
 #' @param delta_k Numeric vector of length `n_conditions`; per-condition shift on
@@ -55,7 +60,8 @@ simulate_dd_ip <- function(
   phi = 10,
   sigma_e = 0.1,
   family = c("sltb", "gaussian"),
-  equation = c("mazur", "exponential"),
+  equation = c("mazur", "exponential", "green-myerson", "rachlin"),
+  s = 1,
   n_conditions = 1,
   delta_k = NULL,
   seed = NULL
@@ -89,11 +95,12 @@ simulate_dd_ip <- function(
   x <- rep(delays, times = n_subjects)
   k_long <- rep(k, each = n_delays)
 
-  mu <- if (equation == "mazur") {
-    1 / (1 + k_long * x)
-  } else {
-    exp(-k_long * x)
-  }
+  mu <- switch(equation,
+    mazur = 1 / (1 + k_long * x),
+    exponential = exp(-k_long * x),
+    `green-myerson` = (1 + k_long * x)^(-s),
+    rachlin = ifelse(x > 0, 1 / (1 + k_long * x^s), 1)
+  )
   mu <- pmin(pmax(mu, 1e-6), 1 - 1e-6)
 
   if (family == "sltb") {

@@ -86,6 +86,18 @@
         call. = FALSE
       )
     }
+    # B6: reserve the canonical output names. An extra column literally named
+    # id/x/y (only reachable when the role var was remapped, e.g. id_var = "pid")
+    # would otherwise overwrite the canonical column in the retain loop below.
+    reserved_collide <- intersect(extra_cols, c("id", "x", "y"))
+    if (length(reserved_collide) > 0L) {
+      stop(
+        "Factor/covariate column(s) collide with the reserved canonical names ",
+        "id/x/y: ", paste(shQuote(reserved_collide), collapse = ", "),
+        ". Rename them (id/x/y are reserved for subject/delay/response).",
+        call. = FALSE
+      )
+    }
   }
 
   # --- NA check on original y BEFORE any coercion ----------------------------

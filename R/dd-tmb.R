@@ -398,10 +398,27 @@ NULL
 # tmb_control$lower$log_aux; the user value then wins.
 .dd_phi_min <- 0.1
 
-# Sanity NaN/blowup guard on the log-k intercept ONLY (not a phi rejection).
-# A fit where |beta_k[1]| > 20 implies k outside [exp(-20), exp(20)] ~ [2e-9, 5e8],
-# which is numerically nonsensical for any discounting experiment.
+# Sanity NaN/blowup guard. A fitted |log k| > 20 implies k outside
+# [exp(-20), exp(20)] ~ [2e-9, 5e8], numerically nonsensical for any discounting
+# experiment.
 .dd_beta_k_abs_max <- 20
+
+
+# B7: blow-up predicate on the FULL fitted log-k linear predictor
+# (eta_i = X.row(i) %*% beta_k), not just the intercept -- a degenerate
+# non-reference level / interaction / covariate slope can push some subject's
+# log k past the bound while beta_k[1] stays sane. Returns TRUE on a beta/X shape
+# mismatch, non-finite beta or eta, or max |eta| over the bound.
+.dd_logk_blowup <- function(opt, design_X, max_abs = .dd_beta_k_abs_max) {
+  par  <- opt$par
+  beta <- unname(par[names(par) == "beta_k"])
+  x_mat <- as.matrix(design_X)
+  if (length(beta) != ncol(x_mat)) return(TRUE)
+  if (any(!is.finite(beta))) return(TRUE)
+  eta <- as.numeric(x_mat %*% beta)
+  if (any(!is.finite(eta))) return(TRUE)
+  max(abs(eta)) > max_abs
+}
 
 
 #' Impose the SLT-beta phi floor as a log_aux lower bound
@@ -477,13 +494,10 @@ NULL
   s3$log_sigma_u  <- log(0.8)
   start_sets[[3]] <- s3
 
-  # Sanity NaN/blowup guard on the log-k intercept ONLY (no phi rejection: the
-  # log_aux lower bound already prevents the degenerate phi->0 optimum).
-  .is_blowup <- function(opt) {
-    par   <- opt$par
-    beta0 <- par[names(par) == "beta_k"][1]
-    !is.finite(beta0) || abs(beta0) > .dd_beta_k_abs_max
-  }
+  # Sanity NaN/blowup guard on the FULL fitted log-k predictor (B7) -- no phi
+  # rejection (the log_aux lower bound already prevents the degenerate phi->0
+  # optimum).
+  .is_blowup <- function(opt) .dd_logk_blowup(opt, tmb_data$X)
 
   best_kept_nll <- Inf
   best_kept     <- NULL
@@ -713,6 +727,47 @@ NULL
 }
 
 
+#' Warn when a declared predictor is not constant within a subject (B4)
+#'
+#' `fit_dd_tmb()` treats factors/covariates as BETWEEN-subject, and
+#' `.dd_tmb_compute_subject_pars()` reconstructs each subject's `k` from that
+#' subject's FIRST design row. A predictor that varies within a subject still
+#' yields a valid row-varying fit, but the per-subject `k` / `ranef()` summary is
+#' then approximate, so this warns (it does not abort) naming the offending
+#' column(s). Numeric columns use a tolerance so floating noise does not warn.
+#'
+#' @param data The single complete-cased model frame (canonical `id`/`x`/`y` plus
+#'   any retained factor/covariate columns).
+#' @param extra_cols Character vector of declared factor/covariate column names.
+#' @param id_col Subject id column (canonical `"id"`).
+#' @param tol Numeric tolerance for "constant within id" on numeric columns.
+#' @return Invisibly, the character vector of within-subject-varying columns.
+#' @keywords internal
+#' @noRd
+.dd_check_between_subject <- function(data, extra_cols, id_col = "id",
+                                      tol = 1e-8) {
+  varying <- character(0)
+  for (col in intersect(unique(extra_cols), names(data))) {
+    not_const <- tapply(data[[col]], data[[id_col]], function(v) {
+      v <- v[!is.na(v)]
+      if (length(v) <= 1L) return(FALSE)
+      if (is.numeric(v)) (max(v) - min(v)) > tol else length(unique(v)) > 1L
+    })
+    if (any(not_const, na.rm = TRUE)) varying <- c(varying, col)
+  }
+  if (length(varying) > 0L) {
+    cli::cli_warn(c(
+      "!" = "{cli::qty(varying)}Predictor{?s} {.val {varying}} {?is/are} not \\
+             constant within {.field {id_col}}.",
+      "i" = "{.fn fit_dd_tmb} treats predictors as between-subject; subject-level \\
+             {.code k} / {.fn ranef} use each subject's FIRST design row, so they \\
+             are approximate for within-subject-varying predictors."
+    ))
+  }
+  invisible(varying)
+}
+
+
 # ==============================================================================
 # P.8  Public entry point: fit_dd_tmb()
 # ==============================================================================
@@ -800,6 +855,19 @@ fit_dd_tmb <- function(data,
   # them ONCE, and the design + TMB arrays are derived from that single frame.
   extra_cols <- unique(c(factors, continuous_covariates))
 
+  # B5/B6: declared predictors must not BE the id/delay/response columns -- e.g.
+  # factors = "x" would otherwise coerce the delay to a factor below.
+  # (.dd_validate_ip separately reserves the canonical id/x/y output names for
+  # the remapped-role case.)
+  role_collision <- intersect(extra_cols, c(id_var, x_var, y_var))
+  if (length(role_collision) > 0L) {
+    cli::cli_abort(c(
+      "{.arg factors}/{.arg continuous_covariates} cannot be the id, delay, or \\
+       response column{?s}: {.val {role_collision}}.",
+      "i" = "These name the subject/delay/response, not between-subject predictors."
+    ))
+  }
+
   # 1. Validate + coerce/clamp (warns; errors on missing/NA y). Retains the
   #    factor/covariate columns alongside canonical id/x/y.
   validated <- .dd_validate_ip(data, y_var = y_var, x_var = x_var,
@@ -818,6 +886,33 @@ fit_dd_tmb <- function(data,
   #    frame (id/x/y + retained extras) that everything else derives from.
   prepared <- .dd_tmb_prepare_data(long, y_var = "y", x_var = "x",
                                    id_var = "id", extra_cols = extra_cols)
+
+  # 3b. B5: coerce declared factors to factor (a numeric column passed as a
+  #     factor would otherwise fit as a single continuous slope, not level
+  #     dummies), and require continuous covariates to be numeric AND finite
+  #     (Inf survives the complete-case filter). Operate on prepared$data so the
+  #     design and the stored fit$data share the coerced types.
+  for (f in factors) {
+    if (f %in% names(prepared$data) && !is.factor(prepared$data[[f]])) {
+      prepared$data[[f]] <- as.factor(prepared$data[[f]])
+    }
+  }
+  for (cv in continuous_covariates) {
+    if (cv %in% names(prepared$data)) {
+      v <- prepared$data[[cv]]
+      if (!is.numeric(v) || any(!is.finite(v))) {
+        cli::cli_abort(c(
+          "Continuous covariate {.val {cv}} must be numeric and finite.",
+          "i" = "Found {.val {if (!is.numeric(v)) class(v)[1] else 'non-finite value(s)'}}."
+        ))
+      }
+    }
+  }
+
+  # 3c. B4: between-subject contract. A predictor that varies WITHIN a subject
+  #     still fits (row-varying GLM) but makes subject_pars$k / ranef() reflect
+  #     only the first design row, so warn (not abort) naming the column(s).
+  .dd_check_between_subject(prepared$data, extra_cols)
 
   # 4. Fixed-effect design for log k, built on the SAME filtered frame
   #    (prepared$data) so X's rows align 1:1 with the prepared y/x/subject_id.
@@ -873,6 +968,16 @@ fit_dd_tmb <- function(data,
                                      user_specified, verbose)
     opt <- opt_res$opt
     opt_warnings <- opt_res$warnings
+    # B7: the single-start path has no multi-start selection guard, so warn if the
+    # fitted log-k predictor blew up (k -> Inf / non-finite).
+    if (.dd_logk_blowup(opt, tmb_data$X)) {
+      warning(
+        "The fitted log-k linear predictor exceeds the sanity bound ",
+        "(k -> Inf / non-finite); inspect data for boundary-heavy subjects or ",
+        "degenerate cells.",
+        call. = FALSE
+      )
+    }
   }
 
   converged <- isTRUE(opt$convergence == 0)

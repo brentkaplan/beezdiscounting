@@ -209,6 +209,20 @@ ranef.beezdiscounting_tmb <- function(object, ...) {
   coefs  <- object$model$coefficients
   beta_k <- unname(coefs[names(coefs) == "beta_k"])
 
+  # B8: require every design predictor (factors + covariates) in newdata BEFORE
+  # model.matrix, so an omitted column errors cleanly rather than via an opaque
+  # model.matrix failure. (The id column is required only on the subject path
+  # below; level = "population" needs no id.)
+  needed <- c(pinfo$factors, pinfo$continuous_covariates)
+  needed <- needed[nzchar(needed) & !is.na(needed)]
+  missing_pred <- setdiff(needed, names(newdata))
+  if (length(missing_pred) > 0L) {
+    cli::cli_abort(c(
+      "{.arg newdata} is missing predictor column{?s}: {.val {missing_pred}}.",
+      "i" = "Provide every factor/covariate used in the fit: {.val {needed}}."
+    ))
+  }
+
   # Rebuild the newdata design through the SAME route as the fit: the stored
   # one-sided rhs formula + stored per-factor contrasts (R2 fix).  Passing
   # contrasts.arg pins the contrast coding so the columns match the fit; we do

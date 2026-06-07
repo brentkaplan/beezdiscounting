@@ -674,3 +674,284 @@ glance.beezdiscounting_tmb <- function(x, ...) {
     BIC              = x$BIC
   )
 }
+
+
+# --- confint ---
+
+#' Confidence intervals for a TMB discounting model
+#'
+#' Wald (Hessian-based) confidence intervals: `estimate ± z * se` on the
+#' internal (log-k) scale, then back-transformed to `report_space`.
+#'
+#' @param object A `beezdiscounting_tmb` object.
+#' @param parm Optional character vector for filtering. Accepts display names
+#'   (`"k:(Intercept)"`) **or** raw optimizer names (`"beta_k"`,
+#'   `"log_sigma_u"`, `"log_phi"`, `"log_sigma_e"`). `NULL` returns all
+#'   coefficients.
+#' @param level Confidence level (default `0.95`).
+#' @param report_space `"internal"` (default; all coefficients on their
+#'   estimation/log scale) or `"natural"` (exponentiate `beta_k` rows so the
+#'   intercept is `k` at the reference level and non-intercept terms are
+#'   multiplicative fold-changes; variance/aux params stay on their internal
+#'   scale).
+#' @param ... Unused.
+#' @return A tibble with columns `term`, `estimate`, `conf.low`, `conf.high`,
+#'   `level`.
+#'
+#' @examples
+#' \donttest{
+#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb",
+#'                   random_effects = k ~ 1, verbose = 0)
+#' confint(fit)
+#' confint(fit, parm = "k:(Intercept)", report_space = "natural")
+#' }
+#'
+#' @exportS3Method stats::confint beezdiscounting_tmb
+confint.beezdiscounting_tmb <- function(object,
+                                        parm         = NULL,
+                                        level        = 0.95,
+                                        report_space = c("internal", "natural"),
+                                        ...) {
+  report_space <- match.arg(report_space)
+  coefs  <- object$model$coefficients
+  se_vec <- .dd_tmb_model_se(object)
+  nms    <- names(coefs)
+  tn     <- .dd_tmb_build_term_names(object, nms)
+  term   <- tn$term
+
+  # Filter by display name OR raw name (dual-name matching).
+  if (!is.null(parm)) {
+    keep   <- term %in% parm | nms %in% parm
+    coefs  <- coefs[keep]
+    se_vec <- se_vec[keep]
+    nms    <- nms[keep]
+    term   <- term[keep]
+  }
+
+  # Wald intervals on the internal (estimation) scale.
+  z         <- stats::qnorm((1 + level) / 2)
+  estimates <- unname(coefs)
+  conf_low  <- unname(coefs - z * se_vec)
+  conf_high <- unname(coefs + z * se_vec)
+
+  # Back-transform beta_k rows to natural scale if requested.
+  if (report_space == "natural") {
+    k_pos <- which(nms == "beta_k")
+    if (length(k_pos) > 0L) {
+      estimates[k_pos] <- exp(estimates[k_pos])
+      conf_low[k_pos]  <- exp(conf_low[k_pos])
+      conf_high[k_pos] <- exp(conf_high[k_pos])
+    }
+  }
+
+  tibble::tibble(
+    term      = term,
+    estimate  = estimates,
+    conf.low  = conf_low,
+    conf.high = conf_high,
+    level     = level
+  )
+}
+
+
+# --- summary / print ---
+
+#' Summarize a TMB mixed-effects discounting fit
+#'
+#' @param object A `beezdiscounting_tmb` object.
+#' @param report_space Scale for the fixed-effect (`beta_k`) estimates and
+#'   standard errors in the coefficient table: `"natural"` (default; `k` on
+#'   the natural scale via `exp()`), `"log10"` (log10-k), or `"internal"`
+#'   (log-k, the estimation scale). `statistic` and `p.value` are always
+#'   computed on the estimation (log-k) scale regardless of `report_space`.
+#' @param ... Unused.
+#' @return An object of class `"summary.beezdiscounting_tmb"` with components:
+#'   `call`, `model_class`, `backend`, `equation`, `family`, `coefficients`,
+#'   `variance_components`, `n_subjects`, `nobs`, `converged`, `logLik`,
+#'   `AIC`, `BIC`, `notes`.
+#'
+#' @examples
+#' \donttest{
+#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb",
+#'                   random_effects = k ~ 1, verbose = 0)
+#' summary(fit)
+#' summary(fit, report_space = "log10")
+#' }
+#'
+#' @export
+summary.beezdiscounting_tmb <- function(object,
+                                        report_space = c("natural", "log10", "internal"),
+                                        ...) {
+  report_space <- match.arg(report_space)
+
+  coefs  <- object$model$coefficients
+  se_vec <- .dd_tmb_model_se(object)
+  nms    <- names(coefs)
+  tn     <- .dd_tmb_build_term_names(object, nms)
+
+  component      <- ifelse(nms == "beta_k", "fixed", "variance")
+  estimate_scale <- rep("log", length(nms))
+
+  z_val <- coefs / se_vec
+  p_val <- 2 * stats::pnorm(-abs(z_val))
+
+  # Build the full table, then keep only fixed-effect rows for the coefficient
+  # table (variance rows surface via variance_components).
+  coefficients <- tibble::tibble(
+    term           = tn$term,
+    estimate       = unname(coefs),
+    std.error      = unname(se_vec),
+    statistic      = unname(z_val),
+    p.value        = unname(p_val),
+    component      = component,
+    estimate_scale = estimate_scale,
+    term_display   = tn$term
+  )
+  coefficients <- coefficients[coefficients$component == "fixed", , drop = FALSE]
+
+  # Back-transform estimate + std.error to report_space; statistic/p.value stay
+  # on the estimation (log-k) scale (broom/emmeans convention).
+  coefficients <- .dd_transform_coef_table(
+    coef_tbl       = coefficients,
+    report_space   = report_space,
+    internal_space = "log"
+  )
+
+  vc <- .dd_tmb_variance_components(object)
+
+  notes <- character(0)
+  if (!object$converged) {
+    notes <- c(notes, "WARNING: Model did not converge.")
+  }
+  if (isFALSE(object$se_available)) {
+    notes <- c(notes, "Standard errors unavailable (sdreport failed); CIs will be NA.")
+  }
+  if (isFALSE(object$hessian_pd)) {
+    notes <- c(notes,
+      "Warning: Hessian not positive definite — standard errors may be unreliable.")
+  }
+  if (length(object$opt_warnings %||% character(0)) > 0L) {
+    notes <- c(notes, sprintf(
+      "Optimizer produced %d warning(s) during fitting.",
+      length(object$opt_warnings)
+    ))
+  }
+  if (!is.null(object$param_info$factors) && length(object$param_info$factors) > 0L) {
+    notes <- c(notes,
+      "Population k reflects the reference level. Use get_dd_param_emms() for per-group estimates.")
+  }
+
+  structure(
+    list(
+      # R5: store object$call (the R call captured by match.call() in
+      # fit_dd_tmb), NOT the optimizer status string (fit$opt$message).
+      call               = object$call,
+      model_class        = "beezdiscounting_tmb",
+      backend            = "TMB_mixed",
+      equation           = object$param_info$equation,
+      family             = object$param_info$family,
+      coefficients       = coefficients,
+      variance_components = vc,
+      n_subjects         = object$param_info$n_subjects,
+      nobs               = object$param_info$n_obs,
+      converged          = object$converged,
+      logLik             = object$loglik,
+      AIC                = object$AIC,
+      BIC                = object$BIC,
+      notes              = notes
+    ),
+    class = "summary.beezdiscounting_tmb"
+  )
+}
+
+
+#' Print a TMB mixed-effects discounting fit
+#'
+#' @param x A `beezdiscounting_tmb` object.
+#' @param ... Unused.
+#' @return Invisibly returns `x`.
+#'
+#' @examples
+#' \donttest{
+#' dd <- .simulate_dd_ip_mixed(n_subjects = 20, seed = 1)
+#' fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb",
+#'                   random_effects = k ~ 1, verbose = 0)
+#' print(fit)
+#' }
+#'
+#' @export
+print.beezdiscounting_tmb <- function(x, ...) {
+  cat("\nTMB Mixed-Effects Discounting Model\n\n")
+  if (!is.null(x$call)) {
+    cat("Call:\n")
+    print(x$call)
+    cat("\n")
+  }
+  cat("Equation:", x$param_info$equation, "\n")
+  cat("Family:", x$param_info$family, "\n")
+  cat("Convergence:", ifelse(x$converged, "Yes", "No"), "\n")
+  cat("Number of subjects:", x$param_info$n_subjects, "\n")
+  cat("Number of observations:", x$param_info$n_obs, "\n")
+  cat("Random effects:", x$param_info$n_random_effects, "(k ~ 1)\n")
+  cat("Log-likelihood:", round(x$loglik, 2), "\n")
+  cat("AIC:", round(x$AIC, 2), "\n")
+
+  cat("\nFixed Effects (log k):\n")
+  co <- x$model$coefficients
+  tn <- .dd_tmb_build_term_names(x)
+  fe <- co[tn$k_idx]
+  names(fe) <- tn$term[tn$k_idx]
+  print(round(fe, 4))
+
+  cat("\nUse summary() for full results.\n")
+  invisible(x)
+}
+
+
+#' Print a TMB discounting model summary
+#'
+#' @param x A `summary.beezdiscounting_tmb` object.
+#' @param digits Number of significant digits for rounding.
+#' @param ... Unused.
+#' @return Invisibly returns `x`.
+#'
+#' @export
+print.summary.beezdiscounting_tmb <- function(x, digits = 4, ...) {
+  cat("\nTMB Mixed-Effects Discounting Model Summary\n")
+  cat(strrep("=", 50), "\n\n")
+  if (!is.null(x$call)) {
+    cat("Call:\n")
+    cat(paste(deparse(x$call), collapse = "\n"), "\n\n")
+  }
+  cat("Equation:", x$equation, "\n")
+  cat("Family:", x$family, "\n")
+  cat("Backend:", x$backend, "\n")
+  cat("Convergence:", ifelse(x$converged, "Yes", "No"), "\n")
+  cat("Subjects:", x$n_subjects, " Observations:", x$nobs, "\n\n")
+
+  cat("--- Fixed Effects (log k) ---\n")
+  cd <- as.data.frame(x$coefficients[, c("term", "estimate", "std.error",
+                                          "statistic", "p.value")])
+  cd$estimate  <- round(cd$estimate, digits)
+  cd$std.error <- round(cd$std.error, digits)
+  cd$statistic <- round(cd$statistic, digits)
+  cd$p.value   <- format.pval(cd$p.value, digits = 3)
+  print(cd, row.names = FALSE)
+
+  cat("\n--- Variance Components ---\n")
+  vc <- x$variance_components
+  vc$Estimate <- round(vc$Estimate, digits)
+  print(vc, row.names = FALSE)
+
+  cat("\n--- Fit Statistics ---\n")
+  cat("Log-likelihood:", round(x$logLik, 2), "\n")
+  cat("AIC:", round(x$AIC, 2), "  BIC:", round(x$BIC, 2), "\n")
+
+  if (length(x$notes) > 0L) {
+    cat("\nNotes:\n")
+    for (note in x$notes) cat("  *", note, "\n")
+  }
+  invisible(x)
+}

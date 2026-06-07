@@ -587,6 +587,17 @@ describe("non-default column names (B1: canonical-names contract)", {
     expect_equal(unname(fitted(fit_remap)), unname(fitted(fit_canon)),
                  tolerance = 1e-6)
   })
+
+  it("predict() errors cleanly when newdata omits the canonical delay column", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    fit <- .get_fit_for_methods()
+    bad <- data.frame(id = "s1", y = 0.5)   # canonical 'x' (delay) absent
+    expect_error(
+      predict(fit, newdata = bad, type = "response"),
+      "delay column|canonical"
+    )
+  })
 })
 
 describe("confint se_available gate (B2)", {

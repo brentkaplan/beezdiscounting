@@ -275,8 +275,8 @@
     }
   }
   cli::cli_warn(
-    "Using a diagonal covariance fallback; contrast standard errors may be \\
-     unreliable (off-diagonal covariance unavailable)."
+    "Using a diagonal covariance fallback; EMM and contrast uncertainty may be \\
+     approximate / unreliable (off-diagonal covariance unavailable)."
   )
   se_vals <- unname(fit$model$se[names(fit$model$coefficients) == "beta_k"])
   diag(se_vals^2, nrow = p)

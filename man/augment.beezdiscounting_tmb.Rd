@@ -9,7 +9,9 @@
 \arguments{
 \item{x}{A \code{beezdiscounting_tmb} object.}
 
-\item{newdata}{Optional data frame. \code{NULL} uses the fitting data.}
+\item{newdata}{Optional data frame. \code{NULL} uses the fitting data. A supplied
+\code{newdata} must use the package's canonical column names (\code{id}, \code{x}, \code{y}),
+regardless of the \code{id_var}/\code{x_var}/\code{y_var} you gave at fit time.}
 
 \item{...}{Unused.}
 }

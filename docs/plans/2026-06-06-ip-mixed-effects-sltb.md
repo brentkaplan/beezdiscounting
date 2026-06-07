@@ -16,25 +16,25 @@
 
 The plan is grouped into phases F (Foundation, pure R) → T (TMB core) → P (Fit pipeline) → M (S3 methods) → E (emmeans) → S (Surface). Tasks are id'd `Task <PHASE>.<n>`. The following reconciliations override any drift in individual phase sections:
 
-1. **Density helpers live in `R/dd-density.R`**: `.dd_slt_logpdf(y, mu, phi, s=1.0000001, l=1e-8)` and `.dd_gaussian_logpdf(y, mu, sigma_e)` (Task F.1). The compile-gate test (T.5) and any method needing the R density **source these** — ignore T.5's inline `.gate_slt_logpdf` fallback (keep only if you want belt-and-suspenders; prefer the real symbol).
+1. **Density helpers live in `R/dd-density.R`**: `.dd_slt_logpdf(y, mu, phi, s=1.0000001, l=1e-8)` and `.dd_gaussian_logpdf(y, mu, sigma_e)` (Task F.1). The compile-gate test (T.5) and any method needing the R density **source these** via `devtools::load_all` — T.5 has NO inline `.gate_slt_logpdf` fallback and NO stale `R/dd-param-space.R` path; the single source of truth for the SLT density is `R/dd-density.R::.dd_slt_logpdf`.
 
-2. **Single RHS/design builder (load-bearing for emmeans correctness).** Port `build_fixed_rhs(factors, factor_interaction, continuous_covariates, data)` from beezdemand `R/utils.R` into beezdiscounting `R/utils.R` as a shared helper (add this as **Task P.2a**, executed inside Phase P before P.2 finishes). `.dd_tmb_build_design` (P.2) uses it and **stores both the `rhs` formula and `attr(X, "contrasts")`** in `fit$formula_details` (`formula_details = list(X, rhs, contrasts)`). `.dd_build_emm_ref_grid` (E.1) rebuilds the grid design with `model.matrix(rhs, grid, contrasts.arg = fit$formula_details$contrasts)` and reorders to the fitted column order, aborting on mismatch. This guarantees EMM columns align with the fitted `beta_k` — do not let P and E construct designs by different routes.
+2. **Single RHS/design builder (load-bearing for emmeans correctness).** Port `build_fixed_rhs(factors, factor_interaction, continuous_covariates, data)` from beezdemand `R/utils.R` into beezdiscounting `R/utils.R` as a shared helper — this is **Task P.2a**, executed immediately BEFORE Task P.2 (and pulled forward to right after Phase T per the execution order, since P.2 needs it). It returns a one-sided RHS **formula** (`~ 1` when no factors/covariates) and drops single-level factors with a note. `.dd_tmb_build_design` (P.2) CALLS it and returns `list(X, rhs, contrasts = attr(X, "contrasts"))`; `fit$formula_details` stores all three. `.dd_build_emm_ref_grid` (E.1) rebuilds the grid design through the SAME `build_fixed_rhs` route with `model.matrix(rhs, grid, contrasts.arg = fit$formula_details$contrasts)` and reorders to the fitted `colnames(fit$formula_details$X)`, aborting on mismatch. This guarantees EMM columns align with the fitted `beta_k` — P and E never construct designs by different routes.
 
-3. **Coefficient naming.** `fit$model$coefficients` keeps the optimizer names: the fixed-effect block is named `beta_k` (length `ncol(X)`; when `ncol(X) > 1`, R names them `beta_k1, beta_k2, …`). The **population log-k intercept** is the entry for X's intercept column (the first `beta_k`). Reference the block via `grepl("^beta_k", names(...))` and the intercept via its first element — never assume a scalar `coefficients[["beta_k"]]` when factors are present. M's display term names (`k:(Intercept)`, `k:groupB`) are derived in `tidy`/`confint` only and must not rename the stored coefficients. Tests in P.8 and S.2 use the first `beta_k` element as the population intercept.
+3. **Coefficient naming.** `fit$model$coefficients` keeps the optimizer names: the fixed-effect block is named `beta_k` (length `ncol(X)`; when `ncol(X) > 1`, R names them `beta_k1, beta_k2, …`). The **population log-k intercept** is the entry for X's intercept column (the first `beta_k`). Reference the block via `grepl("^beta_k", names(...))` and the intercept via its first element — never assume a scalar `coefficients[["beta_k"]]` when factors are present. M's display term names (`k:(Intercept)`, `k:groupB`) are derived in `tidy`/`confint` only and must not rename the stored coefficients (the `^k($|_|:)` core-term regex from F.2 matches these renamed `k:` terms — see B6). Tests in P.8, S.1b, and S.2 reference the population intercept via the first `beta_k` element (`co[names(co) == "beta_k"][1]`).
 
 4. **`log_aux` rename.** The optimizer parameter is `log_aux`; `.dd_tmb_extract_estimates` (P.6) renames it to `log_phi` (sltb) / `log_sigma_e` (gaussian) in `model$coefficients` and aligned `se`. All downstream (M, E, S) use the renamed form; `opt$par` retains `log_aux`.
 
 5. **Accepted signature deltas from the contract (intentional):** `.dd_tmb_default_starts(prepared, design, family, equation="mazur")` (extra `equation` for data-driven start inversion); `.dd_tmb_run_optimizer(obj, start, tmb_control, user_specified, verbose)` and `.dd_tmb_multi_start(tmb_data, starts_list, tmb_control, user_specified, verbose)` (extra `user_specified` from the verbatim beezdemand port). These are fine; keep them consistent across P.
 
-6. **One `%||%`.** Define `%||%` once (in `R/utils.R`, or reuse rlang's). Phases that wrote a local `%||%` must drop it in favor of the single package definition (dedupe at integration).
+6. **One `%||%`.** Define `%||%` ONCE in `R/utils.R` (Task P.2a). No local copies: F.2's param-space helpers, P.4, and E.1 all use this single definition — the old local `%|0|%` (F.2) and the local `%||%` (E.1) are removed.
 
 7. **DESCRIPTION edited once (Task T.1).** T.1 is the canonical DESCRIPTION task: add `LinkingTo: TMB, RcppEigen`; `Imports: TMB (>= 1.9.0), RcppEigen, emmeans, generics`; `Suggests: knitr, rmarkdown, testthat`; `VignetteBuilder: knitr`; `SystemRequirements: GNU make`; `Version: 0.4.0`; `Date: 2026-06-06`. S.7 must **not** re-edit DESCRIPTION (only NEWS/`devtools::document()`/CI). Note `generics` (needed by E.4 + M for tidy/glance/augment re-exports) is added here.
 
 8. **One NEWS.md.** F.3 creates `NEWS.md` with the `# beezdiscounting 0.4.0` header; every later phase **prepends bullets under that same header** — never recreate the file. S.7 finalizes the 0.4.0 entry.
 
-9. **Execution order:** F.1–F.4 → T.1–T.5 → P.2a (build_fixed_rhs) → P.1–P.8 → **S.1 (simulator + `helper-dd-sim.R`)** → M.0–M.8 → E.1–E.4 → S.2–S.7. The simulator (S.1) is pulled forward because M and E tests depend on `.simulate_dd_ip_mixed`. Commit after every task. Each compiled-template test starts with `skip_on_cran()` + `skip_if_not_installed("TMB")`; pure-R tests need no skips.
+9. **Execution order:** F.1–F.4 → T.1–T.5 → **S.1a (simulator + `helper-dd-sim.R`)** → P.2a (build_fixed_rhs) → P.1–P.8 → **S.1b (known-truth recovery)** → M.0–M.8 → E.1–E.4 → S.2–S.7. The simulator is split: **S.1a** (the pure-R `.simulate_dd_ip_mixed` + helper, no `fit_dd_tmb` dependency) is pulled forward to right after Phase T because the compiled-template tests in P.5/P.6/P.8 (and M, E) call `.simulate_dd_ip_mixed`; **S.1b** (recovery through `fit_dd_tmb`) runs after Phase P. The S section stays physically where it is (after E), with S.1 relabeled S.1a/S.1b. Commit after every task. Each compiled-template test starts with `skip_on_cran()` + `skip_if_not_installed("TMB")`; pure-R tests need no skips.
 
-10. **Subject-par `phi`:** MVP keeps `φ` population-level, so `ranef`/`subject_pars` have no `phi` column (M asserts its absence). The degenerate φ→0/k→∞ optimum (spec §4.8) is guarded in `.dd_tmb_multi_start` (P.5, `.dd_phi_min = 0.1`) with a regression test in P.8.
+10. **Subject-par `phi`:** MVP keeps `φ` population-level, so `subject_pars` is `data.frame(id, u_i, k)` with NO `phi` column, `ranef` returns `id, u_i, k`, and M/P tests assert phi is ABSENT (B5). The degenerate φ→0/k→∞ optimum (spec §4.8) is prevented at the OPTIMIZER LEVEL in `.dd_tmb_multi_start` (P.5): an `sltb` lower bound of `log(.dd_phi_min)` (default `phi_min = 0.1`) on `log_aux`, overridable via `tmb_control$lower` — NOT a post-hoc fit rejection, so a genuine low-precision fit is retained (P.5 has a phi=2 retention test). `.dd_beta_k_abs_max` survives only as a NaN/blowup sanity guard. A boundary-heavy regression test lives in P.8.
 
 ---
 ## Phase F — Foundation (pure R, no compile)
@@ -274,7 +274,9 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 Port `.dd_param_registry`, `.dd_transform_est_se`, and `.dd_transform_coef_table` from
 beezdemand. The registry keys are `"k"`, `"phi"`, `"s"` (per the pinned contract). The
 core-term regex is retargeted from beezdemand's demand terms to
-`^k($|_)|^s($|_)|^phi($|_)`.
+`^k($|_|:)|^s($|_)|^phi($|_)` — note the `:` alternative on the `k` branch so the
+renamed display terms `tidy`/`confint` emit (`k:(Intercept)`, `k:condition_B`) are also
+matched as core k-rows.
 
 **Files:**
 - Create: `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-param-registry.R`
@@ -383,8 +385,27 @@ describe(".dd_transform_coef_table", {
       internal_space = "natural")
     expect_equal(out$estimate[out$term == "k_log"], log(0.02), tolerance = 1e-12)
     expect_equal(out$estimate[out$term == "phi_log"], log(10), tolerance = 1e-12)
-    # 'kappa_not_core' must NOT match ^k($|_) (next char is 'a', not $ or _)
+    # 'kappa_not_core' must NOT match ^k($|_|:) (next char is 'a', not $, _, or :)
     expect_equal(out$estimate[out$term == "kappa_not_core"], 5)
+  })
+
+  it("matches the renamed display terms with a ':' on the k branch", {
+    tbl <- data.frame(
+      term = c("k:(Intercept)", "k:condition_B", "kappa:not_core"),
+      estimate = c(0.01, 0.02, 5),
+      std.error = c(0.002, 0.001, 1),
+      stringsAsFactors = FALSE
+    )
+    out <- .dd_transform_coef_table(tbl, report_space = "log10",
+      internal_space = "natural")
+    # both renamed k display terms are treated as core k-rows
+    expect_equal(out$estimate[out$term == "k:(Intercept)"], log10(0.01),
+      tolerance = 1e-12)
+    expect_equal(out$estimate[out$term == "k:condition_B"], log10(0.02),
+      tolerance = 1e-12)
+    expect_equal(out$estimate_internal[out$term == "k:(Intercept)"], 0.01)
+    # 'kappa:not_core' must NOT match ^k($|_|:) (next char is 'a')
+    expect_equal(out$estimate[out$term == "kappa:not_core"], 5)
   })
 })
 ```
@@ -445,16 +466,15 @@ Expected output: `object '.dd_param_registry' not found` / `could not find funct
   =`beezdemand/R/param-space.R:115-178` and `beezdemand_transform_coef_table`
   =`beezdemand/R/param-space.R:180-237`, plus the supporting validators
   `:20-37` and the term-display helper. Adaptations: rename `beezdemand_` → `.dd_`; the core
-  regex in `.dd_transform_coef_table` becomes `^k($|_)|^s($|_)|^phi($|_)`; `.dd_term_display_space`
-  handles only k/s/phi prefixes; the `%||%` null-coalescer is defined locally to avoid a
-  cross-package import).
+  regex in `.dd_transform_coef_table` becomes `^k($|_|:)|^s($|_)|^phi($|_)`; `.dd_term_display_space`
+  handles only k/s/phi prefixes; the null-coalescer uses the single package-level `%||%`
+  defined once in `R/utils.R` (see Task P.2a) — no local copy here, no cross-package import).
 
 ```r
 # R/dd-param-space.R
 
-# Local null-coalescing operator (ports the rlang %||% used by beezdemand's
-# param-space helpers) so this file has no extra import.
-`%|0|%` <- function(x, y) if (is.null(x)) y else x
+# NOTE: this file uses the package-level `%||%` defined once in R/utils.R
+# (Task P.2a). Do NOT redefine a local null-coalescer here.
 
 #' Validate a report-space string
 #'
@@ -500,7 +520,7 @@ Expected output: `object '.dd_param_registry' not found` / `could not find funct
     paste0(prefix, suffix)
   }
 
-  if (grepl("^k($|_)", term)) return(label("k", sub("^k", "", term)))
+  if (grepl("^k($|_|:)", term)) return(label("k", sub("^k", "", term)))
   if (grepl("^phi($|_)", term)) return(label("phi", sub("^phi", "", term)))
   if (grepl("^s($|_)", term)) return(label("s", sub("^s", "", term)))
   term
@@ -563,8 +583,9 @@ Expected output: `object '.dd_param_registry' not found` / `could not find funct
 #'
 #' Port of beezdemand::beezdemand_transform_coef_table
 #' (R/param-space.R:180-237). The core-term detector regex is retargeted to
-#' `^k($|_)|^s($|_)|^phi($|_)`; everything else (column bookkeeping, the
-#' per-row delta-method call, display labels) is unchanged.
+#' `^k($|_|:)|^s($|_)|^phi($|_)` (the `:` alternative on the k branch matches
+#' the renamed display terms `k:(Intercept)`, `k:condition_B`); everything else
+#' (column bookkeeping, the per-row delta-method call, display labels) is unchanged.
 #'
 #' @keywords internal
 #' @noRd
@@ -585,7 +606,7 @@ Expected output: `object '.dd_param_registry' not found` / `could not find funct
     return(coef_tbl)
   }
 
-  is_core <- grepl("^k($|_)", coef_tbl[[term_col]]) |
+  is_core <- grepl("^k($|_|:)", coef_tbl[[term_col]]) |
     grepl("^s($|_)", coef_tbl[[term_col]]) |
     grepl("^phi($|_)", coef_tbl[[term_col]])
 
@@ -597,7 +618,7 @@ Expected output: `object '.dd_param_registry' not found` / `could not find funct
   for (i in which(is_core)) {
     term <- as.character(out[[term_col]][i])
 
-    from_space <- out[[scale_col]][i] %|0|% internal_space
+    from_space <- out[[scale_col]][i] %||% internal_space
     if (is.na(from_space) || !nzchar(from_space)) from_space <- internal_space
 
     to_space <- report_space
@@ -628,7 +649,7 @@ Run command:
 ```
 cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'testthat::test_file("tests/testthat/test-dd-param-space.R")'
 ```
-Expected output: all blocks pass; `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 12 ]`.
+Expected output: all blocks pass; `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 13 ]`.
 
 - [ ] **Step 6: Commit (targeted add).**
 
@@ -640,8 +661,9 @@ git commit -m "feat(param-space): port registry + delta-method transforms for k/
 Add .dd_param_registry (keyed by k, phi, s) and port
 .dd_transform_est_se / .dd_transform_coef_table from
 beezdemand/R/param-space.R, retargeting the core-term regex to
-^k(\$|_)|^s(\$|_)|^phi(\$|_). Covers natural<->log<->log10 delta-method
-round-trips and core-row selection.
+^k(\$|_|:)|^s(\$|_)|^phi(\$|_) (the : alternative matches renamed display
+terms k:(Intercept), k:condition_B). Covers natural<->log<->log10
+delta-method round-trips and core-row selection.
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -650,8 +672,18 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 The IP validator detects percent/amount-scaled inputs and divides them to `[0,1]`, clamps
 mild out-of-range values, and WARNS loudly (naming counts), per spec §5. It returns the long
-`id, x, y` data frame plus a `coercion_info` audit list. It is the single coercion choke-point
+data frame plus a `coercion_info` audit list. It is the single coercion choke-point
 so the likelihood never sees out-of-range `y` (spec §4.1: filter, never mask).
+
+**Row-coherence (B2):** the validator must NOT strip the frame down to `id, x, y`. It
+remaps the canonical `id, x, y` columns **and retains all caller factor/covariate columns
+alongside them**, so a SINGLE model frame can later be complete-cased ONCE in
+`.dd_tmb_prepare_data` (P.1) and used to derive `prepared` (y/x/subject_id), the design
+matrix `X`, the TMB data, and `fit$data` — all sharing one filtered row order (mirrors
+beezdemand's `data_for_design` pattern in `tmb-demand.R`). If the validator dropped extra
+columns here, `model.matrix()` would complete-case independently and hand TMB mismatched
+arrays. The caller passes `extra_cols` (the union of `factors` + `continuous_covariates`)
+so the validator knows which non-canonical columns to carry through and coerce factors on.
 
 **Files:**
 - Create: `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-validate.R`
@@ -735,6 +767,33 @@ describe(".dd_validate_ip", {
     expect_equal(res$data$y, c(0.9, 0.5, 0.1))
     expect_equal(res$data$x, c(1, 7, 30))
   })
+
+  it("retains extra factor/covariate columns alongside id/x/y (row-coherence)", {
+    dat <- data.frame(
+      id = "P1",
+      x = c(1, 7, 30),
+      y = c(0.9, 0.5, 0.1),
+      condition = factor(c("A", "A", "B"), levels = c("A", "B")),
+      age = c(20, 20, 20),
+      stringsAsFactors = FALSE
+    )
+    res <- .dd_validate_ip(dat, "y", "x", "id",
+      extra_cols = c("condition", "age"))
+    # id/x/y come first, then the retained columns in requested order
+    expect_named(res$data, c("id", "x", "y", "condition", "age"))
+    # factor class + levels preserved verbatim (not coerced to character)
+    expect_s3_class(res$data$condition, "factor")
+    expect_identical(levels(res$data$condition), c("A", "B"))
+    expect_equal(res$data$age, c(20, 20, 20))
+  })
+
+  it("errors when a requested extra column is missing", {
+    dat <- make_ip(c(0.9, 0.6, 0.3, 0.1, 0.0))
+    expect_error(
+      .dd_validate_ip(dat, "y", "x", "id", extra_cols = "nope"),
+      regexp = "not found"
+    )
+  })
 })
 ```
 
@@ -756,13 +815,15 @@ Expected output: `could not find function ".dd_validate_ip"`; failures reported.
 #'
 #' The single coercion choke-point for indifference-point (IP) mixed-effects
 #' discounting. It remaps caller column names to the canonical `id, x, y` long
-#' format (matching `fit_dd()`), detects and divides percent- or amount-scaled
-#' responses to the `[0, 1]` proportion scale, and clamps mild post-coercion
-#' overshoot. **All coercion is loud**: percent/amount division and any
-#' clamping emit a `warning()` that names how many values were affected. This
-#' guarantees the downstream likelihood never sees out-of-range `y` (we filter
-#' and coerce here rather than masking inside the likelihood; see the design
-#' spec, "Implementation landmines").
+#' format (matching `fit_dd()`) **while retaining any factor/covariate columns
+#' named in `extra_cols`** so a single model frame can be complete-cased once
+#' downstream (row-coherence; see `.dd_tmb_prepare_data`). It detects and
+#' divides percent- or amount-scaled responses to the `[0, 1]` proportion
+#' scale, and clamps mild post-coercion overshoot. **All coercion is loud**:
+#' percent/amount division and any clamping emit a `warning()` that names how
+#' many values were affected. This guarantees the downstream likelihood never
+#' sees out-of-range `y` (we filter and coerce here rather than masking inside
+#' the likelihood; see the design spec, "Implementation landmines").
 #'
 #' Scale detection:
 #' \itemize{
@@ -785,9 +846,15 @@ Expected output: `could not find function ".dd_validate_ip"`; failures reported.
 #'   `response_scale = "amount"`.
 #' @param response_scale One of `"proportion"` (default), `"percent"`,
 #'   `"amount"`.
+#' @param extra_cols Optional character vector of additional column names in
+#'   `data` to carry through onto the returned frame (the union of `factors`
+#'   and `continuous_covariates`). These are retained verbatim so the model
+#'   frame can be complete-cased once downstream; the validator never drops
+#'   them. Missing names error.
 #' @return A list with:
 #'   \describe{
-#'     \item{data}{a data frame with exactly columns `id`, `x`, `y`.}
+#'     \item{data}{a data frame whose first three columns are `id`, `x`, `y`,
+#'       followed by any retained `extra_cols` (in the requested order).}
 #'     \item{coercion_info}{list(divided_by, n_clamped_hi, n_clamped_lo,
 #'       scale_detected).}
 #'   }
@@ -798,6 +865,7 @@ Expected output: `could not find function ".dd_validate_ip"`; failures reported.
                             x_var = "x",
                             id_var = "id",
                             ll = NULL,
+                            extra_cols = NULL,
                             response_scale = c("proportion", "percent", "amount")) {
   response_scale <- match.arg(response_scale)
 
@@ -816,12 +884,31 @@ Expected output: `could not find function ".dd_validate_ip"`; failures reported.
     )
   }
 
+  # Retain factor/covariate columns alongside id/x/y (row-coherence): they are
+  # carried through verbatim so a single model frame can be complete-cased once
+  # in .dd_tmb_prepare_data(). Drop any that collide with the canonical names.
+  extra_cols <- setdiff(unique(extra_cols), c(id_var, x_var, y_var))
+  if (length(extra_cols) > 0L) {
+    missing_extra <- setdiff(extra_cols, names(data))
+    if (length(missing_extra) > 0L) {
+      stop(
+        "Factor/covariate column(s) not found in `data`: ",
+        paste(shQuote(missing_extra), collapse = ", "), ".",
+        call. = FALSE
+      )
+    }
+  }
+
   long <- data.frame(
     id = data[[id_var]],
     x = as.numeric(data[[x_var]]),
     y = as.numeric(data[[y_var]]),
     stringsAsFactors = FALSE
   )
+  # Carry retained columns through unchanged (preserve factor class/levels).
+  for (col in extra_cols) {
+    long[[col]] <- data[[col]]
+  }
 
   # --- scale detection / division ------------------------------------------
   max_y <- suppressWarnings(max(long$y, na.rm = TRUE))
@@ -901,7 +988,7 @@ Run command:
 ```
 cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'testthat::test_file("tests/testthat/test-dd-validate.R")'
 ```
-Expected output: all blocks pass; `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 7 ]` (warnings are
+Expected output: all blocks pass; `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 9 ]` (warnings are
 caught by `expect_warning`, so they do not surface as WARN).
 
 - [ ] **Step 5: Add a NEWS note documenting the loud-coercion behavior** (spec §5 requires it
@@ -1138,7 +1225,7 @@ the canonical home is `R/dd-param-space.R`.
 
 - [ ] **Step 1: Add `LinkingTo`, extend `Imports`, extend `Suggests`, add build fields to `DESCRIPTION`.**
 
-  Edit the `Imports:` block to append three packages (keep existing entries; alphabetical not required but append cleanly):
+  Edit the `Imports:` block to append the new packages (keep existing entries; alphabetical not required but append cleanly). Note `emmeans`, `generics`, `RcppEigen`, and `TMB` are new — `generics` is the single canonical place the `tidy`/`glance`/`augment` generics are imported from (needed by Phase E.4 and the Phase M broom methods):
 
   ```
   Imports:
@@ -1146,6 +1233,7 @@ the canonical home is `R/dd-param-space.R`.
       broom,
       dplyr,
       emmeans,
+      generics,
       ggplot2,
       gtools,
       magrittr,
@@ -1179,10 +1267,11 @@ the canonical home is `R/dd-param-space.R`.
   Config/testthat/edition: 3
   ```
 
-  Bump the version line to:
+  Bump the version line and set the date:
 
   ```
   Version: 0.4.0
+  Date: 2026-06-06
   ```
 
 - [ ] **Step 2: Verify/extend `.Rbuildignore` for compiled artifacts.**
@@ -1200,7 +1289,7 @@ the canonical home is `R/dd-param-space.R`.
 
   Run:
   ```
-  cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'd <- read.dcf("DESCRIPTION"); stopifnot("LinkingTo" %in% colnames(d)); stopifnot(grepl("TMB", d[,"LinkingTo"])); stopifnot(grepl("TMB", d[,"Imports"])); stopifnot(grepl("emmeans", d[,"Imports"])); stopifnot(grepl("RcppEigen", d[,"Imports"])); stopifnot(d[,"Version"] == "0.4.0"); stopifnot(grepl("GNU make", d[,"SystemRequirements"])); cat("DESCRIPTION OK\n")'
+  cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'd <- read.dcf("DESCRIPTION"); stopifnot("LinkingTo" %in% colnames(d)); stopifnot(grepl("TMB", d[,"LinkingTo"])); stopifnot(grepl("TMB", d[,"Imports"])); stopifnot(grepl("emmeans", d[,"Imports"])); stopifnot(grepl("generics", d[,"Imports"])); stopifnot(grepl("RcppEigen", d[,"Imports"])); stopifnot(d[,"Version"] == "0.4.0"); stopifnot(grepl("GNU make", d[,"SystemRequirements"])); cat("DESCRIPTION OK\n")'
   ```
   Expected output:
   ```
@@ -1213,9 +1302,10 @@ the canonical home is `R/dd-param-space.R`.
   git add DESCRIPTION .Rbuildignore
   git commit -m "build(tmb): add TMB/RcppEigen/emmeans deps and compiled-pkg fields
 
-Add LinkingTo: RcppEigen, TMB; Imports: TMB (>= 1.9.0), RcppEigen, emmeans;
-Suggests: knitr, rmarkdown; VignetteBuilder: knitr; SystemRequirements: GNU make.
-Bump to 0.4.0. Ignore src .dll and symbols.rds build artifacts.
+Add LinkingTo: RcppEigen, TMB; Imports: TMB (>= 1.9.0), RcppEigen, emmeans,
+generics; Suggests: knitr, rmarkdown; VignetteBuilder: knitr;
+SystemRequirements: GNU make. Bump to 0.4.0 (Date 2026-06-06). Ignore src
+.dll and symbols.rds build artifacts.
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
   ```
@@ -1504,7 +1594,7 @@ Key contract facts encoded here:
 
 **Files:**
 - Create: `/Users/brent/Dropbox/GIT/beezdiscounting/tests/testthat/test-tmb-compile-gate.R`
-- (No new R; relies on `R/dd-param-space.R::.dd_slt_logpdf` if present, else inlines it in the test — see Step 1.)
+- (No new R; sources `.dd_slt_logpdf` from `R/dd-density.R` (Task F.1) via `devtools::load_all` — see Step 1.)
 
 This is the standard TMB compile gate: compile + link the template once, build a `MakeADFun`
 object for a no-RE / fixed-effect-only configuration, and assert that `obj$fn(par)` (the C++
@@ -1524,17 +1614,11 @@ accounts for this constant explicitly so the comparison is exact.
   # Compile gate: the C++ MixedDiscounting -nll must equal the verified R SLT
   # log-density (and the Gaussian density) to 1e-8, isolating the observation
   # term by zeroing the random effects.
-
-  # Verified R SLT log-density (source of truth: dev/sltb-verification/verify_sltb.R
-  # slt_logpdf). Canonical home is R/dd-param-space.R::.dd_slt_logpdf; defined
-  # locally here so the gate is self-contained if param-space lands later.
-  .gate_slt_logpdf <- function(y, mu, phi, s = 1.0000001, l = 1e-8) {
-    a <- mu * phi
-    b <- (1 - mu) * phi
-    lgamma(a + b) - lgamma(a) - lgamma(b) +
-      (a - 1) * log(y / s + l) + (b - 1) * log(1 - (y / s + l)) -
-      log(s) - log(pbeta(1 / s + l, a, b) - pbeta(l, a, b))
-  }
+  #
+  # The R-side density is the canonical .dd_slt_logpdf from R/dd-density.R
+  # (Task F.1), made available by the `devtools::load_all()` in the run
+  # commands below. Do NOT inline a local copy here — there is a single source
+  # of truth for the SLT density. (Gaussian compares against dnorm(log=TRUE).)
 
   # Build a single-subject, intercept-only TMB data/parameter set and the
   # matching R-side prediction for a given equation/family.
@@ -1581,7 +1665,7 @@ accounts for this constant explicitly so the comparison is exact.
       par <- obj$par
       cpp_nll <- obj$fn(par)
       re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))           # one subject, u = 0
-      r_nll <- sum(-.gate_slt_logpdf(g$y, g$mu, 8)) + re_prior
+      r_nll <- sum(-.dd_slt_logpdf(g$y, g$mu, 8)) + re_prior
       expect_equal(as.numeric(cpp_nll), r_nll, tolerance = 1e-8)
     })
 
@@ -1591,7 +1675,7 @@ accounts for this constant explicitly so the comparison is exact.
                             random = "u", DLL = "beezdiscounting", silent = TRUE)
       cpp_nll <- obj$fn(obj$par)
       re_prior <- -sum(dnorm(0, 0, 1, log = TRUE))
-      r_nll <- sum(-.gate_slt_logpdf(g$y, g$mu, 8)) + re_prior
+      r_nll <- sum(-.dd_slt_logpdf(g$y, g$mu, 8)) + re_prior
       expect_equal(as.numeric(cpp_nll), r_nll, tolerance = 1e-8)
     })
 
@@ -1667,7 +1751,17 @@ earlier phases having created: `R/dd-validate.R` (`.dd_validate_ip`), `R/dd-tmb.
 with `skip_on_cran()` and `skip_if_not_installed("TMB")`. Tests are testthat 3e, BDD
 `describe()/it()`. Use TARGETED `git add` only.
 
-### Task P.1: `.dd_tmb_prepare_data()` — 0-indexed subject map, NA drop, row-order coherence
+### Task P.1: `.dd_tmb_prepare_data()` — 0-indexed subject map, complete-case-ONCE, row-order coherence
+
+**Row-coherence (B2):** `.dd_tmb_prepare_data` operates on the FULL model frame returned
+by `.dd_validate_ip` (id/x/y PLUS any factor/covariate columns), complete-cases it ONCE
+over all modeling columns (`id`, `x`, `y`, and `extra_cols`), and returns that single
+filtered frame as `$data` — NOT a stripped id/x/y frame. The parallel arrays `y`/`x`/
+`subject_id` are derived from the same filtered rows, in the same order, so the design
+matrix `X` (built later from `$data` via `.dd_tmb_build_design`), the TMB arrays, and
+`fit$data` all share one row order (mirrors beezdemand's `data_for_design` complete-
+case-once pattern in `tmb-demand.R`, ~L1495-1527). This prevents `model.matrix()` from
+complete-casing independently and handing TMB mismatched arrays.
 
 **Files:**
 - Create: `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R` (append helper)
@@ -1714,7 +1808,33 @@ describe(".dd_tmb_prepare_data()", {
   it("renames caller columns to canonical id/x/y in $data", {
     dat <- data.frame(pid = "p1", delay = 7, ip = 0.5)
     prep <- .dd_tmb_prepare_data(dat, y_var = "ip", x_var = "delay", id_var = "pid")
-    expect_named(prep$data, c("id", "x", "y"))
+    expect_true(all(c("id", "x", "y") %in% names(prep$data)))
+    expect_equal(names(prep$data)[1:3], c("id", "x", "y"))
+  })
+
+  it("retains extra cols and complete-cases id/x/y + extras ONCE (row-coherent)", {
+    dat <- data.frame(
+      id = c("a", "a", "b", "b"),
+      x = c(7, 30, 7, 30),
+      y = c(0.9, 0.5, 0.8, 0.4),
+      grp = factor(c("ctrl", "ctrl", NA, "trt")),  # one NA in an extra col
+      age = c(20, 20, 30, 30),
+      stringsAsFactors = FALSE
+    )
+    prep <- .dd_tmb_prepare_data(dat, "y", "x", "id",
+      extra_cols = c("grp", "age"))
+    # the row with NA grp is dropped because grp is a modeling column
+    expect_equal(prep$n_obs, 3L)
+    # $data keeps id/x/y first then the retained extras, all row-aligned
+    expect_equal(names(prep$data), c("id", "x", "y", "grp", "age"))
+    expect_equal(prep$data$y, c(0.9, 0.5, 0.4))
+    expect_equal(as.character(prep$data$grp), c("ctrl", "ctrl", "trt"))
+    # parallel arrays match $data exactly (one filtered row order)
+    expect_equal(prep$y, prep$data$y)
+    expect_equal(prep$x, prep$data$x)
+    expect_equal(length(prep$subject_id), nrow(prep$data))
+    # unused factor levels dropped on the surviving frame
+    expect_setequal(levels(prep$data$grp), c("ctrl", "trt"))
   })
 })
 ```
@@ -1734,42 +1854,71 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
 ```r
 #' Prepare data for the TMB mixed-effects discounting model
 #'
-#' Maps caller column names to canonical `id`/`x`/`y`, drops rows with NA in any
-#' modeling column, and builds a 0-indexed `subject_id` aligned to
-#' `subject_levels` (the C++ template indexes `u(subject_id, 0)` from 0).
+#' Operates on the FULL model frame from [.dd_validate_ip()] (canonical
+#' `id`/`x`/`y` PLUS any retained factor/covariate columns). It complete-cases
+#' that frame ONCE over all modeling columns (`id`, `x`, `y`, and `extra_cols`),
+#' then derives the parallel arrays `y`/`x`/`subject_id` from the same filtered
+#' rows so the later design matrix, TMB arrays, and `fit$data` all share one
+#' row order (row-coherence; mirrors beezdemand's `data_for_design`). Builds a
+#' 0-indexed `subject_id` aligned to `subject_levels` (the C++ template indexes
+#' `u(subject_id, 0)` from 0).
 #'
-#' @param data Data frame already coerced/clamped by [.dd_validate_ip()].
+#' @param data Data frame already coerced/clamped by [.dd_validate_ip()],
+#'   retaining factor/covariate columns alongside id/x/y.
 #' @param y_var,x_var,id_var Character column names.
+#' @param extra_cols Character vector of factor/covariate column names that must
+#'   also be free of NA for a row to be kept (the union of `factors` and
+#'   `continuous_covariates`). Defaults to none.
 #' @return A list with `y`, `x`, `subject_id` (0-indexed integer),
-#'   `subject_levels`, `n_subjects`, `n_obs`, and `data` (cleaned long df with
-#'   canonical columns `id`, `x`, `y`).
+#'   `subject_levels`, `n_subjects`, `n_obs`, and `data` (the SINGLE complete-
+#'   cased model frame: canonical `id`, `x`, `y` first, then the retained
+#'   factor/covariate columns, in `data`'s row order).
 #' @keywords internal
-.dd_tmb_prepare_data <- function(data, y_var = "y", x_var = "x", id_var = "id") {
-  ids <- data[[id_var]]
-  x <- as.numeric(data[[x_var]])
-  y <- as.numeric(data[[y_var]])
+.dd_tmb_prepare_data <- function(data, y_var = "y", x_var = "x", id_var = "id",
+                                 extra_cols = NULL) {
+  # Canonicalize id/x/y in place, keeping every other column intact.
+  frame <- data
+  frame[[id_var]] <- as.character(frame[[id_var]])
+  frame[[x_var]] <- as.numeric(frame[[x_var]])
+  frame[[y_var]] <- as.numeric(frame[[y_var]])
 
-  keep <- !is.na(ids) & !is.na(x) & !is.na(y)
-  ids <- ids[keep]
-  x <- x[keep]
-  y <- y[keep]
+  # Complete-case ONCE over all modeling columns (id/x/y + extras). Doing this
+  # in a single place is load-bearing: model.matrix() must NOT drop a different
+  # set of rows than the prepared arrays.
+  model_cols <- unique(c(id_var, x_var, y_var, extra_cols))
+  model_cols <- intersect(model_cols, names(frame))
+  keep <- stats::complete.cases(frame[, model_cols, drop = FALSE])
+  frame <- frame[keep, , drop = FALSE]
 
-  if (length(y) == 0L) {
+  if (nrow(frame) == 0L) {
     stop("No complete cases remain after dropping NA rows.", call. = FALSE)
   }
 
+  ids <- frame[[id_var]]
+  x <- frame[[x_var]]
+  y <- frame[[y_var]]
+
   # 0-indexed subject map, levels sorted for reproducibility
-  subject_levels <- sort(unique(as.character(ids)))
+  subject_levels <- sort(unique(ids))
   n_subjects <- length(subject_levels)
   subject_map <- stats::setNames(seq_along(subject_levels) - 1L, subject_levels)
-  subject_id <- as.integer(subject_map[as.character(ids)])
+  subject_id <- as.integer(subject_map[ids])
 
+  # Single filtered frame: canonical id/x/y first, then retained extras, in the
+  # surviving row order. Drop unused factor levels so downstream model.matrix /
+  # ref grids see only present levels.
+  extras <- setdiff(intersect(extra_cols, names(frame)), c(id_var, x_var, y_var))
   cleaned <- data.frame(
-    id = as.character(ids),
+    id = ids,
     x = x,
     y = y,
     stringsAsFactors = FALSE
   )
+  for (col in extras) {
+    v <- frame[[col]]
+    if (is.factor(v)) v <- droplevels(v)
+    cleaned[[col]] <- v
+  }
 
   list(
     y = y,
@@ -1801,6 +1950,213 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
+### Task P.2a: Port `build_fixed_rhs()` shared design helper (+ package `%||%`)
+
+Port `build_fixed_rhs(factors, factor_interaction, continuous_covariates, data)` from
+beezdemand `R/utils.R` into beezdiscounting `R/utils.R` as the SINGLE source of the log-k
+fixed-effects RHS formula. It returns a one-sided RHS formula (intercept-only `~ 1` when no
+factors/covariates), drops single-level factors with a note, and handles the
+one-/two-factor (+ optional interaction) and continuous-covariate cases. **This is
+load-bearing for emmeans correctness:** both `.dd_tmb_build_design` (P.2) and
+`.dd_build_emm_ref_grid` (E.1) must construct their designs through this one helper so the
+fitted `beta_k` columns and the EMM reference-grid columns line up by construction. Also
+define the single package-level `%||%` here (used by F.2's param-space helpers and others).
+
+**Files:**
+- Create: `/Users/brent/Dropbox/GIT/beezdiscounting/R/utils.R`
+- Test: `/Users/brent/Dropbox/GIT/beezdiscounting/tests/testthat/test-build-fixed-rhs.R`
+
+- [ ] **Step 1: Write failing test `test-build-fixed-rhs.R`** (intercept-only default,
+  single factor, two factors main-effects vs interaction, continuous covariates, the
+  factor+covariate combination, and single-level factor drop).
+
+```r
+# tests/testthat/test-build-fixed-rhs.R
+
+describe("build_fixed_rhs()", {
+  it("returns intercept-only ~ 1 with no factors or covariates", {
+    f <- build_fixed_rhs()
+    expect_s3_class(f, "formula")
+    expect_equal(rlang::f_text(f), "1")
+  })
+
+  it("emits a single factor as a main effect", {
+    dat <- data.frame(grp = factor(c("a", "b")))
+    f <- build_fixed_rhs(factors = "grp", data = dat)
+    expect_equal(rlang::f_text(f), "grp")
+  })
+
+  it("emits two factors as additive main effects by default", {
+    dat <- data.frame(a = factor(c("x", "y")), b = factor(c("p", "q")))
+    f <- build_fixed_rhs(factors = c("a", "b"), data = dat)
+    expect_equal(rlang::f_text(f), "a + b")
+  })
+
+  it("includes the interaction when factor_interaction = TRUE", {
+    dat <- data.frame(a = factor(c("x", "y")), b = factor(c("p", "q")))
+    f <- build_fixed_rhs(factors = c("a", "b"),
+      factor_interaction = TRUE, data = dat)
+    expect_equal(rlang::f_text(f), "a * b")
+  })
+
+  it("appends continuous covariates as main effects", {
+    f <- build_fixed_rhs(continuous_covariates = c("age", "ses"))
+    expect_equal(rlang::f_text(f), "age + ses")
+  })
+
+  it("combines a factor and a covariate", {
+    dat <- data.frame(grp = factor(c("a", "b")), age = c(20, 30))
+    f <- build_fixed_rhs(factors = "grp", continuous_covariates = "age",
+      data = dat)
+    expect_equal(rlang::f_text(f), "grp + age")
+  })
+
+  it("drops a single-level factor (no contrasts) with a note", {
+    dat <- data.frame(grp = factor(c("a", "a")), age = c(20, 30))
+    expect_message(
+      f <- build_fixed_rhs(factors = "grp", continuous_covariates = "age",
+        data = dat),
+      regexp = "1 level|removed"
+    )
+    expect_equal(rlang::f_text(f), "age")
+  })
+})
+
+describe("%||%", {
+  it("returns the LHS when not NULL, else the RHS", {
+    expect_equal(3 %||% 7, 3)
+    expect_equal(NULL %||% 7, 7)
+  })
+})
+```
+
+- [ ] **Step 2: Run the test, expect FAIL** (helper absent).
+
+Run command:
+```
+cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-build-fixed-rhs.R")'
+```
+Expected output: `could not find function "build_fixed_rhs"`; failures reported.
+
+- [ ] **Step 3: Implement `R/utils.R`** (verbatim port of beezdemand
+  `R/utils.R::build_fixed_rhs`, returning a **formula** rather than a string — `.dd_*`
+  callers and `model.matrix()` both want a formula; the only change from the beezdemand
+  source is wrapping the assembled RHS string in `stats::as.formula()`. Single-level
+  factors are dropped with a `cli::cli_inform()` note. Also define the package `%||%`.).
+
+```r
+# R/utils.R
+
+#' Null-coalescing operator (package-wide)
+#'
+#' The single definition of `%||%` for beezdiscounting. Returns `x` unless it is
+#' `NULL`, otherwise `y`. All `.dd_*` helpers use this; do not redefine locally.
+#'
+#' @keywords internal
+#' @noRd
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+#' Build the fixed-effects RHS formula for log k
+#'
+#' Ported from `beezdemand::build_fixed_rhs` (R/utils.R). Constructs the
+#' right-hand side of the log-k fixed-effects formula from `factors`, an
+#' optional pairwise `factor_interaction`, and `continuous_covariates`. The
+#' SINGLE source of the design RHS: both `.dd_tmb_build_design()` (fitting) and
+#' `.dd_build_emm_ref_grid()` (emmeans) build their `model.matrix` through this
+#' helper so the fitted and reference-grid columns align by construction.
+#' Single-level factors contribute no contrasts and are dropped with a note.
+#'
+#' @param factors Character vector of factor names (can be `NULL`).
+#' @param factor_interaction Logical. If `TRUE` and two factors are supplied,
+#'   include their interaction (`a * b`); otherwise additive main effects.
+#' @param continuous_covariates Character vector of continuous covariate names.
+#' @param data Optional data frame used to detect/drop single-level factors.
+#' @return A one-sided formula (e.g. `~ grp + age`); `~ 1` when empty.
+#' @keywords internal
+#' @noRd
+build_fixed_rhs <- function(factors = NULL,
+                            factor_interaction = FALSE,
+                            continuous_covariates = NULL,
+                            data = NULL) {
+  rhs_parts <- c()
+
+  # Drop factors with only 1 level (they contribute no contrasts).
+  valid_factors <- factors
+  if (!is.null(factors) && !is.null(data)) {
+    valid_factors <- vapply(
+      factors,
+      function(f) {
+        if (f %in% names(data) && is.factor(data[[f]])) {
+          nlevels(data[[f]]) >= 2
+        } else {
+          TRUE # keep non-factor / missing cols (errors elsewhere)
+        }
+      },
+      logical(1)
+    )
+    valid_factors <- factors[valid_factors]
+
+    dropped <- setdiff(factors, valid_factors)
+    if (length(dropped) > 0) {
+      cli::cli_inform(
+        "Note: Factor(s) with only 1 level removed from formula: {.field {dropped}}."
+      )
+    }
+  }
+
+  if (!is.null(valid_factors) && length(valid_factors) > 0) {
+    if (length(valid_factors) == 1) {
+      rhs_parts <- c(rhs_parts, valid_factors[1])
+    } else if (length(valid_factors) >= 2) {
+      if (isTRUE(factor_interaction)) {
+        rhs_parts <- c(rhs_parts,
+          paste0(valid_factors[1], "*", valid_factors[2]))
+      } else {
+        rhs_parts <- c(rhs_parts, valid_factors[1], valid_factors[2])
+      }
+    }
+  }
+
+  if (!is.null(continuous_covariates) && length(continuous_covariates) > 0) {
+    rhs_parts <- c(rhs_parts, continuous_covariates)
+  }
+
+  rhs_str <- if (length(rhs_parts) > 0) {
+    paste("~", paste(rhs_parts, collapse = " + "))
+  } else {
+    "~ 1"
+  }
+  stats::as.formula(rhs_str)
+}
+```
+
+- [ ] **Step 4: Run the test, expect PASS.**
+
+Run command:
+```
+cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-build-fixed-rhs.R")'
+```
+Expected output: all blocks pass; `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 10 ]` (the single-level
+drop note is caught by `expect_message`, so it does not surface as WARN).
+
+- [ ] **Step 5: Commit (targeted add).**
+
+```
+cd /Users/brent/Dropbox/GIT/beezdiscounting && \
+git add R/utils.R tests/testthat/test-build-fixed-rhs.R && \
+git commit -m "feat(utils): port build_fixed_rhs() shared design helper + %||%
+
+Port build_fixed_rhs() from beezdemand/R/utils.R (returning a one-sided
+formula) as the single source of the log-k fixed-effects RHS, used by both
+.dd_tmb_build_design() (fitting) and .dd_build_emm_ref_grid() (emmeans) so the
+fitted beta_k columns and EMM reference-grid columns align by construction.
+Also define the single package-level %||%.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
 ### Task P.2: `.dd_tmb_build_design()` — model.matrix for log-k fixed effects
 
 **Files:**
@@ -1813,12 +2169,16 @@ Append to `tests/testthat/test-fit_dd_tmb.R`:
 
 ```r
 describe(".dd_tmb_build_design()", {
-  it("returns an intercept-only X when no factors/covariates given", {
+  it("returns an intercept-only X (+ rhs formula + contrasts) with no factors", {
     dat <- data.frame(id = "a", x = 7, y = 0.5)
     d <- .dd_tmb_build_design(dat)
     expect_equal(colnames(d$X), "(Intercept)")
     expect_equal(ncol(d$X), 1L)
-    expect_equal(d$rhs, "~ 1")
+    # rhs is a one-sided formula from build_fixed_rhs(), not a string
+    expect_s3_class(d$rhs, "formula")
+    expect_equal(rlang::f_text(d$rhs), "1")
+    # contrasts attr is carried through (NULL when no factors)
+    expect_true("contrasts" %in% names(d))
   })
 
   it("expands a single between-subject factor into contrast columns", {
@@ -1831,7 +2191,9 @@ describe(".dd_tmb_build_design()", {
     d <- .dd_tmb_build_design(dat, factors = "grp")
     expect_equal(ncol(d$X), 2L)
     expect_true("grptrt" %in% colnames(d$X))
-    expect_match(d$rhs, "grp")
+    expect_match(rlang::f_text(d$rhs), "grp")
+    # the per-factor contrast scheme is stored for the emmeans ref grid (E.1)
+    expect_true("grp" %in% names(d$contrasts))
   })
 
   it("adds an interaction term when factor_interaction = TRUE", {
@@ -1878,29 +2240,25 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
 #' @param factor_interaction Logical; if `TRUE` and >= 2 factors, include their
 #'   interaction (uses `*`); otherwise main effects (`+`).
 #' @param continuous_covariates Character vector of covariate names, or `NULL`.
-#' @return A list with `X` (the model matrix for log-k FE) and `rhs` (the RHS
-#'   formula string used to build it).
+#' @return A list with `X` (the model matrix for log-k FE), `rhs` (the one-sided
+#'   RHS **formula** from [build_fixed_rhs()]), and `contrasts`
+#'   (`attr(X, "contrasts")`, the per-factor contrast scheme). The `rhs` and
+#'   `contrasts` are stored so [.dd_build_emm_ref_grid()] can rebuild a
+#'   column-aligned design via the same route.
 #' @keywords internal
 .dd_tmb_build_design <- function(data, factors = NULL,
                                  factor_interaction = FALSE,
                                  continuous_covariates = NULL) {
-  terms <- character(0)
+  # Single source of the RHS (shared with the emmeans reference grid in E.1).
+  rhs <- build_fixed_rhs(
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates,
+    data = data
+  )
+  X <- stats::model.matrix(rhs, data = data)
 
-  if (!is.null(factors) && length(factors) > 0L) {
-    if (isTRUE(factor_interaction) && length(factors) >= 2L) {
-      terms <- c(terms, paste(factors, collapse = " * "))
-    } else {
-      terms <- c(terms, factors)
-    }
-  }
-  if (!is.null(continuous_covariates) && length(continuous_covariates) > 0L) {
-    terms <- c(terms, continuous_covariates)
-  }
-
-  rhs <- if (length(terms) == 0L) "~ 1" else paste("~", paste(terms, collapse = " + "))
-  X <- stats::model.matrix(stats::as.formula(rhs), data = data)
-
-  list(X = X, rhs = rhs)
+  list(X = X, rhs = rhs, contrasts = attr(X, "contrasts"))
 }
 ```
 
@@ -2339,9 +2697,8 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
 }
 ```
 
-Note: the `%||%` operator is provided by `R/utils-pipe.R` in the package (already imported);
-if not exported, add `#' @importFrom rlang %||%` to the roxygen of `R/dd-tmb.R` or rely on
-the package's existing `%||%`.
+Note: the `%||%` operator is the single package-level definition in `R/utils.R` (Task P.2a).
+Do not redefine it here.
 
 - [ ] **Step 4: Run the test — expect pass.**
 
@@ -2364,15 +2721,22 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ### Task P.5: `.dd_tmb_multi_start()` — 3 start sets + degenerate-optimum GUARD
 
 **Files:**
-- Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R` (append helper + `phi_min`/guard constants)
+- Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R` (append helper + `.dd_phi_min` floor + `.dd_beta_k_abs_max` sanity constant)
 - Test: `/Users/brent/Dropbox/GIT/beezdiscounting/tests/testthat/test-fit_dd_tmb.R` (add `describe` block; uses the compiled DLL — `skip_on_cran()` + `skip_if_not_installed("TMB")`, and uses the simulator from `helper-dd-sim.R`)
 
-The multi-start runs 3 starting sets (data-driven, low-k, high-k), keeps the lowest **finite**
-nll among **non-degenerate** fits. The GUARD rejects a fit whose `log_aux` floor implies
-`phi < phi_min = 0.1` (the φ→0/k→∞ collapse from spec §4.8) **or** whose `beta_k` intercept
-is implausibly large in magnitude (`|beta_k[1]| > beta_k_abs_max = 20`, i.e. k outside
-`[exp(-20), exp(20)]`). Among the **kept** (non-degenerate) fits we take the lowest nll; if
-ALL fits are degenerate we fall back to the lowest-nll fit overall and warn.
+The multi-start runs 3 starting sets (data-driven, low-k, high-k) and keeps the lowest
+**finite** nll. The φ→0/k→∞ collapse (spec §4.8) is prevented at the OPTIMIZER LEVEL, not
+by a post-hoc rejection: for the `sltb` family we impose a **lower bound on `log_aux`** of
+`log(.dd_phi_min)` (default `phi_min = 0.1`, i.e. `log_aux >= log(0.1)`) so the optimizer
+can never walk into φ→0. This bound is **overridable** — if the caller sets
+`tmb_control$lower` (a named vector that may include `log_aux`), the user value wins
+(merged via `.expand_bounds`, user entries take precedence). Because the bound makes
+degenerate φ unreachable, there is **no phi-based fit rejection**; a *genuine* low-precision
+fit (small true φ, e.g. φ=2, which lands well above the 0.1 floor) is RETAINED, not
+discarded. `.dd_beta_k_abs_max` survives only as a **NaN/blowup sanity guard** on
+`beta_k[1]` (reject a non-finite or `|beta_k[1]| > 20` candidate, i.e. k outside
+`[exp(-20), exp(20)]`); the lowest-nll surviving fit is returned, and if every fit trips
+the sanity guard we fall back to the lowest-nll fit overall and warn.
 
 - [ ] **Step 1: Write failing test for `.dd_tmb_multi_start` (data-driven sane fit + degenerate rejection).**
 
@@ -2402,12 +2766,12 @@ describe(".dd_tmb_multi_start()", {
     expect_gt(exp(log_aux), 0.1)            # phi above the floor
   })
 
-  it("rejects a degenerate phi->0 candidate in favor of a sane one", {
+  it("keeps log_aux above the phi floor on a boundary-heavy subject", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    # A single boundary-heavy subject: many exact 0/1 IPs that make the
-    # SLT likelihood prefer phi->0, k->inf. With the RE prior + guard the
-    # kept fit must stay sane.
+    # A single boundary-heavy subject: many exact 0/1 IPs that would make the
+    # SLT likelihood prefer phi->0, k->inf. The log_aux lower bound (log(0.1))
+    # makes that optimum unreachable, so the fit stays sane.
     set.seed(70)
     sim <- .simulate_dd_ip_mixed(n_subjects = 25, log_k_pop = log(0.01),
                                  sigma_u = 0.6, phi = 8, family = "sltb",
@@ -2434,7 +2798,34 @@ describe(".dd_tmb_multi_start()", {
     log_aux <- res$opt$par[["log_aux"]]
     # population k recovered near truth, NOT 414000-style blowup
     expect_lt(exp(beta0), 1)
-    expect_gt(exp(log_aux), 0.1)
+    # log_aux respects the optimizer lower bound (phi never below the floor)
+    expect_gte(exp(log_aux), 0.1 - 1e-8)
+  })
+
+  it("RETAINS a genuine low-precision fit (small true phi above the floor)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    # True phi = 2 is low precision but well above the 0.1 floor: the bound must
+    # NOT discard it. Recovered phi should land near 2, not be pinned to the
+    # floor and not be rejected.
+    set.seed(202)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.02),
+                                 sigma_u = 0.5, phi = 2, family = "sltb",
+                                 equation = "mazur", seed = 202)
+    prep <- .dd_tmb_prepare_data(sim, "y", "x", "id")
+    design <- .dd_tmb_build_design(prep$data)
+    tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "sltb")
+    starts <- .dd_tmb_default_starts(prep, design, "sltb", "mazur")
+    ctrl <- list(optimizer = "nlminb", iter_max = 1000, eval_max = 2000,
+                 rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)
+    res <- .dd_tmb_multi_start(tmb_data, starts, ctrl,
+                              user_specified = character(0), verbose = 0)
+    phi_hat <- exp(res$opt$par[["log_aux"]])
+    # genuine low-phi fit is retained: finite nll, phi in a sane low range and
+    # NOT pinned hard to the floor (a recovered ~2 proves it was not discarded)
+    expect_true(is.finite(res$opt$objective))
+    expect_gt(phi_hat, 0.5)
+    expect_lt(phi_hat, 6)
   })
 })
 ```
@@ -2452,22 +2843,29 @@ Expected output: the `.dd_tmb_multi_start()` block errors (function not found). 
 Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
 
 ```r
-# Guard constants for the degenerate phi->0 / k->inf optimum (spec section 4.8).
+# phi floor for the sltb family: imposed as an OPTIMIZER LOWER BOUND on log_aux
+# (log_aux >= log(.dd_phi_min)) so the optimizer can never reach the phi->0 /
+# k->inf collapse (spec section 4.8). Overridable via tmb_control$lower.
 .dd_phi_min <- 0.1
+# Sanity NaN/blowup guard on the log-k intercept only (NOT a phi rejection).
 .dd_beta_k_abs_max <- 20
 
-#' Multi-start optimization for the TMB discounting model with degenerate-optimum guard
+#' Multi-start optimization for the TMB discounting model
 #'
-#' Builds 3 starting sets (data-driven, low-k, high-k), runs each through
-#' [.dd_tmb_run_optimizer()], and selects the lowest **finite** nll among
-#' **non-degenerate** fits. A fit is degenerate when its auxiliary scalar implies
-#' `phi < .dd_phi_min` (only meaningful for family == sltb) or `|beta_k[1]|` >
-#' `.dd_beta_k_abs_max` (k outside `[exp(-20), exp(20)]`). If every fit is
-#' degenerate, the lowest-nll fit is returned with a warning.
+#' Builds 3 starting sets (data-driven, low-k, high-k) and runs each through
+#' [.dd_tmb_run_optimizer()]. The phi->0 / k->inf collapse (spec section 4.8) is
+#' prevented at the optimizer level: for `family == sltb` a lower bound of
+#' `log(.dd_phi_min)` is applied to `log_aux` unless the caller already set a
+#' `log_aux` lower bound in `tmb_control$lower` (the user value then wins). The
+#' lowest **finite** nll among candidates passing a NaN/blowup sanity check on
+#' `beta_k[1]` is returned; if every candidate trips the sanity check the
+#' lowest-nll fit overall is returned with a warning. There is no phi-based
+#' rejection, so a genuine low-precision fit (small true phi above the floor) is
+#' retained.
 #'
 #' @param tmb_data TMB data list from [.dd_tmb_build_tmb_data()].
 #' @param start_values Default starting list from [.dd_tmb_default_starts()].
-#' @param tmb_control Merged control list.
+#' @param tmb_control Merged control list (may carry a user `lower`/`upper`).
 #' @param user_specified Character vector of user-set tmb_control fields.
 #' @param verbose Integer verbosity.
 #' @return list(obj, opt, nll, start_idx, opt_warnings).
@@ -2475,6 +2873,18 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
 .dd_tmb_multi_start <- function(tmb_data, start_values,
                                 tmb_control, user_specified, verbose) {
   is_sltb <- identical(tmb_data$family, 0L)
+
+  # Impose the phi floor as a log_aux lower bound for sltb, unless the user
+  # already specified a log_aux lower bound (their value wins).
+  if (is_sltb) {
+    user_lower <- tmb_control$lower
+    has_user_log_aux <- !is.null(user_lower) &&
+      "log_aux" %in% names(user_lower)
+    if (!has_user_log_aux) {
+      floor_bound <- c(log_aux = log(.dd_phi_min))
+      tmb_control$lower <- c(user_lower, floor_bound)
+    }
+  }
 
   # 3 starting sets: data-driven, low-k, high-k.
   start_sets <- vector("list", 3L)
@@ -2490,15 +2900,12 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
   s3$log_sigma_u <- log(0.8)
   start_sets[[3]] <- s3
 
-  .is_degenerate <- function(opt) {
+  # Sanity NaN/blowup guard on the log-k intercept ONLY (no phi rejection: the
+  # log_aux lower bound already prevents the degenerate phi->0 optimum).
+  .is_blowup <- function(opt) {
     par <- opt$par
     beta0 <- par[names(par) == "beta_k"][1]
-    if (!is.finite(beta0) || abs(beta0) > .dd_beta_k_abs_max) return(TRUE)
-    if (is_sltb) {
-      la <- par[["log_aux"]]
-      if (!is.finite(la) || exp(la) < .dd_phi_min) return(TRUE)
-    }
-    FALSE
+    !is.finite(beta0) || abs(beta0) > .dd_beta_k_abs_max
   }
 
   best_kept_nll <- Inf
@@ -2532,7 +2939,7 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
       best_any_nll <- result$nll
       best_any <- result
     }
-    if (!.is_degenerate(result$opt) && result$nll < best_kept_nll) {
+    if (!.is_blowup(result$opt) && result$nll < best_kept_nll) {
       best_kept_nll <- result$nll
       best_kept <- result
     }
@@ -2547,8 +2954,8 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
     best_result <- best_kept
   } else {
     best_result <- best_any
-    warning("All multi-start fits hit the degenerate boundary ",
-            "(phi -> 0 / k -> Inf); returning the lowest-nll fit. ",
+    warning("All multi-start fits tripped the beta_k sanity guard ",
+            "(k -> Inf / non-finite intercept); returning the lowest-nll fit. ",
             "Inspect data for boundary-heavy subjects.", call. = FALSE)
   }
 
@@ -2567,12 +2974,17 @@ Run command:
 ```
 cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-fit_dd_tmb.R", reporter="summary")'
 ```
-Expected output: the `.dd_tmb_multi_start()` block passes (2 `it` green); the sane-intercept and degenerate-rejection assertions hold.
+Expected output: the `.dd_tmb_multi_start()` block passes (3 `it` green): the sane-intercept, the boundary-heavy floor-respect, and the genuine low-precision (phi=2) RETENTION assertions all hold.
 
 - [ ] **Step 5: Commit.**
 
 ```
-cd /Users/brent/Dropbox/GIT/beezdiscounting && git add R/dd-tmb.R tests/testthat/test-fit_dd_tmb.R && git commit -m "feat(tmb): add .dd_tmb_multi_start with degenerate-optimum guard
+cd /Users/brent/Dropbox/GIT/beezdiscounting && git add R/dd-tmb.R tests/testthat/test-fit_dd_tmb.R && git commit -m "feat(tmb): add .dd_tmb_multi_start with log_aux lower-bound phi floor
+
+Prevent the phi->0 / k->inf collapse at the optimizer level via a log_aux
+lower bound of log(0.1) for sltb (overridable through tmb_control\$lower),
+not a post-hoc rejection, so genuine low-precision fits are retained. Keep
+.dd_beta_k_abs_max as a NaN/blowup sanity guard on beta_k[1] only.
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -2781,7 +3193,9 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 Single random intercept: `re_i = sigma_u * u_i` (non-centered, matching the C++ predictor
 `log_k_i = X.row(i)*beta_k + sigma_u * u(subj,0)`). For the MVP intercept-only design,
 `Xbeta` is the same for all subjects (the intercept); subject k differs only via `u_i`.
-Output `data.frame(id, u_i, k [, phi])` — include a `phi` column only for sltb.
+Output `data.frame(id, u_i, k)` — **no `phi` column** (φ is population-level in the MVP, so
+it is not a subject-level parameter; see Integration note 10 and B5). This holds for BOTH
+families.
 
 - [ ] **Step 1: Write failing test for `.dd_tmb_compute_subject_pars`.**
 
@@ -2789,21 +3203,22 @@ Append to `tests/testthat/test-fit_dd_tmb.R`:
 
 ```r
 describe(".dd_tmb_compute_subject_pars()", {
-  it("computes k_i = exp(beta0 + sigma_u * u_i) for an intercept-only fit (sltb)", {
+  it("computes k_i = exp(beta0 + sigma_u * u_i) and omits phi (sltb)", {
     coefs <- c(beta_k = log(0.02), log_sigma_u = log(0.5), log_phi = log(8))
     u_hat <- matrix(c(-1, 0, 2), ncol = 1L)
     sp <- .dd_tmb_compute_subject_pars(
       coefficients = coefs, u_hat = u_hat,
       subject_levels = c("a", "b", "c"),
       equation = "mazur", family = "sltb")
-    expect_named(sp, c("id", "u_i", "k", "phi"))
+    expect_named(sp, c("id", "u_i", "k"))
+    # phi is population-level (MVP): never a subject-level column, even for sltb
+    expect_false("phi" %in% names(sp))
     sigma_u <- 0.5
     expect_equal(sp$k, exp(log(0.02) + sigma_u * c(-1, 0, 2)), tolerance = 1e-10)
     expect_equal(sp$u_i, c(-1, 0, 2))
-    expect_equal(unique(sp$phi), 8, tolerance = 1e-10)
   })
 
-  it("omits the phi column for gaussian fits", {
+  it("returns id/u_i/k (no phi) for gaussian fits", {
     coefs <- c(beta_k = log(0.02), log_sigma_u = log(0.5), log_sigma_e = log(0.1))
     u_hat <- matrix(c(0, 1), ncol = 1L)
     sp <- .dd_tmb_compute_subject_pars(
@@ -2835,8 +3250,9 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
 #' non-centered predictor that matches the C++ template
 #' (`log_k_i = X.row(i)*beta_k + sigma_u * u(subj,0)`). For the intercept-only
 #' MVP, `Xbeta` equals the intercept for all subjects; subject k differs via
-#' `u_i`. A `phi` column (population precision) is added only for `family =
-#' "sltb"`.
+#' `u_i`. The auxiliary scalar `phi` is population-level in the MVP, so it is
+#' **not** a subject-level parameter and is never returned here (for either
+#' family).
 #'
 #' @param coefficients Named coefficient vector (with `beta_k`, `log_sigma_u`,
 #'   and `log_phi` or `log_sigma_e`).
@@ -2844,7 +3260,7 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
 #' @param subject_levels Character vector of subject ids (length n_subjects).
 #' @param equation One of "mazur", "exponential" (reserved; k is equation-free).
 #' @param family One of "sltb", "gaussian".
-#' @return data.frame(id, u_i, k[, phi]).
+#' @return data.frame(id, u_i, k) — no phi column.
 #' @keywords internal
 .dd_tmb_compute_subject_pars <- function(coefficients, u_hat, subject_levels,
                                          equation, family) {
@@ -2856,18 +3272,12 @@ Append to `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb.R`:
   log_k_i <- beta0 + sigma_u * u_i
   k_i <- exp(log_k_i)
 
-  out <- data.frame(
+  data.frame(
     id = subject_levels,
     u_i = u_i,
     k = k_i,
     stringsAsFactors = FALSE
   )
-
-  if (identical(family, "sltb")) {
-    out$phi <- exp(unname(coefficients[["log_phi"]]))
-  }
-
-  out
 }
 ```
 
@@ -2978,17 +3388,41 @@ describe("fit_dd_tmb() object shape", {
                                  equation = "mazur", seed = 105)
     fit <- fit_dd_tmb(sim, verbose = 0)
     expect_s3_class(fit, "beezdiscounting_tmb")
-    expect_true(all(c("opt", "model", "sdr", "param_info", "formula_details",
-                      "subject_pars", "loglik", "AIC", "BIC", "converged",
-                      "se_available", "data", "data_all",
+    expect_true(all(c("call", "opt", "model", "sdr", "param_info",
+                      "formula_details", "subject_pars", "loglik", "AIC", "BIC",
+                      "converged", "se_available", "data", "data_all",
                       "coercion_info") %in% names(fit)))
-    expect_named(fit$subject_pars, c("id", "u_i", "k", "phi"))
+    # subject_pars carries NO phi column (phi is population-level in the MVP)
+    expect_named(fit$subject_pars, c("id", "u_i", "k"))
+    expect_false("phi" %in% names(fit$subject_pars))
     expect_equal(nrow(fit$subject_pars), 40L)
     expect_equal(fit$param_info$family, "sltb")
     expect_equal(fit$param_info$equation, "mazur")
     expect_equal(fit$param_info$n_random_effects, 1L)
     expect_equal(fit$param_info$id_var, "id")
     expect_true("log_phi" %in% names(fit$model$coefficients))
+    # call is stored (used by summary() in M.8)
+    expect_false(is.null(fit$call))
+    # formula_details stores rhs + contrasts for the emmeans ref grid (E.1)
+    expect_true(all(c("X", "rhs", "contrasts") %in% names(fit$formula_details)))
+  })
+
+  it("persists factor metadata in param_info and retains design cols in data", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(106)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 40, family = "sltb",
+                                 equation = "mazur", seed = 106)
+    sim$grp <- factor(rep(c("ctrl", "trt"),
+                          length.out = length(unique(sim$id)))[
+                            match(sim$id, unique(sim$id))])
+    fit <- fit_dd_tmb(sim, factors = "grp", verbose = 0)
+    expect_equal(fit$param_info$factors, "grp")
+    expect_false(fit$param_info$factor_interaction)
+    expect_null(fit$param_info$continuous_covariates)
+    # the design factor column survives onto fit$data (row-coherent frame)
+    expect_true("grp" %in% names(fit$data))
+    expect_equal(nrow(fit$data), nrow(fit$formula_details$X))
   })
 
   it("keeps a sane population k on a boundary-heavy dataset (regression)", {
@@ -3073,52 +3507,38 @@ fit_dd_tmb <- function(data,
   family <- match.arg(family)
   response_scale <- match.arg(response_scale)
 
-  # 1. Validate + coerce/clamp (warns; errors on missing/NA y).
+  # The union of factor + covariate columns is the set of EXTRA modeling
+  # columns that must travel with id/x/y through one complete-case pass
+  # (row-coherence). The validator retains them, prepare_data complete-cases
+  # them ONCE, and the design + TMB arrays are derived from that single frame.
+  extra_cols <- unique(c(factors, continuous_covariates))
+
+  # 1. Validate + coerce/clamp (warns; errors on missing/NA y). Retains the
+  #    factor/covariate columns alongside canonical id/x/y.
   validated <- .dd_validate_ip(data, y_var = y_var, x_var = x_var,
                                id_var = id_var, ll = ll,
+                               extra_cols = extra_cols,
                                response_scale = response_scale)
-  long <- validated$data            # canonical id/x/y
+  long <- validated$data            # canonical id/x/y + retained extras
   coercion_info <- validated$coercion_info
 
   # 2. Random-effects normalization (MVP: single intercept-only block).
   re_norm <- .dd_normalize_re(random_effects, data = long)
   n_random_effects <- 1L
 
-  # 3. Carry factor / covariate columns onto the cleaned long frame so the
-  #    design matrix can be built on the same rows the model is fit on.
-  extra_cols <- unique(c(factors, continuous_covariates))
-  extra_cols <- intersect(extra_cols, names(data))
-  if (length(extra_cols) > 0L) {
-    # data and `long` are row-aligned only when no rows were dropped; rejoin
-    # by the validator's preserved order via the original row index.
-    long <- cbind(long, data[seq_len(nrow(long)), extra_cols, drop = FALSE])
-    names(long)[(ncol(long) - length(extra_cols) + 1L):ncol(long)] <- extra_cols
-  }
-
-  # 4. Prepare data (0-indexed subject_id, NA drop, row coherence).
+  # 3. Prepare data: ONE complete-case pass over id/x/y + extra_cols, building
+  #    the 0-indexed subject_id. prepared$data is the single filtered model
+  #    frame (id/x/y + retained extras) that everything else derives from.
   prepared <- .dd_tmb_prepare_data(long, y_var = "y", x_var = "x",
-                                   id_var = "id")
+                                   id_var = "id", extra_cols = extra_cols)
 
-  # Restrict the design frame to the surviving rows (prepared$data is cleaned).
-  design_data <- prepared$data
-  if (length(extra_cols) > 0L) {
-    design_data <- cbind(design_data,
-                         long[match(rownames(prepared$data), rownames(long)),
-                              extra_cols, drop = FALSE])
-    # match() may fail if rownames differ; fall back to direct attach when
-    # the validator preserved order and no NA rows were dropped.
-    if (anyNA(design_data[, extra_cols, drop = FALSE]) &&
-        nrow(long) == nrow(prepared$data)) {
-      design_data <- cbind(prepared$data, long[, extra_cols, drop = FALSE])
-    }
-  }
-
-  # 5. Fixed-effect design for log k.
-  design <- .dd_tmb_build_design(design_data, factors = factors,
+  # 4. Fixed-effect design for log k, built on the SAME filtered frame
+  #    (prepared$data) so X's rows align 1:1 with the prepared y/x/subject_id.
+  design <- .dd_tmb_build_design(prepared$data, factors = factors,
                                  factor_interaction = factor_interaction,
                                  continuous_covariates = continuous_covariates)
 
-  # 6. TMB data + default starts.
+  # 5. TMB data + default starts.
   tmb_data <- .dd_tmb_build_tmb_data(prepared, design, equation, family)
   default_starts <- .dd_tmb_default_starts(prepared, design, family, equation)
   if (!is.null(start_values)) {
@@ -3127,7 +3547,7 @@ fit_dd_tmb <- function(data,
     }
   }
 
-  # 7. Merge control defaults.
+  # 6. Merge control defaults.
   default_control <- list(
     iter_max = 1000, eval_max = 2000, optimizer = "nlminb",
     rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0
@@ -3142,7 +3562,7 @@ fit_dd_tmb <- function(data,
                     prepared$n_subjects, prepared$n_obs))
   }
 
-  # 8. Optimize (multi-start or single).
+  # 7. Optimize (multi-start or single).
   opt_warnings <- character(0)
   if (isTRUE(multi_start)) {
     result <- .dd_tmb_multi_start(tmb_data, default_starts, tmb_control,
@@ -3162,12 +3582,12 @@ fit_dd_tmb <- function(data,
   converged <- isTRUE(opt$convergence == 0)
   try(obj$fn(opt$par), silent = TRUE)
 
-  # 9. Extract estimates (sdreport, pdHess gate, log_aux rename).
+  # 8. Extract estimates (sdreport, pdHess gate, log_aux rename).
   estimates <- .dd_tmb_extract_estimates(obj, opt,
                                          n_subjects = prepared$n_subjects,
                                          family = family, verbose = verbose)
 
-  # 10. Subject-specific parameters.
+  # 9. Subject-specific parameters (id/u_i/k; no phi -- phi is population-level).
   subject_pars <- .dd_tmb_compute_subject_pars(
     coefficients = estimates$coefficients,
     u_hat = estimates$u_hat,
@@ -3176,7 +3596,7 @@ fit_dd_tmb <- function(data,
     family = family
   )
 
-  # 11. Likelihood / IC.
+  # 10. Likelihood / IC.
   nll <- opt$objective
   loglik <- -nll
   n_fixed_params <- length(opt$par)
@@ -3207,9 +3627,17 @@ fit_dd_tmb <- function(data,
         id_var = id_var,
         x_var = x_var,
         y_var = y_var,
+        # Factor metadata persisted so predict()/emmeans can rebuild a
+        # column-aligned design via build_fixed_rhs + stored contrasts (B3).
+        factors = factors,
+        factor_interaction = factor_interaction,
+        continuous_covariates = continuous_covariates,
         random_effects_parsed = re_norm
       ),
-      formula_details = list(X = design$X, rhs = design$rhs),
+      # Store rhs + contrasts so .dd_build_emm_ref_grid (E.1) and predict (M.3)
+      # rebuild the design through the SAME build_fixed_rhs route as the fit.
+      formula_details = list(X = design$X, rhs = design$rhs,
+                             contrasts = design$contrasts),
       subject_pars = subject_pars,
       loglik = loglik,
       AIC = aic,
@@ -3217,6 +3645,8 @@ fit_dd_tmb <- function(data,
       converged = converged,
       se_available = !is.null(estimates$sdr),
       opt_warnings = opt_warnings,
+      # fit$data is the SINGLE filtered model frame (id/x/y + retained factor/
+      # covariate columns), row-aligned with X and the prepared arrays (B3).
       data = prepared$data,
       data_all = long,
       coercion_info = coercion_info
@@ -3245,8 +3675,9 @@ cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'devtools::document(qu
 ```
 Expected output: NAMESPACE now contains `export(fit_dd_tmb)`; all `describe` blocks in
 `test-fit_dd_tmb.R` pass — recovery within 0.15 (mazur) / 0.30 (exponential) for both
-families, `converged`/`se_available` TRUE, the object-shape assertions hold, and the
-boundary-heavy regression keeps `exp(beta0) < 1` and `phi > 0.1`.
+families, `converged`/`se_available` TRUE, the object-shape assertions hold (subject_pars =
+id/u_i/k with NO phi; `call`, factor metadata, and `formula_details$contrasts` present),
+and the boundary-heavy regression keeps `exp(beta0) < 1` and `phi > 0.1`.
 
 - [ ] **Step 5: Commit.**
 
@@ -3264,13 +3695,14 @@ fit-object structure from the PINNED CONTRACT: `object$model$coefficients`
 (named numeric incl. `beta_k`, `log_sigma_u`, and the renamed `log_phi` /
 `log_sigma_e`), `object$model$se` (parallel named SEs — added here as a thin
 accessor over the sdreport), `object$sdr`, `object$subject_pars`
-(data.frame `id`, `u_i`, `k` [, `phi`]), `object$param_info`,
-`object$formula_details$X`, `object$loglik`, `object$AIC`, `object$BIC`,
+(data.frame `id`, `u_i`, `k` — **no `phi` column**; φ is population-level),
+`object$param_info`, `object$formula_details$X` (+ `rhs`, `contrasts`),
+`object$call`, `object$loglik`, `object$AIC`, `object$BIC`,
 `object$converged`, `object$se_available`, and `object$data`.
 
-This phase assumes Phase P (param-space) has shipped `.dd_transform_coef_table()`
+This phase assumes Phase F (param-space) has shipped `.dd_transform_coef_table()`
 and `.dd_transform_est_se()` (ported from beezdemand, regex retargeted to
-`^k($|_)|^s($|_)|^phi($|_)`), and that Phase F (`fit_dd_tmb`) produces the fit
+`^k($|_|:)|^s($|_)|^phi($|_)`), and that Phase P (`fit_dd_tmb`) produces the fit
 object. Where a helper is shared across methods (the term-name builder, the
 fitted/resid back end), it is defined once here.
 
@@ -3587,11 +4019,12 @@ describe("ranef", {
     expect_true(all(re$k > 0))
   })
 
-  it("includes phi when family = sltb has subject phi column", {
+  it("omits phi: phi is population-level, not a subject-level column", {
     # MVP: phi is population-level, so subject_pars has no phi column and
-    # ranef() exposes only u_i and k. Guard the contract explicitly.
+    # ranef() exposes only id/u_i/k. Guard the contract explicitly.
     re <- ranef(fit)
     expect_false("phi" %in% names(re))
+    expect_named(re, c("id", "u_i", "k"))
   })
 })
 ```
@@ -3642,12 +4075,12 @@ fixef.beezdiscounting_tmb <- function(object, ...) {
 #' @param ... Unused.
 #' @return Data frame with `id`, the standardized random-intercept deviate
 #'   `u_i` (such that `log k_i = X beta + sigma_u * u_i`), and the resolved
-#'   per-subject discount rate `k`. A `phi` column is included only when the
-#'   fit carries a subject-level precision (population-`phi` MVP omits it).
+#'   per-subject discount rate `k`. There is **no** `phi` column: φ is
+#'   population-level in the MVP, not a subject-level parameter.
 #' @export
 ranef.beezdiscounting_tmb <- function(object, ...) {
   sp <- object$subject_pars
-  keep <- intersect(c("id", "u_i", "k", "phi"), names(sp))
+  keep <- intersect(c("id", "u_i", "k"), names(sp))
   out <- sp[, keep, drop = FALSE]
   rownames(out) <- NULL
   out
@@ -3758,6 +4191,23 @@ describe("predict", {
     k_pop <- exp(unname(f2$model$coefficients["beta_k"][1]))
     expect_equal(pr$predict.fixed, exp(-k_pop * c(7, 365)), tolerance = 1e-8)
   })
+
+  it("ERRORS on an unseen factor level in newdata (no silent zero-pad)", {
+    set.seed(31)
+    d3 <- .simulate_dd_ip_mixed(n_subjects = 30, family = "sltb",
+                                equation = "mazur", seed = 31)
+    d3$grp <- factor(rep(c("ctrl", "trt"),
+                         length.out = length(unique(d3$id)))[
+                           match(d3$id, unique(d3$id))])
+    f3 <- fit_dd_tmb(d3, factors = "grp", verbose = 0)
+    nd <- data.frame(x = c(7, 30),
+                     id = f3$param_info$subject_levels[1],
+                     grp = factor("NEVER_SEEN"))
+    expect_error(
+      predict(f3, newdata = nd, type = "response", level = "population"),
+      regexp = "not seen in the fit|unseen"
+    )
+  })
 })
 ```
 
@@ -3807,16 +4257,44 @@ Append to `R/dd-tmb-methods.R`:
   coefs <- object$model$coefficients
   beta_k <- unname(coefs[names(coefs) == "beta_k"])
 
-  rhs <- object$formula_details$rhs %||% ~ 1
-  Xnew <- stats::model.matrix(rhs, data = newdata)
-  # Align columns to the fitted design (guards factor-level/order drift).
-  fit_cn <- colnames(object$formula_details$X)
-  miss <- setdiff(fit_cn, colnames(Xnew))
-  if (length(miss) > 0L) {
-    for (m in miss) Xnew <- cbind(Xnew, stats::setNames(rep(0, nrow(Xnew)), NULL))
-    colnames(Xnew)[(ncol(Xnew) - length(miss) + 1L):ncol(Xnew)] <- miss
+  # Rebuild the newdata design through the SAME route as the fit: the stored
+  # one-sided rhs formula + the stored per-factor contrasts (R2). Passing
+  # contrasts.arg pins the contrast coding so the columns match the fit; we do
+  # NOT silently zero-pad missing columns (that would mask a level mismatch).
+  rhs <- object$formula_details$rhs %||% stats::as.formula("~ 1")
+  contrasts_arg <- object$formula_details$contrasts
+
+  # ERROR (do not zero-pad) on unseen or missing factor levels: a factor whose
+  # newdata levels are not a subset of the fitted levels cannot be encoded.
+  for (f in object$param_info$factors) {
+    if (!is.null(f) && f %in% names(newdata) && f %in% names(object$data)) {
+      fit_levels <- levels(as.factor(object$data[[f]]))
+      nd_levels <- unique(as.character(newdata[[f]]))
+      unseen <- setdiff(nd_levels, fit_levels)
+      if (length(unseen) > 0L) {
+        cli::cli_abort(c(
+          "newdata factor {.field {f}} has level(s) not seen in the fit: {.val {unseen}}.",
+          i = "predict() cannot encode unseen factor levels."
+        ))
+      }
+      # Re-level to the fitted factor so model.matrix builds the SAME columns.
+      newdata[[f]] <- factor(newdata[[f]], levels = fit_levels)
+    }
   }
-  Xnew <- Xnew[, fit_cn, drop = FALSE]
+
+  Xnew <- stats::model.matrix(rhs, data = newdata,
+                              contrasts.arg = contrasts_arg)
+  fit_cn <- colnames(object$formula_details$X)
+  if (!identical(colnames(Xnew), fit_cn)) {
+    # A residual mismatch here is a genuine error, not something to paper over.
+    if (!all(fit_cn %in% colnames(Xnew))) {
+      cli::cli_abort(c(
+        "newdata design columns do not match the fitted design.",
+        i = "Expected: {.val {fit_cn}}; got: {.val {colnames(Xnew)}}."
+      ))
+    }
+    Xnew <- Xnew[, fit_cn, drop = FALSE]
+  }
 
   eta <- as.numeric(Xnew %*% beta_k)
 
@@ -3897,8 +4375,8 @@ predict.beezdiscounting_tmb <- function(object,
 ```
 Rscript -e 'devtools::document("/Users/brent/Dropbox/GIT/beezdiscounting"); devtools::load_all("/Users/brent/Dropbox/GIT/beezdiscounting"); testthat::test_file("/Users/brent/Dropbox/GIT/beezdiscounting/tests/testthat/test-dd-tmb-methods.R")'
 ```
-Expected: `predict` block passes (8 `it`s); NAMESPACE gains
-`S3method(predict,beezdiscounting_tmb)`.
+Expected: `predict` block passes (9 `it`s, including the unseen-factor-level error);
+NAMESPACE gains `S3method(predict,beezdiscounting_tmb)`.
 
 - [ ] **Step 5: commit**
 
@@ -4107,9 +4585,15 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-tmb-methods.R`
 - Test: `/Users/brent/Dropbox/GIT/beezdiscounting/tests/testthat/test-dd-tmb-methods.R`
 
-Depends on Phase P's `.dd_transform_coef_table()` (the beezdemand port with
-regex retargeted to `^k($|_)|^s($|_)|^phi($|_)`) and
-`.dd_transform_est_se()`.
+Depends on Phase F's `.dd_transform_coef_table()` (the beezdemand port with
+regex retargeted to `^k($|_|:)|^s($|_)|^phi($|_)`) and
+`.dd_transform_est_se()`. **The `:` alternative on the k branch is load-bearing
+here:** the fixed-effect table passed to `.dd_transform_coef_table()` already
+carries the renamed display terms (`k:(Intercept)`, `k:condition_B`), so the
+core-term regex MUST match `k:` for the report-space transform to fire on these
+rows (the old `^k($|_)` would silently no-op them, leaving log-scale estimates
+mislabeled as natural). The tests below assert the transform actually fires on
+`k:(Intercept)`.
 
 - [ ] **Step 1: write failing tests**
 
@@ -4633,6 +5117,14 @@ describe("summary / print", {
     s <- summary(fit)
     expect_type(s$notes, "character")
   })
+
+  it("summary() carries the fitting call, not the optimizer status string", {
+    s <- summary(fit)
+    expect_identical(s$call, fit$call)
+    # it must NOT be the optimizer message (R5)
+    expect_false(identical(s$call, fit$opt$message))
+    expect_true(is.call(s$call) || is.null(s$call))
+  })
 })
 ```
 
@@ -4712,7 +5204,9 @@ summary.beezdiscounting_tmb <- function(object,
 
   structure(
     list(
-      call = object$opt$message,
+      # The fitting call (stored by fit_dd_tmb via match.call()); NOT the
+      # optimizer status string (R5).
+      call = object$call,
       model_class = "beezdiscounting_tmb",
       backend = "TMB_mixed",
       equation = object$param_info$equation,
@@ -4767,6 +5261,10 @@ print.beezdiscounting_tmb <- function(x, ...) {
 print.summary.beezdiscounting_tmb <- function(x, digits = 4, ...) {
   cat("\nTMB Mixed-Effects Discounting Model Summary\n")
   cat(strrep("=", 50), "\n\n")
+  if (!is.null(x$call)) {
+    cat("Call:\n")
+    cat(paste(deparse(x$call), collapse = "\n"), "\n\n")
+  }
   cat("Equation:", x$equation, "\n")
   cat("Family:", x$family, "\n")
   cat("Backend:", x$backend, "\n")
@@ -4854,7 +5352,9 @@ Preconditions from earlier phases (PINNED CONTRACT):
 - `fit$sdr` is the `TMB::sdreport`; `fit$sdr$cov.fixed` is the fixed-effect
   covariance with the same `names(fit$opt$par)` ordering.
 - `R/utils.R::build_fixed_rhs(factors, factor_interaction, continuous_covariates, data)`
-  exists (ported from beezdemand `R/utils.R:657`) and returns the RHS string.
+  exists (Task P.2a, ported from beezdemand `R/utils.R:657`) and returns a one-sided
+  RHS **formula**. E.1 builds the reference-grid design through this SAME helper +
+  `fit$formula_details$contrasts` so the grid columns align with the fitted `beta_k`.
 - `tibble`, `dplyr`, `cli`, `generics` (for the `tidy` generic) are in
   `Imports`.
 
@@ -5150,18 +5650,21 @@ describe(".dd_build_emm_ref_grid()", {
     }
   }
 
-  # Pin the rebuilt basis to the FITTED design's contrasts, then verify (and
-  # reorder to) the fitted column set — abort loudly on mismatch.
+  # Rebuild the grid basis through the SAME build_fixed_rhs route as the fit
+  # (B1) and pin it to the STORED contrasts, then verify (and reorder to) the
+  # fitted column set — abort loudly on mismatch. Using the identical RHS +
+  # contrasts route is what guarantees the EMM columns align with beta_k.
   fitted_X <- fit_obj$formula_details$X
+  emm_rhs <- build_fixed_rhs(
+    factors = fitted_factors,
+    factor_interaction = fit_obj$param_info$factor_interaction,
+    continuous_covariates = cov_names,
+    data = data_used
+  )
   X_full <- stats::model.matrix(
-    stats::as.formula(build_fixed_rhs(
-      factors = fitted_factors,
-      factor_interaction = fit_obj$param_info$factor_interaction,
-      continuous_covariates = cov_names,
-      data = data_used
-    )),
+    emm_rhs,
     data = full_combos,
-    contrasts.arg = attr(fitted_X, "contrasts")
+    contrasts.arg = fit_obj$formula_details$contrasts
   )
   fitted_cols <- colnames(fitted_X)
   if (!is.null(fitted_cols)) {
@@ -5199,12 +5702,8 @@ describe(".dd_build_emm_ref_grid()", {
 }
 ```
 
-  Also add the null-coalescing helper if not already defined in the package:
-
-```r
-# R/dd-comparisons.R (top, if `%||%` is not already exported/imported elsewhere)
-`%||%` <- function(x, y) if (is.null(x)) y else x
-```
+  Note: `%||%` is the single package-level definition in `R/utils.R` (Task P.2a); do NOT
+  redefine it at the top of `R/dd-comparisons.R`.
 
 - [ ] **Step 4: Run the test, expect pass.**
 
@@ -5968,7 +6467,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 **Files:**
 - Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-comparisons.R`
 - Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/NAMESPACE` (via roxygen `@export` + `@importFrom generics tidy`)
-- Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/DESCRIPTION` (`Imports: generics`)
+- Verify only (do NOT edit): `/Users/brent/Dropbox/GIT/beezdiscounting/DESCRIPTION` already has `Imports: generics` from Task T.1 — confirm, don't re-add.
 - Test: `/Users/brent/Dropbox/GIT/beezdiscounting/tests/testthat/test-dd-comparisons.R`
 
 - [ ] **Step 1: Write the failing test (flat columns; structured std labels; exponentiate ratios; by-columns).**
@@ -6168,10 +6667,11 @@ tidy.beezdiscounting_comparison <- function(x, exponentiate = FALSE, ...) {
 }
 ```
 
-  Ensure `generics` is imported. Add to `DESCRIPTION` `Imports:` if absent:
-  `generics`. The `#' @importFrom generics tidy` above re-exports the generic;
-  also add a standalone re-export so `tidy()` is callable without
-  `generics::`:
+  `generics` is already in `DESCRIPTION` `Imports:` from Task T.1 — VERIFY it is
+  present (`grep '^\s*generics' DESCRIPTION`); do **not** re-add or re-edit
+  DESCRIPTION here (T.1 is the single canonical DESCRIPTION task). The
+  `#' @importFrom generics tidy` above re-exports the generic; also add a
+  standalone re-export so `tidy()` is callable without `generics::`:
 
 ```r
 # R/dd-comparisons.R  (append)
@@ -6192,7 +6692,7 @@ generics::tidy
   ```
   Rscript -e 'devtools::document("/Users/brent/Dropbox/GIT/beezdiscounting")'
   Rscript -e 'lintr::lint("/Users/brent/Dropbox/GIT/beezdiscounting/R/dd-comparisons.R")'
-  git -C /Users/brent/Dropbox/GIT/beezdiscounting add R/dd-comparisons.R tests/testthat/test-dd-comparisons.R NAMESPACE DESCRIPTION man/tidy.beezdiscounting_comparison.Rd man/reexports.Rd
+  git -C /Users/brent/Dropbox/GIT/beezdiscounting add R/dd-comparisons.R tests/testthat/test-dd-comparisons.R NAMESPACE man/tidy.beezdiscounting_comparison.Rd man/reexports.Rd
   git -C /Users/brent/Dropbox/GIT/beezdiscounting commit -m "feat(emmeans): add tidy.beezdiscounting_comparison flat frame
 
 Backend-agnostic flattener (param='k') with structured std_labels,
@@ -6214,7 +6714,20 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 > Tests use testthat 3e BDD (`describe()`/`it()`). Every commit uses targeted `git add`
 > (never `-A`) and ends the message with the pinned `Co-Authored-By` trailer.
 
-### Task S.1: `.simulate_dd_ip_mixed()` — SLT inverse-CDF + Gaussian DGP
+> **Execution-order note (B4):** the simulator and its helper are needed by
+> the compiled-template tests in Tasks P.5, P.6, and P.8 (and by M and E), so
+> Task **S.1a** (the `.simulate_dd_ip_mixed()` function + `helper-dd-sim.R`) is
+> executed EARLY — right after Phase T, BEFORE Phase P. The known-truth
+> recovery tests in Task **S.1b** depend on `fit_dd_tmb()` and run after Phase
+> P. The S section stays physically here, but S.1 is split into S.1a / S.1b and
+> ordered per the "Execution order" bullet in the Integration notes.
+
+### Task S.1a: Simulator + `helper-dd-sim.R`
+
+The data-generating `.simulate_dd_ip_mixed()` (SLT inverse-CDF + Gaussian DGP) and the
+shared `helper-dd-sim.R` fixture. **No dependency on `fit_dd_tmb()`** — this task is pure-R
+(simulator + contract tests) and MUST land right after Phase T so the compiled-template
+tests in P.5/P.6/P.8 can call the simulator.
 
 **Files:**
 - Create: `/Users/brent/Dropbox/GIT/beezdiscounting/R/simulate-dd-mixed.R`
@@ -6418,7 +6931,38 @@ Expected output: errors `could not find function ".simulate_dd_ip_mixed"` (all `
 }
 ```
 
-- [ ] **Step 5: Add the known-truth recovery test through `fit_dd_tmb()`.** Append to `/Users/brent/Dropbox/GIT/beezdiscounting/tests/testthat/test-simulate-dd-mixed.R`:
+- [ ] **Step 5: Run the pure-R simulator tests (expect pass) and commit S.1a.**
+
+Run:
+```
+cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-simulate-dd-mixed.R")'
+```
+Expected output: the `.simulate_dd_ip_mixed()` `describe` block passes (5 `it()` green: column contract, condition factor, delta_k length error, SLT mean-curve moment, Gaussian clamp). The recovery `describe` block (S.1b) is not present yet.
+
+```
+cd /Users/brent/Dropbox/GIT/beezdiscounting && \
+git add R/simulate-dd-mixed.R tests/testthat/test-simulate-dd-mixed.R tests/testthat/helper-dd-sim.R && \
+git commit -m "feat(sim): add .simulate_dd_ip_mixed SLT/Gaussian DGP + helper-dd-sim.R
+
+SLT draws via inverse-CDF on the truncated beta (s=1.0000001, l=1e-8);
+Gaussian draws clamped to [0,1]; optional between-subject condition factor via
+delta_k. Pure-R, no fit_dd_tmb dependency, so the compiled-template tests in
+P.5/P.6/P.8 can call it. Recovery-through-fit tests land in Task S.1b.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+### Task S.1b: Simulator column-contract + known-truth recovery test (needs `fit_dd_tmb`)
+
+The end-to-end check that the DGP from S.1a is recovered by the fitted model. **Depends on
+`fit_dd_tmb()`** (Phase P), so this task runs AFTER Phase P.
+
+**Files:**
+- Modify (append): `/Users/brent/Dropbox/GIT/beezdiscounting/tests/testthat/test-simulate-dd-mixed.R`
+
+- [ ] **Step 1: Add the known-truth recovery test through `fit_dd_tmb()`.** Append to `/Users/brent/Dropbox/GIT/beezdiscounting/tests/testthat/test-simulate-dd-mixed.R`:
 
 ```r
 describe(".simulate_dd_ip_mixed() recovery through fit_dd_tmb()", {
@@ -6428,7 +6972,8 @@ describe(".simulate_dd_ip_mixed() recovery through fit_dd_tmb()", {
     sim <- .dd_sim_fixture(family = "sltb", equation = "mazur", seed = 101)
     fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb",
                       multi_start = TRUE, verbose = 0)
-    k_hat <- exp(unname(fit$model$coefficients[["beta_k"]]))
+    co <- fit$model$coefficients
+    k_hat <- exp(unname(co[names(co) == "beta_k"][1]))
     expect_lt(abs(k_hat - 0.01) / 0.01, 0.15)
   })
 
@@ -6438,7 +6983,8 @@ describe(".simulate_dd_ip_mixed() recovery through fit_dd_tmb()", {
     sim <- .dd_sim_fixture(family = "gaussian", equation = "mazur", seed = 102)
     fit <- fit_dd_tmb(sim, equation = "mazur", family = "gaussian",
                       multi_start = TRUE, verbose = 0)
-    k_hat <- exp(unname(fit$model$coefficients[["beta_k"]]))
+    co <- fit$model$coefficients
+    k_hat <- exp(unname(co[names(co) == "beta_k"][1]))
     expect_lt(abs(k_hat - 0.01) / 0.01, 0.15)
   })
 
@@ -6467,27 +7013,26 @@ describe(".simulate_dd_ip_mixed() recovery through fit_dd_tmb()", {
 })
 ```
 
-Note: `beta_k` is the FE name from the contract; for the intercept-only design `model.matrix` yields a single `(Intercept)` column whose coefficient is named `beta_k` in `fit$model$coefficients` per the TMB phase. If that phase names the single intercept `"(Intercept)"` instead, change `coefficients[["beta_k"]]` to `coefficients[["(Intercept)"]]` — confirm against the symbol table the TMB phase exports and keep one form.
+Note: `beta_k` is the FE name from the contract; for the intercept-only design `model.matrix` yields a single `(Intercept)` column whose coefficient is named `beta_k` in `fit$model$coefficients` per the TMB phase. Reference the population intercept via the FIRST `beta_k` element (`fit$model$coefficients[names(fit$model$coefficients) == "beta_k"][1]`) — never assume a scalar `coefficients[["beta_k"]]` when factors are present (Integration note 3).
 
-- [ ] **Step 6: Run the full file (expect pass).**
+- [ ] **Step 2: Run the full file (expect pass).**
 
 Run:
 ```
 cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-simulate-dd-mixed.R")'
 ```
-Expected output: all `it()` blocks pass (compiled-template recovery blocks pass once `TMB` is installed; otherwise they skip, never fail).
+Expected output: all `it()` blocks pass — the pure-R simulator blocks (from S.1a) plus the recovery blocks (compiled-template recovery passes once `TMB` is installed; otherwise they skip, never fail).
 
-- [ ] **Step 7: Commit.**
+- [ ] **Step 3: Commit S.1b.**
 
 ```
 cd /Users/brent/Dropbox/GIT/beezdiscounting && \
-git add R/simulate-dd-mixed.R tests/testthat/test-simulate-dd-mixed.R tests/testthat/helper-dd-sim.R && \
-git commit -m "feat(sim): add .simulate_dd_ip_mixed SLT/Gaussian DGP with recovery tests
+git add tests/testthat/test-simulate-dd-mixed.R && \
+git commit -m "test(sim): known-truth recovery of .simulate_dd_ip_mixed via fit_dd_tmb
 
-SLT draws via inverse-CDF on the truncated beta (s=1.0000001, l=1e-8);
-Gaussian draws clamped to [0,1]; optional between-subject condition factor via
-delta_k. Recovery of population k within 0.15 relative through fit_dd_tmb for
-both families (mazur) and rank correlation > 0.93 for the exponential.
+Recovery of population k within 0.15 relative through fit_dd_tmb for both
+families (mazur) and rank correlation > 0.93 for the exponential. Depends on
+fit_dd_tmb (Phase P); the simulator + helper shipped in Task S.1a.
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -7200,33 +7745,22 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-### Task S.7: NEWS.md entry, DESCRIPTION → 0.4.0, `.Rbuildignore`, and document()/NAMESPACE regen
+### Task S.7: NEWS.md entry, DESCRIPTION verify, `.Rbuildignore`, and document()/NAMESPACE regen
 
 **Files:**
 - Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/NEWS.md:1`
-- Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/DESCRIPTION:5` (Version), plus `Imports`/`LinkingTo`/`Suggests`/`VignetteBuilder`/`SystemRequirements`
+- Verify only (do NOT edit): `/Users/brent/Dropbox/GIT/beezdiscounting/DESCRIPTION` — Task T.1 is the single canonical DESCRIPTION task (it already set `Version: 0.4.0`, `Date: 2026-06-06`, `LinkingTo`, `Imports: TMB/RcppEigen/emmeans/generics`, `Suggests: knitr/rmarkdown`, `VignetteBuilder`, `SystemRequirements`). This task only CONFIRMS those fields are present.
 - Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/.Rbuildignore` (compiled artifacts, `dev`, `docs`)
 - Modify: `/Users/brent/Dropbox/GIT/beezdiscounting/NAMESPACE` (regenerated by roxygen)
 
-Note: the spec assigns the `DESCRIPTION` build-field edits (`LinkingTo: TMB, RcppEigen`; `Imports: TMB (>= 1.9.0), RcppEigen, emmeans`; `Suggests: knitr, rmarkdown`; `VignetteBuilder: knitr`; `SystemRequirements: GNU make`) to the TMB-engine phase's compile gate. If those edits already exist when this task runs, this task only **adds** `Version -> 0.4.0`, `Date`, the `Suggests: knitr, rmarkdown` (for the vignette) and confirms the fields are present. Do not duplicate fields — read `DESCRIPTION` first and add only what is missing.
+Note: ALL `DESCRIPTION` field edits (Version 0.4.0, Date, `LinkingTo: TMB, RcppEigen`; `Imports: TMB (>= 1.9.0), RcppEigen, emmeans, generics`; `Suggests: knitr, rmarkdown`; `VignetteBuilder: knitr`; `SystemRequirements: GNU make`) are owned by Task T.1. This task must **not** edit `DESCRIPTION` — only NEWS prepend, `.Rbuildignore`, and `devtools::document()`/CI. The step below is a read-only verification.
 
-- [ ] **Step 1: Bump the version and date, ensure vignette/build fields exist.** Edit `/Users/brent/Dropbox/GIT/beezdiscounting/DESCRIPTION`. Set:
-  - `Version: 0.4.0`
-  - `Date: 2026-06-06`
-  - Confirm (add if missing) under `Imports:`: `TMB (>= 1.9.0)`, `RcppEigen`, `emmeans`.
-  - Confirm (add if missing) under `Suggests:`: `knitr`, `rmarkdown` (testthat already present).
-  - Confirm `LinkingTo: TMB, RcppEigen`, `VignetteBuilder: knitr`, `SystemRequirements: GNU make` exist.
+- [ ] **Step 1: VERIFY the DESCRIPTION fields (do not edit).** Confirm Task T.1's fields are present; this task makes no DESCRIPTION edit.
 
-Apply the version/date edit explicitly:
 ```
-# old (DESCRIPTION lines 5-6):
-#   Version: 0.3.2
-#   Date: 2025-01-08
-# new:
-#   Version: 0.4.0
-#   Date: 2026-06-06
+cd /Users/brent/Dropbox/GIT/beezdiscounting && Rscript -e 'd <- read.dcf("DESCRIPTION"); stopifnot(d[,"Version"] == "0.4.0"); stopifnot(d[,"Date"] == "2026-06-06"); stopifnot(grepl("TMB", d[,"LinkingTo"])); stopifnot(grepl("TMB", d[,"Imports"]), grepl("RcppEigen", d[,"Imports"]), grepl("emmeans", d[,"Imports"]), grepl("generics", d[,"Imports"])); stopifnot(grepl("knitr", d[,"Suggests"]), grepl("rmarkdown", d[,"Suggests"])); stopifnot(grepl("knitr", d[,"VignetteBuilder"])); stopifnot(grepl("GNU make", d[,"SystemRequirements"])); cat("DESCRIPTION fields OK (set by T.1)\n")'
 ```
-Use the Edit tool to replace exactly those two lines. For the `Suggests:` block, append `knitr,` and `rmarkdown,` (alphabetical, before `testthat`) only if absent.
+Expected output: `DESCRIPTION fields OK (set by T.1)`. If any field is missing, fix it in Task T.1 — not here.
 
 - [ ] **Step 2: Add the `.Rbuildignore` entries** for compiled objects, `dev/`, and `docs/`. Append to `/Users/brent/Dropbox/GIT/beezdiscounting/.Rbuildignore` (skip any line already present):
 
@@ -7310,13 +7844,14 @@ Expected output: `0 errors | 0 warnings | <n> notes` (TMB compiles; the vignette
 
 ```
 cd /Users/brent/Dropbox/GIT/beezdiscounting && \
-git add NEWS.md DESCRIPTION .Rbuildignore NAMESPACE man && \
-git commit -m "chore(release): NEWS + DESCRIPTION 0.4.0 + document/NAMESPACE regen
+git add NEWS.md .Rbuildignore NAMESPACE man && \
+git commit -m "chore(release): NEWS 0.4.0 + document/NAMESPACE regen
 
-Bump to 0.4.0; NEWS entry for the TMB mixed-effects discounting tier (fit_dd_tmb,
-SLT-beta family, EMMs/contrasts, broom+base S3, jarvis2019 fixture, vignette);
-.Rbuildignore compiled artifacts and dev/docs; regenerated man/ and NAMESPACE via
-devtools::document().
+NEWS entry for the TMB mixed-effects discounting tier (fit_dd_tmb, SLT-beta
+family, EMMs/contrasts, broom+base S3, jarvis2019 fixture, vignette);
+.Rbuildignore compiled artifacts and dev/docs; regenerated man/ and NAMESPACE
+via devtools::document(). DESCRIPTION fields were set in Task T.1 (not touched
+here).
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```

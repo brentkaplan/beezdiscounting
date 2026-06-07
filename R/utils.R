@@ -264,3 +264,8 @@ calc_aucs <- function(dat) {
     auc_ord = auc_ord
   )
 }
+
+
+#' Null-coalescing operator (single package-level definition)
+#' @noRd
+`%||%` <- function(x, y) if (is.null(x)) y else x

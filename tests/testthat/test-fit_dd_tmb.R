@@ -224,3 +224,141 @@ describe(".dd_tmb_default_starts()", {
     expect_equal(st$beta_k[2], 0)
   })
 })
+
+# ==============================================================================
+# P.4: .expand_bounds() and .dd_tmb_run_optimizer()
+# ==============================================================================
+
+describe(".expand_bounds()", {
+  it("returns the default for every name when bounds is NULL", {
+    out <- .expand_bounds(NULL, c("beta_k", "beta_k", "log_aux"), -Inf)
+    expect_equal(out, c(-Inf, -Inf, -Inf))
+  })
+
+  it("applies a named bound to all matching positions", {
+    out <- .expand_bounds(c(beta_k = -2), c("beta_k", "beta_k", "log_aux"), -Inf)
+    expect_equal(unname(out), c(-2, -2, -Inf))
+  })
+
+  it("warns on an unknown bound name", {
+    expect_warning(
+      .expand_bounds(c(nope = 1), c("beta_k"), Inf),
+      "unknown parameter"
+    )
+  })
+})
+
+describe(".dd_tmb_run_optimizer()", {
+  it("minimizes a quadratic via nlminb and normalizes fields", {
+    obj <- list(
+      par = c(a = 5, b = -5),
+      fn  = function(p) sum((p - c(1, 2))^2),
+      gr  = function(p) 2 * (p - c(1, 2))
+    )
+    ctrl <- list(optimizer = "nlminb", iter_max = 100, eval_max = 200,
+                 rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)
+    res <- .dd_tmb_run_optimizer(obj, obj$par, ctrl,
+                                  user_specified = character(0), verbose = 0)
+    expect_equal(unname(res$opt$par), c(1, 2), tolerance = 1e-5)
+    expect_equal(res$opt$convergence, 0L)
+    expect_true(is.character(res$opt$message))
+  })
+
+  it("returns convergence code 99 and Inf objective on optimizer error", {
+    obj <- list(par = c(a = 0), fn = function(p) stop("boom"),
+                gr  = function(p) p)
+    ctrl <- list(optimizer = "nlminb", iter_max = 10, eval_max = 20,
+                 rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)
+    res <- .dd_tmb_run_optimizer(obj, obj$par, ctrl,
+                                  user_specified = character(0), verbose = 0)
+    expect_equal(res$opt$convergence, 99L)
+    expect_equal(res$opt$objective,   Inf)
+  })
+})
+
+# ==============================================================================
+# P.5: .dd_tmb_multi_start() — 3 starts + phi floor guard
+# ==============================================================================
+
+describe(".dd_tmb_multi_start()", {
+  it("returns a finite-nll fit with a sane intercept on clean data", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- .simulate_dd_ip_mixed(n_subjects = 30, log_k_pop = log(0.02),
+                                 sigma_u = 0.5, phi = 10, family = "sltb",
+                                 equation = "mazur", seed = 11)
+    prep     <- .dd_tmb_prepare_data(sim, "y", "x", "id")
+    design   <- .dd_tmb_build_design(prep$data)
+    tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "sltb")
+    starts   <- .dd_tmb_default_starts(prep, design, "sltb", "mazur")
+    ctrl     <- list(optimizer = "nlminb", iter_max = 1000, eval_max = 2000,
+                     rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)
+    res      <- .dd_tmb_multi_start(tmb_data, starts, ctrl,
+                                    user_specified = character(0), verbose = 0)
+    expect_true(is.finite(res$opt$objective))
+    beta0   <- res$opt$par[names(res$opt$par) == "beta_k"][1]
+    expect_lt(abs(beta0), 20)           # not the k->inf collapse
+    log_aux <- res$opt$par[["log_aux"]]
+    expect_gt(exp(log_aux), 0.1)        # phi above the floor
+  })
+
+  it("keeps log_aux above the phi floor on a boundary-heavy subject", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    # A Jarvis-70-style boundary subject (all 0s and 1s) would make the SLT
+    # likelihood prefer phi->0, k->inf. The log_aux lower bound (log(0.1))
+    # makes that optimum unreachable, so the fit stays sane.
+    set.seed(70)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 25, log_k_pop = log(0.01),
+                                 sigma_u = 0.6, phi = 8, family = "sltb",
+                                 equation = "mazur", seed = 70)
+    bad <- data.frame(
+      id = factor("boundary"),
+      x  = c(7, 30, 180, 365, 730, 1460, 2920),
+      y  = c(1,  1,   1,   0,   0,    0,    0)
+    )
+    sim2 <- rbind(
+      data.frame(id = as.character(sim$id), x = sim$x, y = sim$y),
+      data.frame(id = as.character(bad$id), x = bad$x, y = bad$y)
+    )
+    prep     <- .dd_tmb_prepare_data(sim2, "y", "x", "id")
+    design   <- .dd_tmb_build_design(prep$data)
+    tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "sltb")
+    starts   <- .dd_tmb_default_starts(prep, design, "sltb", "mazur")
+    ctrl     <- list(optimizer = "nlminb", iter_max = 1000, eval_max = 2000,
+                     rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)
+    res      <- .dd_tmb_multi_start(tmb_data, starts, ctrl,
+                                    user_specified = character(0), verbose = 0)
+    beta0   <- res$opt$par[names(res$opt$par) == "beta_k"][1]
+    log_aux <- res$opt$par[["log_aux"]]
+    # population k recovered near truth, NOT 414000-style blowup
+    expect_lt(exp(beta0), 1)
+    # log_aux respects the optimizer lower bound (phi never below the floor)
+    expect_gte(exp(log_aux), 0.1 - 1e-8)
+  })
+
+  it("RETAINS a genuine low-precision fit (small true phi above the floor)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    # True phi = 2 is low precision but well above the 0.1 floor: the bound
+    # must NOT discard it. Recovered phi should land near 2, not be pinned to
+    # the floor and not be rejected.
+    sim <- .simulate_dd_ip_mixed(n_subjects = 60, log_k_pop = log(0.02),
+                                 sigma_u = 0.5, phi = 2, family = "sltb",
+                                 equation = "mazur", seed = 202)
+    prep     <- .dd_tmb_prepare_data(sim, "y", "x", "id")
+    design   <- .dd_tmb_build_design(prep$data)
+    tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "sltb")
+    starts   <- .dd_tmb_default_starts(prep, design, "sltb", "mazur")
+    ctrl     <- list(optimizer = "nlminb", iter_max = 1000, eval_max = 2000,
+                     rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)
+    res      <- .dd_tmb_multi_start(tmb_data, starts, ctrl,
+                                    user_specified = character(0), verbose = 0)
+    phi_hat <- exp(res$opt$par[["log_aux"]])
+    # genuine low-phi fit is retained: finite nll, phi in a sane low range and
+    # NOT pinned hard to the floor (a recovered ~2 proves it was not discarded)
+    expect_true(is.finite(res$opt$objective))
+    expect_gt(phi_hat, 0.5)
+    expect_lt(phi_hat, 6)
+  })
+})

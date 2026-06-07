@@ -440,3 +440,110 @@ describe("glance", {
     expect_equal(glance(f2)$family, "gaussian")
   })
 })
+
+# ---------------------------------------------------------------------------
+# M.7: confint
+# ---------------------------------------------------------------------------
+
+describe("confint", {
+  it("returns term/estimate/conf.low/conf.high/level with internal default", {
+    fit <- .get_fit_for_methods()
+    ci <- confint(fit)
+    expect_s3_class(ci, "tbl_df")
+    expect_named(ci, c("term", "estimate", "conf.low", "conf.high", "level"))
+    expect_true(all(ci$conf.low <= ci$estimate))
+    expect_true(all(ci$estimate <= ci$conf.high))
+    expect_true(all(ci$level == 0.95))
+  })
+
+  it("Wald interval = estimate +/- z*se on the internal scale", {
+    fit <- .get_fit_for_methods()
+    ci <- confint(fit, parm = "k:(Intercept)")
+    co <- fit$model$coefficients["beta_k"][1]
+    se <- .dd_tmb_model_se(fit)["beta_k"]
+    z <- stats::qnorm(0.975)
+    expect_equal(ci$estimate, unname(co), tolerance = 1e-10)
+    expect_equal(ci$conf.low, unname(co - z * se), tolerance = 1e-8)
+    expect_equal(ci$conf.high, unname(co + z * se), tolerance = 1e-8)
+  })
+
+  it("report_space = 'natural' exponentiates beta_k bounds", {
+    fit <- .get_fit_for_methods()
+    ci_i <- confint(fit, parm = "k:(Intercept)", report_space = "internal")
+    ci_n <- confint(fit, parm = "k:(Intercept)", report_space = "natural")
+    expect_equal(ci_n$estimate, exp(ci_i$estimate), tolerance = 1e-8)
+    expect_equal(ci_n$conf.low, exp(ci_i$conf.low), tolerance = 1e-8)
+    expect_equal(ci_n$conf.high, exp(ci_i$conf.high), tolerance = 1e-8)
+  })
+
+  it("parm filters by display name OR raw name", {
+    fit <- .get_fit_for_methods()
+    ci_disp <- confint(fit, parm = "k:(Intercept)")
+    ci_raw <- confint(fit, parm = "beta_k")
+    expect_equal(nrow(ci_disp), 1L)
+    expect_equal(nrow(ci_raw), 1L)
+    expect_equal(ci_disp$estimate, ci_raw$estimate, tolerance = 1e-12)
+  })
+
+  it("honours a non-default confidence level", {
+    fit <- .get_fit_for_methods()
+    ci90 <- confint(fit, parm = "k:(Intercept)", level = 0.90)
+    ci95 <- confint(fit, parm = "k:(Intercept)", level = 0.95)
+    expect_true(ci90$conf.low > ci95$conf.low)
+    expect_true(ci90$conf.high < ci95$conf.high)
+    expect_true(all(ci90$level == 0.90))
+  })
+})
+
+# ---------------------------------------------------------------------------
+# M.8: summary / print
+# ---------------------------------------------------------------------------
+
+describe("summary / print", {
+  it("summary() returns the class with coefficients + variance components", {
+    fit <- .get_fit_for_methods()
+    s <- summary(fit)
+    expect_s3_class(s, "summary.beezdiscounting_tmb")
+    expect_equal(s$backend, "TMB_mixed")
+    expect_equal(s$equation, "mazur")
+    expect_equal(s$family, "sltb")
+    expect_s3_class(s$coefficients, "tbl_df")
+    expect_true(all(c("term", "estimate", "std.error", "statistic",
+                      "p.value") %in% names(s$coefficients)))
+    expect_true(!is.null(s$variance_components))
+    expect_equal(s$n_subjects, fit$param_info$n_subjects)
+  })
+
+  it("summary() honours report_space for the fixed-effect estimates", {
+    fit <- .get_fit_for_methods()
+    s_nat <- summary(fit, report_space = "natural")
+    krow <- s_nat$coefficients[s_nat$coefficients$term == "k:(Intercept)", ]
+    expect_equal(krow$estimate,
+                 exp(unname(fit$model$coefficients["beta_k"][1])),
+                 tolerance = 1e-8)
+  })
+
+  it("print() and print.summary() run without error and return invisibly", {
+    fit <- .get_fit_for_methods()
+    expect_invisible(print(fit))
+    expect_output(print(fit), "TMB Mixed-Effects Discounting Model")
+    s <- summary(fit)
+    expect_invisible(print(s))
+    expect_output(print(s), "TMB_mixed")
+  })
+
+  it("summary notes flag non-convergence / missing SEs", {
+    fit <- .get_fit_for_methods()
+    s <- summary(fit)
+    expect_type(s$notes, "character")
+  })
+
+  it("summary() carries the fitting call, not the optimizer status string", {
+    fit <- .get_fit_for_methods()
+    s <- summary(fit)
+    expect_identical(s$call, fit$call)
+    # it must NOT be the optimizer message (R5)
+    expect_false(identical(s$call, fit$opt$message))
+    expect_true(is.call(s$call) || is.null(s$call))
+  })
+})

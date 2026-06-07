@@ -51,6 +51,41 @@ describe("simulate_dd_ip()", {
     )
     expect_true(all(sim$y >= 0 & sim$y <= 1))
   })
+
+  it("green-myerson draws track the (1+k*x)^(-s) mean curve in expectation", {
+    set.seed(220)
+    s_true <- 0.6
+    sim <- simulate_dd_ip(
+      n_subjects = 400, log_k_pop = log(0.01), sigma_u = 1e-6, phi = 40,
+      family = "sltb", equation = "green-myerson", s = s_true, seed = 220
+    )
+    k <- 0.01
+    by_delay <- tapply(sim$y, sim$x, mean)
+    mu_true <- (1 + k * as.numeric(names(by_delay)))^(-s_true)
+    expect_lt(max(abs(by_delay - mu_true)), 0.02)
+  })
+
+  it("rachlin draws track the 1/(1+k*x^s) mean curve in expectation", {
+    set.seed(221)
+    s_true <- 1.4
+    sim <- simulate_dd_ip(
+      n_subjects = 400, log_k_pop = log(0.01), sigma_u = 1e-6, phi = 40,
+      family = "sltb", equation = "rachlin", s = s_true, seed = 221
+    )
+    k <- 0.01
+    by_delay <- tapply(sim$y, sim$x, mean)
+    mu_true <- 1 / (1 + k * as.numeric(names(by_delay))^s_true)
+    expect_lt(max(abs(by_delay - mu_true)), 0.02)
+  })
+
+  it("s = 1 makes green-myerson and rachlin identical to mazur (same seed)", {
+    a <- simulate_dd_ip(n_subjects = 20, equation = "green-myerson", s = 1,
+                        seed = 222)
+    b <- simulate_dd_ip(n_subjects = 20, equation = "mazur", seed = 222)
+    expect_equal(a$y, b$y, tolerance = 1e-12)
+    b2 <- simulate_dd_ip(n_subjects = 20, equation = "rachlin", s = 1, seed = 222)
+    expect_equal(b2$y, b$y, tolerance = 1e-12)
+  })
 })
 
 describe("simulate_dd_ip() recovery through fit_dd_tmb()", {

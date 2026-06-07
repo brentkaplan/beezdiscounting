@@ -269,3 +269,79 @@ calc_aucs <- function(dat) {
 #' Null-coalescing operator (single package-level definition)
 #' @noRd
 `%||%` <- function(x, y) if (is.null(x)) y else x
+
+
+#' Build the fixed-effects RHS formula for log k
+#'
+#' Ported from `beezdemand::build_fixed_rhs` (R/utils.R). Constructs the
+#' right-hand side of the log-k fixed-effects formula from `factors`, an
+#' optional pairwise `factor_interaction`, and `continuous_covariates`. The
+#' SINGLE source of the design RHS: both `.dd_tmb_build_design()` (fitting) and
+#' `.dd_build_emm_ref_grid()` (emmeans) build their `model.matrix` through this
+#' helper so the fitted beta_k columns and EMM reference-grid columns align by
+#' construction. Single-level factors contribute no contrasts and are dropped
+#' with a message note.
+#'
+#' @param factors Character vector of factor names (can be `NULL`).
+#' @param factor_interaction Logical. If `TRUE` and two factors are supplied,
+#'   include their interaction (`a * b`); otherwise additive main effects.
+#' @param continuous_covariates Character vector of continuous covariate names.
+#' @param data Optional data frame used to detect/drop single-level factors.
+#' @return A one-sided formula (e.g. `~ grp + age`); `~ 1` when empty.
+#' @keywords internal
+#' @noRd
+build_fixed_rhs <- function(factors = NULL,
+                            factor_interaction = FALSE,
+                            continuous_covariates = NULL,
+                            data = NULL) {
+  rhs_parts <- c()
+
+  # Drop factors with only 1 level (they contribute no contrasts).
+  valid_factors <- factors
+  if (!is.null(factors) && !is.null(data)) {
+    keep <- vapply(
+      factors,
+      function(f) {
+        if (f %in% names(data) && is.factor(data[[f]])) {
+          nlevels(data[[f]]) >= 2
+        } else {
+          TRUE  # keep non-factor / missing cols (errors elsewhere)
+        }
+      },
+      logical(1)
+    )
+    valid_factors <- factors[keep]
+
+    dropped <- setdiff(factors, valid_factors)
+    if (length(dropped) > 0) {
+      message(
+        "Note: Factor(s) with only 1 level removed from formula: ",
+        paste(dropped, collapse = ", "), "."
+      )
+    }
+  }
+
+  if (!is.null(valid_factors) && length(valid_factors) > 0) {
+    if (length(valid_factors) == 1) {
+      rhs_parts <- c(rhs_parts, valid_factors[1])
+    } else if (length(valid_factors) >= 2) {
+      if (isTRUE(factor_interaction)) {
+        rhs_parts <- c(rhs_parts,
+          paste0(valid_factors[1], " * ", valid_factors[2]))
+      } else {
+        rhs_parts <- c(rhs_parts, valid_factors[1], valid_factors[2])
+      }
+    }
+  }
+
+  if (!is.null(continuous_covariates) && length(continuous_covariates) > 0) {
+    rhs_parts <- c(rhs_parts, continuous_covariates)
+  }
+
+  rhs_str <- if (length(rhs_parts) > 0) {
+    paste("~", paste(rhs_parts, collapse = " + "))
+  } else {
+    "~ 1"
+  }
+  stats::as.formula(rhs_str)
+}

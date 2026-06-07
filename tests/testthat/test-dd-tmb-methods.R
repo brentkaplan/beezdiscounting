@@ -297,13 +297,13 @@ describe("fitted / residuals", {
 # ---------------------------------------------------------------------------
 
 describe("tidy", {
-  it("returns the broom column contract", {
+  it("returns exactly the 8-column broom contract in spec order", {
     fit <- .get_fit_for_methods()
     td <- tidy(fit)
     expect_s3_class(td, "tbl_df")
-    expect_true(all(c("term", "estimate", "std.error", "statistic",
-                      "p.value", "component", "estimate_scale",
-                      "term_display") %in% names(td)))
+    expect_named(td, c("term", "estimate", "std.error", "statistic",
+                       "p.value", "component", "estimate_scale",
+                       "term_display"))
   })
 
   it("has nrow > 0 and no NA estimates on a good fit (fixed rows)", {

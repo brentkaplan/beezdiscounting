@@ -1,8 +1,9 @@
 describe("jarvis2019 dataset", {
-  # Load directly from the rda so these tests run with devtools::test() (no install needed).
+  # Lazy-load the exported dataset. This works both under pkgload::load_all()
+  # (devtools::test()) and under R CMD check, with no fragile relative path.
   jarvis2019 <- local({
     e <- new.env(parent = emptyenv())
-    load(testthat::test_path("../../data/jarvis2019.rda"), envir = e)
+    utils::data("jarvis2019", package = "beezdiscounting", envir = e)
     e$jarvis2019
   })
 

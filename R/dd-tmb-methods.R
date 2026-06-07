@@ -77,6 +77,7 @@
 
 # --- logLik / AIC / BIC / nobs ---
 
+#' @importFrom stats AIC BIC logLik nobs
 #' @export
 logLik.beezdiscounting_tmb <- function(object, ...) {
   ll <- object$loglik
@@ -120,6 +121,7 @@ nobs.beezdiscounting_tmb <- function(object, ...) {
 #' @param object A `beezdiscounting_tmb` object.
 #' @param ... Unused.
 #' @return Named numeric vector.
+#' @importFrom stats coef
 #' @export
 coef.beezdiscounting_tmb <- function(object, ...) {
   object$model$coefficients
@@ -273,7 +275,7 @@ ranef.beezdiscounting_tmb <- function(object, ...) {
 #'   `"parameters"` (the per-subject parameter tibble).
 #' @param level For `type = "response"`: `"subject"` (default; conditions on
 #'   each subject's estimated random intercept, requires the id column) and/or
-#'   `"population"` (random effects set to zero — the population-mean curve;
+#'   `"population"` (random effects set to zero - the population-mean curve;
 #'   no id column needed). Pass `c("population", "subject")` for both columns
 #'   side-by-side. A numeric nlme-style level is rejected with an error.
 #' @param ... Unused.
@@ -356,11 +358,11 @@ predict.beezdiscounting_tmb <- function(object,
 
 # --- fitted / residuals / augment ---
 
-#' Per-row response SD on the [0,1] scale for standardized residuals
+#' Per-row response SD on the `[0,1]` scale for standardized residuals
 #'
 #' Gaussian: constant `sigma_e = exp(log_sigma_e)`. SLT-beta: the
 #' delta-method SLT SD `s * sqrt(mu * (1 - mu) / (phi + 1))` (the SLT
-#' variance at `s ≈ 1`), so residuals near the bounds are down-weighted.
+#' variance at `s ~ 1`), so residuals near the bounds are down-weighted.
 #'
 #' @param object A `beezdiscounting_tmb` fit.
 #' @param mu Numeric vector of fitted mu values (from `.dd_discount_mu`).
@@ -372,7 +374,7 @@ predict.beezdiscounting_tmb <- function(object,
   if (family == "gaussian") {
     return(rep(exp(coefs[["log_sigma_e"]]), length(mu)))
   }
-  # sltb: delta-method SD with s ≈ 1 (s is the SLT scale parameter; the MVP
+  # sltb: delta-method SD with s ~ 1 (s is the SLT scale parameter; the MVP
   # fixes it implicitly at 1).  The SLT variance is s^2 * mu*(1-mu)/(phi+1),
   # so SD = s * sqrt(mu*(1-mu)/(phi+1)).
   s   <- 1
@@ -387,7 +389,7 @@ predict.beezdiscounting_tmb <- function(object,
 #' and the data frame used (either `object$data` or `newdata`).
 #'
 #' @param object A `beezdiscounting_tmb` fit.
-#' @param newdata Optional data frame; `NULL` → training data.
+#' @param newdata Optional data frame; `NULL` -> training data.
 #' @param level `"subject"` (default) or `"population"`.
 #' @return List with `.fitted`, `.resid`, and `data`.
 #' @keywords internal
@@ -464,7 +466,7 @@ residuals.beezdiscounting_tmb <- function(object,
 #' - `.fitted`: subject-conditional fitted indifference proportion (clamped to
 #'   `(0, 1)`).
 #' - `.resid`: raw residual `y - .fitted` on the response scale.
-#' - `.std_resid`: Pearson (standardized) residual — `.resid` divided by the
+#' - `.std_resid`: Pearson (standardized) residual - `.resid` divided by the
 #'   per-row response SD.  For `family = "gaussian"` the SD is the constant
 #'   `sigma_e`; for `family = "sltb"` it is the delta-method SLT SD
 #'   `sqrt(mu * (1 - mu) / (phi + 1))`.
@@ -545,7 +547,7 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #'
 #' `estimate` and `std.error` are reported on the `report_space` scale for the
 #' fixed-effect (`beta_k`) rows. `statistic` and `p.value` are always computed
-#' on the estimation (log-k) scale — Wald statistics are not recomputed after
+#' on the estimation (log-k) scale - Wald statistics are not recomputed after
 #' back-transforming (broom convention; see the `summary()` note for details).
 #' Variance-component rows carry `NA` for `statistic` and `p.value` and are not
 #' affected by `report_space`.
@@ -554,7 +556,7 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #' @param effects Character vector: `"fixed"` (log-k fixed-effect rows),
 #'   `"ran_pars"` (the RE SD and the auxiliary precision/scale parameter), or
 #'   both (default).
-#' @param report_space `"natural"`, `"log10"`, or `"internal"` — reporting
+#' @param report_space `"natural"`, `"log10"`, or `"internal"` - reporting
 #'   scale for fixed-effect `estimate`/`std.error`. Default is `"natural"`.
 #' @param ... Unused.
 #' @return A tibble with exactly 8 columns in this order: `term`, `estimate`,
@@ -591,7 +593,7 @@ tidy.beezdiscounting_tmb <- function(x,
     # Keep only the beta_k rows; the variance rows land in "ran_pars".
     is_fixed <- nms == "beta_k"
 
-    # Wald statistics on the estimation (log) scale — never recomputed after
+    # Wald statistics on the estimation (log) scale - never recomputed after
     # back-transforming (broom convention).
     z_val <- coefs / se
     p_val <- 2 * stats::pnorm(-abs(z_val))
@@ -614,7 +616,7 @@ tidy.beezdiscounting_tmb <- function(x,
       report_space   = report_space,
       internal_space = "log"
     )
-    # Drop the internal sentinel column added by .dd_transform_coef_table —
+    # Drop the internal sentinel column added by .dd_transform_coef_table -
     # other callers need it, but tidy()'s broom contract specifies exactly 8
     # columns and estimate_internal is not among them.
     fixed <- fixed[, setdiff(names(fixed), "estimate_internal"), drop = FALSE]
@@ -680,7 +682,7 @@ glance.beezdiscounting_tmb <- function(x, ...) {
 
 #' Confidence intervals for a TMB discounting model
 #'
-#' Wald (Hessian-based) confidence intervals: `estimate ± z * se` on the
+#' Wald (Hessian-based) confidence intervals: `estimate +/- z * se` on the
 #' internal (log-k) scale, then back-transformed to `report_space`.
 #'
 #' @param object A `beezdiscounting_tmb` object.
@@ -830,7 +832,7 @@ summary.beezdiscounting_tmb <- function(object,
   }
   if (isFALSE(object$hessian_pd)) {
     notes <- c(notes,
-      "Warning: Hessian not positive definite — standard errors may be unreliable.")
+      "Warning: Hessian not positive definite - standard errors may be unreliable.")
   }
   if (length(object$opt_warnings %||% character(0)) > 0L) {
     notes <- c(notes, sprintf(

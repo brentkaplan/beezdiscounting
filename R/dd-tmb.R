@@ -7,7 +7,7 @@ NULL
 
 #' Prepare data for the TMB mixed-effects discounting model
 #'
-#' Operates on the FULL model frame from [.dd_validate_ip()] (canonical
+#' Operates on the FULL model frame from `.dd_validate_ip()` (canonical
 #' `id`/`x`/`y` PLUS any retained factor/covariate columns). It complete-cases
 #' that frame ONCE over all modeling columns (`id`, `x`, `y`, and `extra_cols`),
 #' then derives the parallel arrays `y`/`x`/`subject_id` from the same filtered
@@ -16,7 +16,7 @@ NULL
 #' 0-indexed `subject_id` aligned to `subject_levels` (the C++ template indexes
 #' `u(subject_id, 0)` from 0).
 #'
-#' @param data Data frame already coerced/clamped by [.dd_validate_ip()],
+#' @param data Data frame already coerced/clamped by `.dd_validate_ip()`,
 #'   retaining factor/covariate columns alongside id/x/y.
 #' @param y_var,x_var,id_var Character column names.
 #' @param extra_cols Character vector of factor/covariate column names that must
@@ -100,7 +100,7 @@ NULL
 #' @return A list with `X` (the model matrix for log-k FE), `rhs` (the one-sided
 #'   RHS **formula** from [build_fixed_rhs()]), and `contrasts`
 #'   (`attr(X, "contrasts")`, the per-factor contrast scheme). The `rhs` and
-#'   `contrasts` are stored so [.dd_build_emm_ref_grid()] can rebuild a
+#'   `contrasts` are stored so `.dd_build_emm_ref_grid()` can rebuild a
 #'   column-aligned design via the same route.
 #' @keywords internal
 .dd_tmb_build_design <- function(data, factors = NULL,

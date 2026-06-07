@@ -1,6 +1,6 @@
 # R/dd-validate.R
 
-#' Validate and coerce IP-family long data to proportions in [0, 1]
+#' Validate and coerce IP-family long data to proportions in `[0, 1]`
 #'
 #' The single coercion choke-point for indifference-point (IP) mixed-effects
 #' discounting. It remaps caller column names to the canonical `id, x, y` long

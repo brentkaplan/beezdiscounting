@@ -600,8 +600,9 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #' @param effects Character vector: `"fixed"` (log-k fixed-effect rows),
 #'   `"ran_pars"` (the RE SD and the auxiliary precision/scale parameter), or
 #'   both (default).
-#' @param report_space `"natural"`, `"log10"`, or `"internal"` - reporting
-#'   scale for fixed-effect `estimate`/`std.error`. Default is `"natural"`.
+#' @param report_space `"natural"`, `"log10"`, `"internal"`, or `"log"` -
+#'   reporting scale for fixed-effect `estimate`/`std.error` (`"internal"` and
+#'   `"log"` coincide for the log-k `beta_k` rows). Default is `"natural"`.
 #' @param ... Unused.
 #' @return A tibble with exactly 8 columns in this order: `term`, `estimate`,
 #'   `std.error`, `statistic`, `p.value`, `component`, `estimate_scale`,
@@ -612,7 +613,7 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #' @export
 tidy.beezdiscounting_tmb <- function(x,
                                      effects      = c("fixed", "ran_pars"),
-                                     report_space = c("natural", "log10", "internal"),
+                                     report_space = c("natural", "log10", "internal", "log"),
                                      ...) {
   effects      <- match.arg(effects, several.ok = TRUE)
   report_space <- match.arg(report_space)
@@ -819,9 +820,10 @@ confint.beezdiscounting_tmb <- function(object,
 #' @param object A `beezdiscounting_tmb` object.
 #' @param report_space Scale for the fixed-effect (`beta_k`) estimates and
 #'   standard errors in the coefficient table: `"natural"` (default; `k` on
-#'   the natural scale via `exp()`), `"log10"` (log10-k), or `"internal"`
-#'   (log-k, the estimation scale). `statistic` and `p.value` are always
-#'   computed on the estimation (log-k) scale regardless of `report_space`.
+#'   the natural scale via `exp()`), `"log10"` (log10-k), `"internal"` or
+#'   `"log"` (log-k, the estimation scale; the two coincide for `beta_k`).
+#'   `statistic` and `p.value` are always computed on the estimation (log-k)
+#'   scale regardless of `report_space`.
 #' @param ... Unused.
 #' @return An object of class `"summary.beezdiscounting_tmb"` with components:
 #'   `call`, `model_class`, `backend`, `equation`, `family`, `coefficients`,
@@ -839,7 +841,7 @@ confint.beezdiscounting_tmb <- function(object,
 #'
 #' @export
 summary.beezdiscounting_tmb <- function(object,
-                                        report_space = c("natural", "log10", "internal"),
+                                        report_space = c("natural", "log10", "internal", "log"),
                                         ...) {
   report_space <- match.arg(report_space)
 

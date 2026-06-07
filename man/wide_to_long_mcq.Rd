@@ -17,3 +17,6 @@ Long format data frame
 \description{
 Reshape MCQ data wide to long
 }
+\examples{
+wide_to_long_mcq(long_to_wide_mcq(mcq27))
+}

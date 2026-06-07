@@ -2,7 +2,7 @@
 % Please edit documentation in R/mcq.R
 \name{summarize_mcq}
 \alias{summarize_mcq}
-\title{Provide a summary of the results from the MCQ ouutput table.}
+\title{Provide a summary of the results from the MCQ output table.}
 \usage{
 summarize_mcq(res, na.rm = TRUE)
 }
@@ -15,7 +15,7 @@ summarize_mcq(res, na.rm = TRUE)
 Dataframe with summary statistics
 }
 \description{
-Provide a summary of the results from the MCQ ouutput table.
+Provide a summary of the results from the MCQ output table.
 }
 \examples{
 summarize_mcq(score_mcq27(mcq27))

@@ -123,6 +123,7 @@ score_mcq27 <- function(dat = dat, impute_method = "none",
 #'
 #' @return Vector with scored 27-item MCQ metrics
 #' @importFrom psych geometric.mean
+#' @keywords internal
 #'
 #' @examples
 #' beezdiscounting:::score_one_mcq27(mcq27[mcq27$subjectid %in% 1, ])
@@ -257,6 +258,7 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
 #'
 #' @return An imputed data set to be scored
 #'
+#' @keywords internal
 inn <- function(dat, random, verbose) {
   dat <- merge(dat, lookup,
     by.x = "questionid",
@@ -270,7 +272,6 @@ inn <- function(dat, random, verbose) {
     if (!any(is.na(split_dfs[[i]]$response))) {
       next()
     } else {
-      subqids <- split_dfs[[i]]$questionid
       naqids <- split_dfs[[i]]$questionid[which(is.na(split_dfs[[i]]$response))]
       if (verbose) print(paste0(c("NAs for questionids: ", naqids), collapse = " "))
       if (length(unique(split_dfs[[i]]$response[!(split_dfs[[i]]$questionid %in% naqids)])) == 1) {
@@ -320,7 +321,7 @@ prop_ss <- function(dat) {
 
 }
 
-#' Provide a summary of the results from the MCQ ouutput table.
+#' Provide a summary of the results from the MCQ output table.
 #'
 #' @param res Dataframe with MCQ results (output from the `calc_mcq` function)
 #' @param na.rm Boolean whether to remove NAs from the calculation

@@ -16,9 +16,13 @@
 #'
 #' Scale detection:
 #' \itemize{
-#'   \item `response_scale = "proportion"` (default): if `max(y, na.rm) > 1.5`
-#'     the data are treated as percent and divided by 100 (with a warning);
-#'     otherwise passed through.
+#'   \item `response_scale = "proportion"` (default): the data are treated as
+#'     percent and divided by 100 (with a warning) only when they are clearly
+#'     percent-scaled -- a majority of the positive values exceed 1.5 and the
+#'     maximum is `<= 100`. If only a few values exceed 1.5 (an ambiguous mix of
+#'     proportions and out-of-range outliers) an error asks the caller to set
+#'     `response_scale` explicitly, rather than silently rescaling the column.
+#'     Otherwise the data pass through unchanged.
 #'   \item `response_scale = "percent"`: always divide by 100.
 #'   \item `response_scale = "amount"`: divide by `ll` (the larger-later
 #'     reward); `ll` is required.
@@ -176,22 +180,39 @@
       ),
       call. = FALSE
     )
-  } else if (response_scale == "percent" ||
-    (response_scale == "proportion" && is.finite(max_y) && max_y > 1.5)) {
+  } else if (response_scale == "percent") {
+    # Explicit request: divide by 100 as asked.
     divided_by <- 100
     scale_detected <- "percent"
     long$y <- long$y / 100
-    if (response_scale == "percent") {
-      # Explicit request: report that percent scaling was applied as asked,
-      # not that it was auto-detected.
+    warning(
+      "Applied percent scaling as requested (response_scale = 'percent'); divided y by 100 to map to [0, 1].",
+      call. = FALSE
+    )
+  } else if (response_scale == "proportion" && is.finite(max_y) && max_y > 1.5) {
+    # B9: robust auto-detect. Divide by 100 ONLY when the data are clearly
+    # percent -- a MAJORITY of the positive values exceed 1.5 AND the maximum is
+    # <= 100. A few out-of-range values among otherwise-valid proportions are
+    # AMBIGUOUS (e.g. a data-entry slip of 1.51 for 0.51): never silently rescale
+    # a whole column from a stray value -- abort and ask for an explicit scale.
+    pos <- long$y[is.finite(long$y) & long$y > 0]
+    frac_big <- if (length(pos)) mean(pos > 1.5) else 0
+    if (frac_big >= 0.5 && max_y <= 100) {
+      divided_by <- 100
+      scale_detected <- "percent"
+      long$y <- long$y / 100
       warning(
-        "Applied percent scaling as requested (response_scale = 'percent'); divided y by 100 to map to [0, 1].",
+        "Detected percent-scale responses (most positive values > 1.5); divided y by 100 to map to [0, 1].",
         call. = FALSE
       )
     } else {
-      # Auto-detect on the proportion branch.
-      warning(
-        "Detected percent-scale responses (max > 1.5); divided y by 100 to map to [0, 1].",
+      stop(
+        sprintf(
+          paste0("Ambiguous response scale: %d value(s) exceed 1.5 but the data ",
+                 "are not clearly percent-scaled (max = %s). Set `response_scale` ",
+                 "explicitly ('percent', 'proportion', or 'amount')."),
+          sum(long$y > 1.5, na.rm = TRUE), format(max_y)
+        ),
         call. = FALSE
       )
     }

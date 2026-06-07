@@ -31,6 +31,9 @@ generate_data_mcq <- function(n_ids = 100, n_items = 27,
 #' @param items Number of MCQ questions
 #'
 #' @return Long format data frame
+#'
+#' @examples
+#' wide_to_long_mcq(long_to_wide_mcq(mcq27))
 #' @export
 #'
 wide_to_long_mcq <- function(dat, items = 27) {
@@ -47,9 +50,12 @@ wide_to_long_mcq <- function(dat, items = 27) {
 #'
 #' @param dat Long format MCQ
 #' @param q_col Name of the question column (default is "questionid")
-#' @param ans_col Name of the answer column (defualt is "response")
+#' @param ans_col Name of the answer column (default is "response")
 #'
 #' @return Wide format data frame
+#'
+#' @examples
+#' long_to_wide_mcq(mcq27)
 #' @export
 #'
 long_to_wide_mcq <- function(dat, q_col = "questionid", ans_col = "response") {

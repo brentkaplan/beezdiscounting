@@ -5,7 +5,6 @@ Date: 2026-06-06
 Authors@R:
     person(given = "Brent A.", family = "Kaplan", email = "bkaplan.ku@gmail.com", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0002-3758-6776"))
-Maintainer: Brent A. Kaplan <bkaplan.ku@gmail.com>
 Description: Facilitates some of the analyses performed in studies of
     behavioral economic discounting. The package supports scoring of the 27-Item Monetary Choice
     Questionnaire (see Kaplan et al., 2016; <doi:10.1007/s40614-016-0070-9>), calculating k
@@ -16,10 +15,14 @@ Description: Facilitates some of the analyses performed in studies of
     minute discounting task (see Koffarnus & Bickel, 2014; <doi:10.1037/a0035973>) using the
     Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide;
     <doi:10.13140/RG.2.2.26495.79527>), which is also available as a .qsf file in this package.
+    The package also fits mixed-effects (hierarchical) discounting models with a
+    scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1
+    (Kim, Kaplan, Koffarnus, and Franck, 2025; <arXiv:2509.13167>).
 License: GPL (>= 2)
 URL: https://brentkaplan.github.io/beezdiscounting/, https://github.com/brentkaplan/beezdiscounting
 BugReports: https://github.com/brentkaplan/beezdiscounting/issues
 Encoding: UTF-8
+Language: en-US
 Roxygen: list(markdown = TRUE)
 Depends:
     R (>= 4.2.0)

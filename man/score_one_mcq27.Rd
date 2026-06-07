@@ -23,3 +23,4 @@ Score one subject's 27-item MCQ
 \examples{
 beezdiscounting:::score_one_mcq27(mcq27[mcq27$subjectid \%in\% 1, ])
 }
+\keyword{internal}

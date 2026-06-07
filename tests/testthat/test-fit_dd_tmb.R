@@ -421,3 +421,35 @@ describe(".dd_tmb_extract_estimates()", {
     expect_true("log_sigma_e" %in% names(est$coefficients))
   })
 })
+
+# ==============================================================================
+# P.7: .dd_tmb_compute_subject_pars()
+# ==============================================================================
+
+describe(".dd_tmb_compute_subject_pars()", {
+  it("computes k_i = exp(beta0 + sigma_u * u_i) and omits phi (sltb)", {
+    coefs <- c(beta_k = log(0.02), log_sigma_u = log(0.5), log_phi = log(8))
+    u_hat <- matrix(c(-1, 0, 2), ncol = 1L)
+    sp <- .dd_tmb_compute_subject_pars(
+      coefficients = coefs, u_hat = u_hat,
+      subject_levels = c("a", "b", "c"),
+      equation = "mazur", family = "sltb")
+    expect_named(sp, c("id", "u_i", "k"))
+    # phi is population-level (MVP): never a subject-level column, even for sltb
+    expect_false("phi" %in% names(sp))
+    sigma_u <- 0.5
+    expect_equal(sp$k, exp(log(0.02) + sigma_u * c(-1, 0, 2)), tolerance = 1e-10)
+    expect_equal(sp$u_i, c(-1, 0, 2))
+  })
+
+  it("returns id/u_i/k (no phi) for gaussian fits", {
+    coefs <- c(beta_k = log(0.02), log_sigma_u = log(0.5), log_sigma_e = log(0.1))
+    u_hat <- matrix(c(0, 1), ncol = 1L)
+    sp <- .dd_tmb_compute_subject_pars(
+      coefficients = coefs, u_hat = u_hat,
+      subject_levels = c("a", "b"),
+      equation = "mazur", family = "gaussian")
+    expect_named(sp, c("id", "u_i", "k"))
+    expect_false("phi" %in% names(sp))
+  })
+})

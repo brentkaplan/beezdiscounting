@@ -26,6 +26,7 @@ Depends:
 Imports:
     beezdemand,
     broom,
+    cli,
     dplyr,
     emmeans,
     generics,

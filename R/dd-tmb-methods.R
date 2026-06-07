@@ -53,14 +53,22 @@
 #' @keywords internal
 .dd_tmb_model_se <- function(object) {
   co <- object$model$coefficients
+  na_se <- stats::setNames(rep(NA_real_, length(co)), names(co))
+  # B2: honor the se_available gate (successful sdreport AND positive-definite
+  # Hessian) BEFORE returning any cached SEs. A non-PD Hessian still yields
+  # populated sdreport SEs, so returning model$se here would let confint() /
+  # tidy() / summary() present unreliable Wald intervals/p-values; return NA.
+  if (isFALSE(object$se_available)) {
+    return(na_se)
+  }
   if (!is.null(object$model$se)) {
     se <- object$model$se
     # Defensive: align to coefficient order/names.
     return(stats::setNames(unname(se)[match(names(co), names(se))], names(co)))
   }
   sdr <- object$sdr
-  if (is.null(sdr) || isFALSE(object$se_available)) {
-    return(stats::setNames(rep(NA_real_, length(co)), names(co)))
+  if (is.null(sdr)) {
+    return(na_se)
   }
   sd_fixed <- sqrt(diag(as.matrix(sdr$cov.fixed)))
   raw_nms <- names(sdr$par.fixed)
@@ -718,6 +726,17 @@ confint.beezdiscounting_tmb <- function(object,
   report_space <- match.arg(report_space)
   coefs  <- object$model$coefficients
   se_vec <- .dd_tmb_model_se(object)
+  # B2: warn (and return NA intervals via the NA SEs above) when SEs are
+  # unreliable, matching the tidy()/summary() gate instead of silently emitting
+  # finite Wald intervals from a non-PD Hessian.
+  if (isFALSE(object$se_available)) {
+    cli::cli_warn(c(
+      "!" = "Standard errors are unreliable (non-PD Hessian or sdreport \\
+             failed); confidence intervals are returned as {.val NA}.",
+      "i" = "Check convergence and model identifiability before interpreting \\
+             uncertainty."
+    ))
+  }
   nms    <- names(coefs)
   tn     <- .dd_tmb_build_term_names(object, nms)
   term   <- tn$term

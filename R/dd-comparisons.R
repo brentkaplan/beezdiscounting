@@ -248,6 +248,41 @@
 }
 
 
+# Resolve the beta_k covariance block, honoring the se_available gate (B2).
+# - se_available FALSE (non-PD Hessian or sdreport failed): return an NA-filled
+#   matrix and warn once, so EMM/contrast SE/CI/statistic/p come out NA rather
+#   than unreliable Wald values.
+# - se_available TRUE with sdr$cov.fixed present: return the beta_k block.
+# - se_available TRUE but cov.fixed missing (rare): diagonal fallback, with a
+#   warning that off-diagonal covariance is lost -- the EMM SEs stay valid but
+#   contrast SEs (dx^T V dx) would be wrong.
+.dd_resolve_beta_vcov <- function(fit, beta) {
+  p <- length(beta)
+  if (!isTRUE(fit$se_available)) {
+    cli::cli_warn(c(
+      "!" = "Standard errors are unreliable (non-PD Hessian or sdreport \\
+             failed); reporting estimates with {.val NA} uncertainty.",
+      "i" = "Interpret the point estimates only; check convergence / identifiability."
+    ))
+    return(matrix(NA_real_, p, p))
+  }
+  sdr <- fit$sdr
+  if (!is.null(sdr) && !is.null(sdr$cov.fixed)) {
+    full_vcov <- as.matrix(sdr$cov.fixed)
+    target_idx <- which(names(fit$opt$par) == "beta_k")
+    if (length(target_idx) == p) {
+      return(full_vcov[target_idx, target_idx, drop = FALSE])
+    }
+  }
+  cli::cli_warn(
+    "Using a diagonal covariance fallback; contrast standard errors may be \\
+     unreliable (off-diagonal covariance unavailable)."
+  )
+  se_vals <- unname(fit$model$se[names(fit$model$coefficients) == "beta_k"])
+  diag(se_vals^2, nrow = p)
+}
+
+
 #' Estimated marginal means of the discount rate \code{k}
 #'
 #' @description
@@ -299,22 +334,10 @@ get_dd_param_emms <- function(
   beta_idx <- which(names(coefs) == "beta_k")
   beta <- unname(coefs[beta_idx])
 
-  # beta_k block of the fixed-effect covariance (sdr$cov.fixed), aligned by the
-  # opt$par naming. Falls back to a diagonal of squared SEs if sdreport failed.
-  vcov_mat <- NULL
-  sdr <- fit$sdr
-  if (!is.null(sdr) && !is.null(sdr$cov.fixed)) {
-    full_vcov <- as.matrix(sdr$cov.fixed)
-    par_names <- names(fit$opt$par)
-    target_idx <- which(par_names == "beta_k")
-    if (length(target_idx) == length(beta)) {
-      vcov_mat <- full_vcov[target_idx, target_idx, drop = FALSE]
-    }
-  }
-  if (is.null(vcov_mat)) {
-    se_vals <- fit$model$se[beta_idx]
-    vcov_mat <- diag(se_vals^2, nrow = length(se_vals))
-  }
+  # beta_k covariance block, gated on se_available (B2): NA uncertainty when
+  # SEs are unreliable (non-PD Hessian / sdreport failed), the sdreport block
+  # otherwise.
+  vcov_mat <- .dd_resolve_beta_vcov(fit, beta)
 
   .dd_validate_at(fit, at)
 
@@ -550,22 +573,8 @@ get_dd_comparisons <- function(
   coefs <- fit$model$coefficients
   beta <- unname(coefs[names(coefs) == "beta_k"])
 
-  # beta_k block of the fixed-effect covariance (sdr$cov.fixed), aligned by the
-  # opt$par naming. Falls back to a diagonal of squared SEs if sdreport failed.
-  vcov_mat <- NULL
-  sdr <- fit$sdr
-  if (!is.null(sdr) && !is.null(sdr$cov.fixed)) {
-    full_vcov <- as.matrix(sdr$cov.fixed)
-    par_names <- names(fit$opt$par)
-    target_idx <- which(par_names == "beta_k")
-    if (length(target_idx) == length(beta)) {
-      vcov_mat <- full_vcov[target_idx, target_idx, drop = FALSE]
-    }
-  }
-  if (is.null(vcov_mat)) {
-    se_vals <- fit$model$se[names(coefs) == "beta_k"]
-    vcov_mat <- diag(se_vals^2, nrow = length(se_vals))
-  }
+  # beta_k covariance block, gated on se_available (B2).
+  vcov_mat <- .dd_resolve_beta_vcov(fit, beta)
 
   grid <- .dd_build_emm_ref_grid(
     fit, at = at, factors_in_emm = factors_in_emm, validate = FALSE
@@ -581,7 +590,10 @@ get_dd_comparisons <- function(
       fit, factors_in_emm = factors_in_emm, at = at, ci_level = ci_level
     ),
     warning = function(w) {
-      if (grepl("using first value", conditionMessage(w))) {
+      # Muffle the inner EMM's duplicate warnings: the multi-value `at` notice
+      # (already emitted once at the public boundary) and the B2 se-unreliable
+      # warning (this worker emits its own via .dd_resolve_beta_vcov above).
+      if (grepl("using first value|unreliable", conditionMessage(w))) {
         invokeRestart("muffleWarning")
       }
     }

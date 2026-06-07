@@ -430,9 +430,12 @@ describe(".dd_tmb_compute_subject_pars()", {
   it("computes k_i = exp(beta0 + sigma_u * u_i) and omits phi (sltb)", {
     coefs <- c(beta_k = log(0.02), log_sigma_u = log(0.5), log_phi = log(8))
     u_hat <- matrix(c(-1, 0, 2), ncol = 1L)
+    # Intercept-only design: one column of 1s, 1 obs per subject.
+    design_X <- matrix(1, nrow = 3L, ncol = 1L)
     sp <- .dd_tmb_compute_subject_pars(
       coefficients = coefs, u_hat = u_hat,
       subject_levels = c("a", "b", "c"),
+      design_X = design_X, subject_id = c(0L, 1L, 2L),
       equation = "mazur", family = "sltb")
     expect_named(sp, c("id", "u_i", "k"))
     # phi is population-level (MVP): never a subject-level column, even for sltb
@@ -445,12 +448,39 @@ describe(".dd_tmb_compute_subject_pars()", {
   it("returns id/u_i/k (no phi) for gaussian fits", {
     coefs <- c(beta_k = log(0.02), log_sigma_u = log(0.5), log_sigma_e = log(0.1))
     u_hat <- matrix(c(0, 1), ncol = 1L)
+    design_X <- matrix(1, nrow = 2L, ncol = 1L)
     sp <- .dd_tmb_compute_subject_pars(
       coefficients = coefs, u_hat = u_hat,
       subject_levels = c("a", "b"),
+      design_X = design_X, subject_id = c(0L, 1L),
       equation = "mazur", family = "gaussian")
     expect_named(sp, c("id", "u_i", "k"))
     expect_false("phi" %in% names(sp))
+  })
+
+  it("applies each subject's design ROW (factor-correct k), not the intercept", {
+    # Two beta_k columns: intercept + conditionC2 contrast. Subject a is in the
+    # reference group (row = c(1, 0)); subject b is in C2 (row = c(1, 1)).
+    coefs <- c(beta_k = log(0.02), beta_k = 0.7,
+               log_sigma_u = log(0.5), log_phi = log(8))
+    u_hat <- matrix(c(0.3, -0.4), ncol = 1L)
+    # 2 obs per subject; first row per subject defines the between-subject design.
+    design_X <- rbind(c(1, 0), c(1, 0), c(1, 1), c(1, 1))
+    subject_id <- c(0L, 0L, 1L, 1L)
+    sp <- .dd_tmb_compute_subject_pars(
+      coefficients = coefs, u_hat = u_hat,
+      subject_levels = c("a", "b"),
+      design_X = design_X, subject_id = subject_id,
+      equation = "mazur", family = "sltb")
+    sigma_u <- 0.5
+    # Reference subject: intercept only.
+    expect_equal(sp$k[1], exp(log(0.02) + sigma_u * 0.3), tolerance = 1e-12)
+    # C2 subject: intercept + conditionC2 contrast (NOT the intercept alone).
+    expect_equal(sp$k[2], exp(log(0.02) + 0.7 + sigma_u * -0.4),
+                 tolerance = 1e-12)
+    # The fix matters: C2 k differs from the intercept-only (buggy) value.
+    expect_false(isTRUE(all.equal(
+      sp$k[2], exp(log(0.02) + sigma_u * -0.4))))
   })
 })
 
@@ -596,5 +626,187 @@ describe("fit_dd_tmb() object shape", {
     # NOT the k -> 414000 collapse; population k stays plausible
     expect_lt(exp(beta0), 1)
     expect_gt(exp(fit$model$coefficients[["log_phi"]]), 0.1)
+  })
+})
+
+# ==============================================================================
+# R1: se_available requires a positive-definite Hessian
+# ==============================================================================
+
+describe("fit_dd_tmb() se_available requires a PD Hessian (R1)", {
+  it("a good fit keeps se_available == TRUE with a PD Hessian", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(201)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 50, log_k_pop = log(0.01),
+                                 sigma_u = 0.6, phi = 12, family = "sltb",
+                                 equation = "mazur", seed = 201)
+    fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", verbose = 0)
+    expect_true(isTRUE(fit$hessian_pd))
+    expect_true(fit$se_available)
+  })
+
+  it("se_available IMPLIES a PD Hessian (never TRUE on a non-PD fit)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(202)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 40, family = "sltb",
+                                 equation = "mazur", seed = 202)
+    fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", verbose = 0)
+    # The R1 contract: se_available => hessian_pd. (A non-PD Hessian must flip
+    # se_available to FALSE so SE-consuming methods don't trust bad SEs.)
+    if (isTRUE(fit$se_available)) expect_true(isTRUE(fit$hessian_pd))
+    # And it is never TRUE when the sdreport is missing.
+    if (is.null(fit$sdr)) expect_false(fit$se_available)
+  })
+})
+
+# ==============================================================================
+# B1: factor/covariate-correct per-subject k (subject_pars uses the design ROW)
+# ==============================================================================
+
+describe("fit_dd_tmb() factor-correct subject k (B1)", {
+  it("recomputes subject k from the design row + beta + sigma_u*u_i (factor)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    # Two conditions with a real shift on log k (C2 discounts faster).
+    sim <- .simulate_dd_ip_mixed(n_subjects = 40, n_conditions = 2,
+                                 delta_k = c(0, 0.7), log_k_pop = log(0.01),
+                                 sigma_u = 0.5, phi = 12, family = "sltb",
+                                 equation = "mazur", seed = 4242)
+    fit <- fit_dd_tmb(sim, factors = "condition", verbose = 0)
+
+    coefs   <- fit$model$coefficients
+    beta_k  <- unname(coefs[names(coefs) == "beta_k"])
+    sigma_u <- exp(unname(coefs[["log_sigma_u"]]))
+    Xcn     <- colnames(fit$formula_details$X)
+    expect_true(any(grepl("conditionC2", Xcn)))  # design has the C2 contrast
+    c2_col  <- which(grepl("conditionC2", Xcn))
+
+    # Map id -> condition from the fitted (row-coherent) frame.
+    cond_by_id <- tapply(as.character(fit$data$condition),
+                         as.character(fit$data$id),
+                         function(z) z[1])
+    sp <- fit$subject_pars
+
+    # NON-CIRCULAR: rebuild k_i directly from fit$model$coefficients +
+    # fit$formula_details$X (NOT from subject_pars$k), then compare.
+    for (i in seq_len(nrow(sp))) {
+      this_id   <- as.character(sp$id[i])
+      this_cond <- cond_by_id[[this_id]]
+      xrow      <- c(1, if (identical(this_cond, "C2")) 1 else 0)
+      # Order xrow to the design columns (intercept first, C2 contrast).
+      xvec        <- numeric(length(beta_k))
+      xvec[1]     <- 1
+      xvec[c2_col] <- if (identical(this_cond, "C2")) 1 else 0
+      eta_expected <- sum(xvec * beta_k) + sigma_u * sp$u_i[i]
+      expect_equal(sp$k[i], exp(eta_expected), tolerance = 1e-6)
+    }
+
+    # C1 vs C2 k differ in the direction of beta_conditionC2 (positive => C2
+    # has the larger fixed-effect contribution to log k, holding u fixed).
+    beta_c2 <- beta_k[c2_col]
+    # Compare the fixed-effect (RE = 0) cell k between groups.
+    k_c1_fixed <- exp(beta_k[1])
+    k_c2_fixed <- exp(beta_k[1] + beta_c2)
+    if (beta_c2 > 0) {
+      expect_gt(k_c2_fixed, k_c1_fixed)
+    } else {
+      expect_lt(k_c2_fixed, k_c1_fixed)
+    }
+  })
+
+  it("predict(type='parameters') and ranef() reflect the corrected k", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- .simulate_dd_ip_mixed(n_subjects = 30, n_conditions = 2,
+                                 delta_k = c(0, 0.7), log_k_pop = log(0.01),
+                                 sigma_u = 0.5, phi = 12, family = "sltb",
+                                 equation = "mazur", seed = 99)
+    fit <- fit_dd_tmb(sim, factors = "condition", verbose = 0)
+    pp  <- predict(fit, type = "parameters")
+    rr  <- ranef(fit)
+    expect_equal(pp$k, fit$subject_pars$k, tolerance = 1e-12)
+    expect_equal(rr$k, fit$subject_pars$k, tolerance = 1e-12)
+
+    # Cross-check against predict(type='response', level='subject'): the per-row
+    # subject-conditional k must match subject_pars$k for each subject's rows.
+    k_row <- beezdiscounting:::.dd_tmb_predict_k(fit, fit$data, level = "subject")
+    k_by_id <- tapply(k_row, as.character(fit$data$id), function(z) z[1])
+    sp_k_by_id <- stats::setNames(fit$subject_pars$k,
+                                  as.character(fit$subject_pars$id))
+    common <- intersect(names(k_by_id), names(sp_k_by_id))
+    expect_equal(as.numeric(k_by_id[common]), as.numeric(sp_k_by_id[common]),
+                 tolerance = 1e-6)
+  })
+
+  it("continuous covariate: subject k reflects the covariate contribution", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- .simulate_dd_ip_mixed(n_subjects = 40, log_k_pop = log(0.01),
+                                 sigma_u = 0.5, phi = 12, family = "sltb",
+                                 equation = "mazur", seed = 77)
+    # Between-subject covariate (constant within subject).
+    ids <- unique(as.character(sim$id))
+    cov_by_id <- stats::setNames(seq_along(ids) / length(ids), ids)
+    sim$z <- cov_by_id[as.character(sim$id)]
+    fit <- fit_dd_tmb(sim, continuous_covariates = "z", verbose = 0)
+
+    coefs   <- fit$model$coefficients
+    beta_k  <- unname(coefs[names(coefs) == "beta_k"])
+    sigma_u <- exp(unname(coefs[["log_sigma_u"]]))
+    Xcn     <- colnames(fit$formula_details$X)
+    z_col   <- which(Xcn == "z")
+    z_by_id <- tapply(fit$data$z, as.character(fit$data$id), function(v) v[1])
+    sp      <- fit$subject_pars
+    for (i in seq_len(nrow(sp))) {
+      this_id <- as.character(sp$id[i])
+      eta_exp <- beta_k[1] + beta_k[z_col] * z_by_id[[this_id]] +
+        sigma_u * sp$u_i[i]
+      expect_equal(sp$k[i], exp(eta_exp), tolerance = 1e-6)
+    }
+  })
+})
+
+# ==============================================================================
+# B3: phi floor holds on the single optimizer path (multi_start = FALSE)
+# ==============================================================================
+
+describe("fit_dd_tmb() phi floor on single path (B3)", {
+  it("does not collapse phi to ~0 with multi_start = FALSE on boundary data", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(71)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 25, log_k_pop = log(0.01),
+                                 sigma_u = 0.6, phi = 8, family = "sltb",
+                                 equation = "mazur", seed = 71)
+    bad <- data.frame(
+      id = "boundary",
+      x = c(7, 30, 180, 365, 730, 1460, 2920),
+      y = c(1, 1, 1, 0, 0, 0, 0)
+    )
+    sim2 <- rbind(
+      data.frame(id = as.character(sim$id), x = sim$x, y = sim$y), bad)
+    fit <- fit_dd_tmb(sim2, equation = "mazur", family = "sltb",
+                      multi_start = FALSE, verbose = 0)
+    phi <- exp(fit$model$coefficients[["log_phi"]])
+    # The floor (.dd_phi_min = 0.1) must hold on the single path too.
+    expect_gte(phi, 0.1 - 1e-6)
+  })
+
+  it("the user can override the phi floor via tmb_control$lower$log_aux", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(72)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 30, family = "sltb",
+                                 equation = "mazur", seed = 72)
+    # A user-supplied log_aux lower bound wins over the default floor; just
+    # confirm the fit runs and respects the (looser) override.
+    fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb",
+                      multi_start = FALSE,
+                      tmb_control = list(lower = c(log_aux = log(0.05))),
+                      verbose = 0)
+    expect_s3_class(fit, "beezdiscounting_tmb")
+    expect_gte(exp(fit$model$coefficients[["log_phi"]]), 0.05 - 1e-6)
   })
 })

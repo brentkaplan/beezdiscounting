@@ -383,6 +383,30 @@ NULL
 .dd_beta_k_abs_max <- 20
 
 
+#' Impose the SLT-beta phi floor as a log_aux lower bound
+#'
+#' For `family == "sltb"` the degenerate phi->0 / k->inf optimum (spec section
+#' 4.8) is blocked by a **lower bound on `log_aux`** of `log(.dd_phi_min)`
+#' inserted into `tmb_control$lower`. This must apply to BOTH optimizer paths
+#' (single fit and multi-start), so the logic lives in one shared helper. The
+#' bound is overridable: if the caller already supplies a `log_aux` entry in
+#' `tmb_control$lower`, their value wins (the floor is not added).
+#'
+#' @param tmb_control Merged control list (may carry user `lower`/`upper`).
+#' @param family One of "sltb", "gaussian".
+#' @return The (possibly augmented) `tmb_control` list.
+#' @keywords internal
+.dd_apply_phi_floor <- function(tmb_control, family) {
+  if (!identical(family, "sltb")) return(tmb_control)
+  user_lower       <- tmb_control$lower
+  has_user_log_aux <- !is.null(user_lower) && "log_aux" %in% names(user_lower)
+  if (!has_user_log_aux) {
+    tmb_control$lower <- c(user_lower, log_aux = log(.dd_phi_min))
+  }
+  tmb_control
+}
+
+
 #' Multi-start optimization for the TMB discounting model
 #'
 #' Builds 3 starting sets (data-driven, low-k, high-k) and runs each through
@@ -413,19 +437,10 @@ NULL
 #' @keywords internal
 .dd_tmb_multi_start <- function(tmb_data, start_values,
                                  tmb_control, user_specified, verbose) {
-  is_sltb <- identical(tmb_data$family, 0L)
-
-  # Impose the phi floor as a log_aux lower bound for sltb, unless the user
-  # already supplied a log_aux lower bound (their value wins).
-  if (is_sltb) {
-    user_lower        <- tmb_control$lower
-    has_user_log_aux  <- !is.null(user_lower) &&
-                           "log_aux" %in% names(user_lower)
-    if (!has_user_log_aux) {
-      floor_bound          <- c(log_aux = log(.dd_phi_min))
-      tmb_control$lower    <- c(user_lower, floor_bound)
-    }
-  }
+  # Impose the phi floor as a log_aux lower bound for sltb (shared helper used by
+  # both optimizer paths; tmb_data$family == 0L encodes "sltb").
+  family_str <- if (identical(tmb_data$family, 0L)) "sltb" else "gaussian"
+  tmb_control <- .dd_apply_phi_floor(tmb_control, family_str)
 
   # 3 starting sets: data-driven (default), low-k, high-k.
   start_sets      <- vector("list", 3L)
@@ -617,37 +632,55 @@ NULL
 
 #' Compute subject-specific discounting parameters
 #'
-#' Reconstructs each subject's `k_i = exp(beta_k[1] + sigma_u * u_i)` using the
-#' non-centered predictor that matches the C++ template
-#' (`log_k_i = X.row(i)*beta_k + sigma_u * u(subj,0)`). For the intercept-only
-#' MVP, `Xbeta` equals the intercept for all subjects; subject k differs via
-#' `u_i`. The auxiliary scalar `phi` is population-level in the MVP, so it is
-#' **not** a subject-level parameter and is never returned here (for either
-#' family).
+#' Reconstructs each subject's `k_i = exp(eta_i)` where
+#' `eta_i = X_i %*% beta_k + sigma_u * u_i`, exactly matching the C++ template's
+#' non-centered predictor (`log_k_i = X.row(i)*beta_k + sigma_u * u(subj,0)`).
+#' `X_i` is subject `i`'s fixed-effect design ROW. For between-subject
+#' factors/covariates the design is constant within a subject, so the first
+#' design-matrix row for each subject is used. This makes per-subject `k`
+#' factor/covariate-correct: subjects in non-reference groups pick up their
+#' group's `beta_k` contribution rather than the reference-group intercept.
+#'
+#' The auxiliary scalar `phi` is population-level in the MVP, so it is **not**
+#' a subject-level parameter and is never returned here (for either family).
 #'
 #' @param coefficients Named coefficient vector (with `beta_k`, `log_sigma_u`,
 #'   and `log_phi` or `log_sigma_e`).
 #' @param u_hat Matrix `n_subjects` x 1 of standardized random effects.
 #' @param subject_levels Character vector of subject ids (length n_subjects).
+#' @param design_X Fixed-effect design matrix (rows aligned with the prepared
+#'   arrays); columns correspond 1:1 with the `beta_k` entries.
+#' @param subject_id Integer 0-indexed subject map (length `n_obs`), aligned
+#'   row-for-row with `design_X`. Used to locate each subject's first design row.
 #' @param equation One of "mazur", "exponential" (reserved; k is equation-free).
 #' @param family One of "sltb", "gaussian".
 #' @return data.frame(id, u_i, k) — no phi column.
-#' @note For factor designs with multiple `beta_k` columns, only `beta_k[1]`
-#'   (the population intercept) is used when computing per-subject k. Between-
-#'   subject factor contributions to the log-k linear predictor are therefore
-#'   ignored. This is the correct MVP behavior for the intercept-only design
-#'   (single `beta_k`), but will under-estimate k for subjects in non-reference
-#'   factor groups in multi-factor designs. Use `predict()` for cell-level values
-#'   once factor support is added in a future phase.
+#' @note Subject-level `k` assumes between-subject predictors: the first design
+#'   row per subject defines that subject's fixed-effect contribution. A
+#'   within-subject-varying covariate would make a single per-subject `k`
+#'   ill-defined; in that case the first observed row is used.
 #' @keywords internal
 .dd_tmb_compute_subject_pars <- function(coefficients, u_hat, subject_levels,
+                                         design_X, subject_id,
                                          equation, family) {
   beta_k <- unname(coefficients[names(coefficients) == "beta_k"])
-  beta0 <- beta_k[1]
   sigma_u <- exp(unname(coefficients[["log_sigma_u"]]))
   u_i <- as.numeric(u_hat[, 1L])
+  n_subjects <- length(subject_levels)
 
-  log_k_i <- beta0 + sigma_u * u_i
+  design_X <- as.matrix(design_X)
+
+  # First design row per subject (subject_id is 0-indexed: subject s -> s - 1).
+  # Between-subject predictors are constant within a subject, so the first row
+  # carries that subject's fixed-effect contribution; for any within-subject
+  # variation the first observed row is used (documented in @note).
+  xbeta_i <- numeric(n_subjects)
+  for (s in seq_len(n_subjects)) {
+    first_row <- which(subject_id == (s - 1L))[1L]
+    xbeta_i[s] <- sum(design_X[first_row, ] * beta_k)
+  }
+
+  log_k_i <- xbeta_i + sigma_u * u_i
   k_i <- exp(log_k_i)
 
   data.frame(
@@ -771,6 +804,11 @@ fit_dd_tmb <- function(data,
                                  factor_interaction = factor_interaction,
                                  continuous_covariates = continuous_covariates)
 
+  # Record only the factors actually placed in the design RHS (build_fixed_rhs
+  # drops single-level factors). param_info$factors must reflect the design.
+  placed_factors <- intersect(factors, all.vars(design$rhs))
+  if (length(placed_factors) == 0L) placed_factors <- NULL
+
   # 5. TMB data + default starts.
   tmb_data <- .dd_tmb_build_tmb_data(prepared, design, equation, family)
   default_starts <- .dd_tmb_default_starts(prepared, design, family, equation)
@@ -804,6 +842,10 @@ fit_dd_tmb <- function(data,
     opt <- result$opt
     opt_warnings <- result$opt_warnings %||% character(0)
   } else {
+    # Single-path fit still needs the SLT-beta phi floor (B3): apply the same
+    # shared log_aux lower bound the multi-start path uses, so multi_start=FALSE
+    # cannot collapse into the degenerate phi->0 / k->inf optimum.
+    tmb_control <- .dd_apply_phi_floor(tmb_control, family)
     obj <- TMB::MakeADFun(tmb_data, default_starts, random = "u",
                           DLL = "beezdiscounting", silent = verbose < 2)
     opt_res <- .dd_tmb_run_optimizer(obj, obj$par, tmb_control,
@@ -821,10 +863,14 @@ fit_dd_tmb <- function(data,
                                          family = family, verbose = verbose)
 
   # 9. Subject-specific parameters (id/u_i/k; no phi -- phi is population-level).
+  #    Factor/covariate-correct: each subject's k uses that subject's design row
+  #    (X_i %*% beta_k + sigma_u * u_i), not the reference-group intercept (B1).
   subject_pars <- .dd_tmb_compute_subject_pars(
     coefficients = estimates$coefficients,
     u_hat = estimates$u_hat,
     subject_levels = prepared$subject_levels,
+    design_X = design$X,
+    subject_id = prepared$subject_id,
     equation = equation,
     family = family
   )
@@ -862,7 +908,9 @@ fit_dd_tmb <- function(data,
         y_var = y_var,
         # Factor metadata persisted so predict()/emmeans can rebuild a
         # column-aligned design via build_fixed_rhs + stored contrasts (B3).
-        factors = factors,
+        # Only factors actually placed in the design are recorded (single-level
+        # factors are dropped by build_fixed_rhs).
+        factors = placed_factors,
         factor_interaction = factor_interaction,
         continuous_covariates = continuous_covariates,
         random_effects_parsed = re_norm
@@ -876,7 +924,10 @@ fit_dd_tmb <- function(data,
       AIC = aic,
       BIC = bic,
       converged = converged,
-      se_available = !is.null(estimates$sdr),
+      # SE-availability requires BOTH a successful sdreport AND a positive-
+      # definite Hessian (R1): a non-PD Hessian yields untrustworthy SEs, so
+      # SE-consuming methods must not present them as reliable.
+      se_available = !is.null(estimates$sdr) && isTRUE(estimates$hessian_pd),
       opt_warnings = opt_warnings,
       # fit$data is the SINGLE filtered model frame (id/x/y + retained factor/
       # covariate columns), row-aligned with X and the prepared arrays (B3).

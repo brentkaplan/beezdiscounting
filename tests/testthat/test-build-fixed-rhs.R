@@ -26,6 +26,36 @@ describe("build_fixed_rhs()", {
     expect_equal(deparse(f[[2]]), "a * b")
   })
 
+  it("places ALL factors (>= 3) additively, not just the first two (B2)", {
+    f <- build_fixed_rhs(factors = c("a", "b", "c"))
+    av <- all.vars(f)
+    expect_true(all(c("a", "b", "c") %in% av))
+    expect_equal(deparse(f[[2]]), "a + b + c")
+    # model.matrix yields columns for all three factors.
+    frame <- data.frame(
+      a = factor(c("x", "y", "x", "y")),
+      b = factor(c("p", "p", "q", "q")),
+      c = factor(c("m", "n", "n", "m"))
+    )
+    mm <- model.matrix(f, data = frame)
+    cn <- colnames(mm)
+    expect_true(any(grepl("^a", cn)))
+    expect_true(any(grepl("^b", cn)))
+    expect_true(any(grepl("^c", cn)))
+  })
+
+  it("crosses ALL factors when factor_interaction = TRUE with >= 3 (B2)", {
+    f <- build_fixed_rhs(factors = c("a", "b", "c"), factor_interaction = TRUE)
+    expect_equal(deparse(f[[2]]), "a * b * c")
+    expect_true(all(c("a", "b", "c") %in% all.vars(f)))
+  })
+
+  it("combines >= 3 factors with continuous covariates (B2)", {
+    f <- build_fixed_rhs(factors = c("a", "b", "c"),
+      continuous_covariates = c("age"))
+    expect_equal(deparse(f[[2]]), "a + b + c + age")
+  })
+
   it("appends continuous covariates as main effects", {
     f <- build_fixed_rhs(continuous_covariates = c("age", "ses"))
     expect_equal(deparse(f[[2]]), "age + ses")

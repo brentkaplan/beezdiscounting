@@ -44,7 +44,7 @@ describe(".dd_validate_ip", {
     dat <- make_ip(c(1.02, 0.6, -0.01, 0.1, 0.0))
     expect_warning(
       res <- .dd_validate_ip(dat, "y", "x", "id"),
-      regexp = "clamp"
+      regexp = "[Cc]lamped"
     )
     expect_equal(res$data$y, c(1, 0.6, 0, 0.1, 0))
     expect_equal(res$coercion_info$n_clamped_hi, 1L)
@@ -97,5 +97,13 @@ describe(".dd_validate_ip", {
       .dd_validate_ip(dat, "y", "x", "id", extra_cols = "nope"),
       regexp = "not found"
     )
+  })
+
+  it("passes proportion data with max == 1.0 through silently (not mis-detected as percent)", {
+    dat <- make_ip(c(1.0, 0.8, 0.5, 0.2, 0.0))
+    res <- expect_silent(.dd_validate_ip(dat, "y", "x", "id"))
+    expect_identical(res$coercion_info$scale_detected, "proportion")
+    expect_equal(res$coercion_info$divided_by, 1)
+    expect_equal(res$data$y, c(1.0, 0.8, 0.5, 0.2, 0.0))
   })
 })

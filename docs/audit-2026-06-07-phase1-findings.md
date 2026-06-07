@@ -187,3 +187,32 @@ If it **is** bundled, the above can lean on it. Either way, exporting the simula
 4. **P2 polish:** B9–B11; backfill the 9 coverage gaps.
 5. Re-run `R CMD check --as-cran` + full suite; Codex capstone re-review; then Phase B sign-off →
    Phase C (modeling fast-follows) per the handoff.
+
+---
+
+## Resolution log — branch `fix/phase1-cran-and-p0` (2026-06-07)
+
+**RESOLVED (committed, verified):**
+- **C1–C4 + T5(partial):** `R CMD check --as-cran` went from **1 ERROR, 1 WARNING, 4 NOTEs** →
+  **1 WARNING, 1 NOTE**. ERROR gone (simulator exported as `simulate_dd_ip()`, examples valid
+  under `--run-donttest`); the `.claude`/`personal_tests`/NEWS NOTEs gone; `Depends: R (>= 4.2.0)`.
+  Remaining: the URL-404 NOTE (Pages — **C5/Phase F**) and the clang `-Wfixed-enum-extension`
+  WARNING (**C6**, environmental, R's own header on Apple clang 21 — not a package defect).
+- **B1** (canonical names): `param_info` now stores `id/x/y` (+ `user_vars`); remapped fits'
+  post-fit methods work and match the canonical fit. Caller `newdata` must use canonical names —
+  now **documented** + **clean `cli_abort`** when a required canonical column is absent.
+- **B2** (se gate): enforced in `.dd_tmb_model_se` (gate before cached SEs), `confint` (warn +
+  NA), and the shared `.dd_resolve_beta_vcov()` (NA + single warning for EMM/contrast; diagonal
+  fallback only for the `se_available && cov.fixed=NULL` edge). Point estimates preserved.
+- **B3** (rank guard): `.dd_tmb_build_design` aborts on `qr(X)$rank < ncol(X)`, naming aliased
+  columns.
+
+**Verification:** full local suite **667 pass / 0 fail / 0 warn / 0 skip**; `R CMD check --as-cran`
+0 ERROR; Codex plan review **APPROVE-WITH-CHANGES** (incorporated) and Codex capstone re-review
+**APPROVE-WITH-CHANGES** (incorporated: `newdata` doc + guards, warning wording).
+
+**DEFERRED to the Phase-B CRAN-readiness pass (not check-blocking):** drop the manual DESCRIPTION
+`Maintainer:` (Authors@R has `cre`); `inn()` / `score_one_mcq27()` documented-but-unexported →
+`@keywords internal`; `dd_ip` `\format` `\describe{}`; `@examples` on `long_to_wide_mcq` /
+`wide_to_long_mcq`; spelling/urlchecker; lintr pass. **Plus all P1/P2 items (B4–B11) and the 9
+test-coverage gaps** are a separate follow-up branch.

@@ -278,7 +278,9 @@ ranef.beezdiscounting_tmb <- function(object, ...) {
 #' Predict from a TMB mixed-effects discounting model
 #'
 #' @param object A `beezdiscounting_tmb` object.
-#' @param newdata Optional data frame. `NULL` uses the fitting data.
+#' @param newdata Optional data frame. `NULL` uses the fitting data. A supplied
+#'   `newdata` must use the package's canonical column names (`id`, `x`, `y`),
+#'   regardless of the `id_var`/`x_var`/`y_var` you gave at fit time.
 #' @param type `"response"` (fitted indifference proportions on `(0,1)`) or
 #'   `"parameters"` (the per-subject parameter tibble).
 #' @param level For `type = "response"`: `"subject"` (default; conditions on
@@ -343,6 +345,17 @@ predict.beezdiscounting_tmb <- function(object,
   if (is.null(newdata)) newdata <- object$data
   out <- tibble::as_tibble(newdata)
   x   <- newdata[[x_var]]
+  # Supplied newdata uses the CANONICAL column names (id/x/y) -- the fit is
+  # validated to canonical, so param_info$*_var are canonical. Fail cleanly
+  # (not with an opaque length-0 mu) if the delay column is absent.
+  if (is.null(x)) {
+    cli::cli_abort(c(
+      "{.arg newdata} must contain the delay column {.val {x_var}}.",
+      "i" = "Supplied {.arg newdata} uses the canonical names {.val id} / \\
+             {.val x} / {.val y}, regardless of the {.code id_var}/{.code x_var}/\\
+             {.code y_var} you passed to {.fn fit_dd_tmb}."
+    ))
+  }
 
   # Single "subject" level: historical .fitted column name for backward compat.
   if (identical(level, "subject")) {
@@ -410,6 +423,13 @@ predict.beezdiscounting_tmb <- function(object,
   fitted_col <- if (level == "population") "predict.fixed" else ".fitted"
   fitted_vals <- pred[[fitted_col]]
   y_obs       <- data_used[[object$param_info$y_var]]
+  if (is.null(y_obs)) {
+    cli::cli_abort(c(
+      "{.arg newdata} must contain the response column \\
+       {.val {object$param_info$y_var}} to compute residuals.",
+      "i" = "Supplied {.arg newdata} uses the canonical name {.val y}."
+    ))
+  }
   list(.fitted = fitted_vals, .resid = y_obs - fitted_vals, data = data_used)
 }
 
@@ -480,7 +500,9 @@ residuals.beezdiscounting_tmb <- function(object,
 #'   `sqrt(mu * (1 - mu) / (phi + 1))`.
 #'
 #' @param x A `beezdiscounting_tmb` object.
-#' @param newdata Optional data frame. `NULL` uses the fitting data.
+#' @param newdata Optional data frame. `NULL` uses the fitting data. A supplied
+#'   `newdata` must use the package's canonical column names (`id`, `x`, `y`),
+#'   regardless of the `id_var`/`x_var`/`y_var` you gave at fit time.
 #' @param ... Unused.
 #' @return A tibble with the same rows as the data plus `.fitted`, `.resid`,
 #'   and `.std_resid`.

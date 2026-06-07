@@ -73,7 +73,7 @@ simulate_dd_ip <- function(
     stop("`delta_k` must have length `n_conditions`.", call. = FALSE)
   }
 
-  s <- 1.0000001
+  s_slt <- 1.0000001
   l <- 1e-8
 
   # assign each subject to a condition (balanced round-robin)
@@ -100,9 +100,9 @@ simulate_dd_ip <- function(
     a <- mu * phi
     b <- (1 - mu) * phi
     lo <- stats::pbeta(l, a, b)
-    hi <- stats::pbeta(1 / s + l, a, b)
+    hi <- stats::pbeta(1 / s_slt + l, a, b)
     uu <- stats::runif(length(mu), lo, hi)
-    y <- (stats::qbeta(uu, a, b) - l) * s
+    y <- (stats::qbeta(uu, a, b) - l) * s_slt
   } else {
     y <- stats::rnorm(length(mu), mu, sigma_e)
   }

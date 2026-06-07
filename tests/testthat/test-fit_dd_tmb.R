@@ -142,6 +142,20 @@ describe(".dd_tmb_build_tmb_data()", {
     expect_equal(td$eqn_type, 1L)
     expect_equal(td$family, 1L)
   })
+
+  it("maps green-myerson -> 2 and rachlin -> 3", {
+    prep <- list(y = 0.5, x = 7, subject_id = 0L, subject_levels = "a",
+                 n_subjects = 1L, n_obs = 1L,
+                 data = data.frame(id = "a", x = 7, y = 0.5))
+    design <- list(X = matrix(1, 1, 1, dimnames = list(NULL, "(Intercept)")),
+                   rhs = "~ 1")
+    gm <- .dd_tmb_build_tmb_data(prep, design, equation = "green-myerson",
+                                 family = "sltb")
+    ra <- .dd_tmb_build_tmb_data(prep, design, equation = "rachlin",
+                                 family = "sltb")
+    expect_equal(gm$eqn_type, 2L)
+    expect_equal(ra$eqn_type, 3L)
+  })
 })
 
 describe(".dd_tmb_default_starts()", {
@@ -223,6 +237,16 @@ describe(".dd_tmb_default_starts()", {
     expect_length(st$beta_k, 2L)
     expect_equal(st$beta_k[2], 0)
   })
+
+  it("always includes log_s = 0 (s = 1 start; map-fixed for 1-parameter eqns)", {
+    prep <- list(y = c(0.8, 0.3), x = c(7, 365), subject_id = c(0L, 0L),
+                 subject_levels = "a", n_subjects = 1L, n_obs = 2L,
+                 data = data.frame(id = "a", x = c(7, 365), y = c(0.8, 0.3)))
+    design <- list(X = matrix(1, 2, 1, dimnames = list(NULL, "(Intercept)")),
+                   rhs = "~ 1")
+    st <- .dd_tmb_default_starts(prep, design, family = "sltb")
+    expect_equal(st$log_s, 0)
+  })
 })
 
 # ==============================================================================
@@ -245,6 +269,40 @@ describe(".expand_bounds()", {
       .expand_bounds(c(nope = 1), c("beta_k"), Inf),
       "unknown parameter"
     )
+  })
+})
+
+describe(".dd_tmb_build_map()", {
+  it("fixes log_s when !has_s and is NULL when has_s", {
+    m1 <- .dd_tmb_build_map(FALSE)
+    expect_true(is.list(m1))
+    expect_true("log_s" %in% names(m1))
+    expect_true(is.factor(m1$log_s))
+    expect_true(all(is.na(m1$log_s)))
+    expect_null(.dd_tmb_build_map(TRUE))
+  })
+})
+
+describe(".dd_apply_s_bounds()", {
+  it("adds wide log_s bounds only for has_s and only when unset by the user", {
+    ctrl <- list(lower = NULL, upper = NULL)
+    out <- .dd_apply_s_bounds(ctrl, has_s = TRUE)
+    expect_equal(unname(out$lower["log_s"]), log(0.05), tolerance = 1e-12)
+    expect_equal(unname(out$upper["log_s"]), log(20), tolerance = 1e-12)
+  })
+
+  it("is a no-op when !has_s", {
+    ctrl <- list(lower = NULL, upper = NULL)
+    out <- .dd_apply_s_bounds(ctrl, has_s = FALSE)
+    expect_false("log_s" %in% names(out$lower))
+    expect_false("log_s" %in% names(out$upper))
+  })
+
+  it("honors a user-supplied log_s bound (user wins)", {
+    ctrl <- list(lower = c(log_s = log(0.5)), upper = c(log_s = log(3)))
+    out <- .dd_apply_s_bounds(ctrl, has_s = TRUE)
+    expect_equal(unname(out$lower["log_s"]), log(0.5), tolerance = 1e-12)
+    expect_equal(unname(out$upper["log_s"]), log(3), tolerance = 1e-12)
   })
 })
 
@@ -380,6 +438,7 @@ describe(".dd_tmb_extract_estimates()", {
     tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "sltb")
     starts <- .dd_tmb_default_starts(prep, design, "sltb", "mazur")
     obj <- TMB::MakeADFun(tmb_data, starts, random = "u",
+                          map = list(log_s = factor(NA)),
                           DLL = "beezdiscounting", silent = TRUE)
     opt_res <- .dd_tmb_run_optimizer(
       obj, obj$par,
@@ -409,6 +468,7 @@ describe(".dd_tmb_extract_estimates()", {
     tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "gaussian")
     starts <- .dd_tmb_default_starts(prep, design, "gaussian", "mazur")
     obj <- TMB::MakeADFun(tmb_data, starts, random = "u",
+                          map = list(log_s = factor(NA)),
                           DLL = "beezdiscounting", silent = TRUE)
     opt_res <- .dd_tmb_run_optimizer(
       obj, obj$par,
@@ -808,5 +868,62 @@ describe("fit_dd_tmb() phi floor on single path (B3)", {
                       verbose = 0)
     expect_s3_class(fit, "beezdiscounting_tmb")
     expect_gte(exp(fit$model$coefficients[["log_phi"]]), 0.05 - 1e-6)
+  })
+})
+
+describe("fit_dd_tmb() log_s mapping (1- vs 2-parameter df)", {
+  it("a mazur fit has NO free log_s and unchanged df (3 fixed params)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 40, log_k_pop = log(0.01),
+                          sigma_u = 0.5, phi = 12, family = "sltb",
+                          equation = "mazur", seed = 301)
+    fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", verbose = 0)
+    expect_false("log_s" %in% names(fit$opt$par))
+    expect_false("log_s" %in% names(fit$model$coefficients))
+    # intercept-only sltb mazur: beta_k(1) + log_sigma_u(1) + log_aux(1) = 3
+    expect_equal(length(fit$opt$par), 3L)
+    expect_equal(attr(logLik(fit), "df"), 3L)
+  })
+
+  it("a green-myerson fit estimates a free log_s (df = 4)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 40, log_k_pop = log(0.01),
+                          sigma_u = 0.5, phi = 12, s = 0.7,
+                          family = "sltb", equation = "green-myerson",
+                          seed = 302)
+    fit <- fit_dd_tmb(sim, equation = "green-myerson", family = "sltb",
+                      verbose = 0)
+    expect_true("log_s" %in% names(fit$opt$par))
+    expect_true("log_s" %in% names(fit$model$coefficients))
+    expect_equal(length(fit$opt$par), 4L)
+    expect_equal(attr(logLik(fit), "df"), 4L)
+    expect_true(isTRUE(fit$param_info$has_s))
+  })
+
+  it("the start_values$s alias maps to log_s", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 30, s = 1.3, family = "sltb",
+                          equation = "rachlin", seed = 303)
+    # passing s = 2 must not error (it is converted to log_s = log(2))
+    expect_no_error(
+      fit <- fit_dd_tmb(sim, equation = "rachlin", family = "sltb",
+                        start_values = list(s = 2), verbose = 0)
+    )
+    expect_true("log_s" %in% names(fit$model$coefficients))
+  })
+
+  it("rejects start_values with BOTH s and log_s", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 12, s = 1.3, family = "sltb",
+                          equation = "rachlin", seed = 304)
+    expect_error(
+      fit_dd_tmb(sim, equation = "rachlin", family = "sltb",
+                 start_values = list(s = 2, log_s = log(3)), verbose = 0),
+      "either 's' or 'log_s'"
+    )
   })
 })

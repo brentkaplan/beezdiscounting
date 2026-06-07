@@ -362,3 +362,62 @@ describe(".dd_tmb_multi_start()", {
     expect_lt(phi_hat, 6)
   })
 })
+
+# ==============================================================================
+# P.6: .dd_tmb_extract_estimates()
+# ==============================================================================
+
+describe(".dd_tmb_extract_estimates()", {
+  it("returns sane coefficients, renames log_aux, and gates pdHess", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(21)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 30, log_k_pop = log(0.02),
+                                 sigma_u = 0.5, phi = 10, family = "sltb",
+                                 equation = "mazur", seed = 21)
+    prep <- .dd_tmb_prepare_data(sim, "y", "x", "id")
+    design <- .dd_tmb_build_design(prep$data)
+    tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "sltb")
+    starts <- .dd_tmb_default_starts(prep, design, "sltb", "mazur")
+    obj <- TMB::MakeADFun(tmb_data, starts, random = "u",
+                          DLL = "beezdiscounting", silent = TRUE)
+    opt_res <- .dd_tmb_run_optimizer(
+      obj, obj$par,
+      list(optimizer = "nlminb", iter_max = 1000, eval_max = 2000,
+           rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0),
+      character(0), 0)
+    est <- .dd_tmb_extract_estimates(obj, opt_res$opt,
+                                     n_subjects = prep$n_subjects,
+                                     family = "sltb", verbose = 0)
+    expect_true("log_phi" %in% names(est$coefficients))
+    expect_false("log_aux" %in% names(est$coefficients))
+    expect_true("log_phi" %in% names(est$se))
+    expect_equal(dim(est$u_hat), c(prep$n_subjects, 1L))
+    expect_true(is.logical(est$hessian_pd))
+  })
+
+  it("renames log_aux to log_sigma_e under gaussian", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    set.seed(22)
+    sim <- .simulate_dd_ip_mixed(n_subjects = 25, log_k_pop = log(0.02),
+                                 sigma_u = 0.5, sigma_e = 0.08,
+                                 family = "gaussian", equation = "mazur",
+                                 seed = 22)
+    prep <- .dd_tmb_prepare_data(sim, "y", "x", "id")
+    design <- .dd_tmb_build_design(prep$data)
+    tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "gaussian")
+    starts <- .dd_tmb_default_starts(prep, design, "gaussian", "mazur")
+    obj <- TMB::MakeADFun(tmb_data, starts, random = "u",
+                          DLL = "beezdiscounting", silent = TRUE)
+    opt_res <- .dd_tmb_run_optimizer(
+      obj, obj$par,
+      list(optimizer = "nlminb", iter_max = 1000, eval_max = 2000,
+           rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0),
+      character(0), 0)
+    est <- .dd_tmb_extract_estimates(obj, opt_res$opt,
+                                     n_subjects = prep$n_subjects,
+                                     family = "gaussian", verbose = 0)
+    expect_true("log_sigma_e" %in% names(est$coefficients))
+  })
+})

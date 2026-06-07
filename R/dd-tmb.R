@@ -523,3 +523,93 @@ NULL
 
   best_result
 }
+
+
+#' Extract estimates from a TMB discounting fit
+#'
+#' Computes `TMB::sdreport`, gates on `isTRUE(sdr$pdHess)` (warn, never abort),
+#' and renames the generic auxiliary scalar `log_aux` to `log_phi` (sltb) or
+#' `log_sigma_e` (gaussian) in the returned `coefficients`/`se`.
+#'
+#' @param obj TMB objective object.
+#' @param opt Normalized optimizer result (from [.dd_tmb_run_optimizer()]).
+#' @param n_subjects Integer number of subjects.
+#' @param family One of "sltb", "gaussian".
+#' @param verbose Integer verbosity.
+#' @return list(coefficients, se, sdr, variance_components, u_hat, hessian_pd).
+#' @keywords internal
+.dd_tmb_extract_estimates <- function(obj, opt, n_subjects, family, verbose = 1) {
+  sdr <- tryCatch(
+    TMB::sdreport(obj),
+    error = function(e1) {
+      sdr2 <- tryCatch(
+        TMB::sdreport(obj, getJointPrecision = FALSE),
+        error = function(e2) NULL
+      )
+      if (is.null(sdr2) && verbose >= 1) {
+        warning("Standard error computation failed: ", e1$message)
+      }
+      sdr2
+    }
+  )
+
+  hessian_pd <- NA
+  if (!is.null(sdr)) {
+    hessian_pd <- isTRUE(sdr$pdHess)
+    if (!hessian_pd && verbose >= 1) {
+      cli::cli_warn(c(
+        "!" = "Hessian is not positive definite ({.code pdHess = FALSE}).",
+        "i" = "Standard errors, p-values, and confidence intervals may be unreliable.",
+        "i" = "Consider simplifying the model or checking data quality."
+      ))
+    }
+  }
+
+  par_full <- opt$par
+  par_names <- names(par_full)
+
+  coefficients <- par_full
+  se_vec <- rep(NA_real_, length(par_full))
+  names(se_vec) <- par_names
+
+  if (!is.null(sdr)) {
+    fixed_summary <- summary(sdr, "fixed")
+    .fill_vector_se <- function(name) {
+      idx <- which(par_names == name)
+      if (length(idx) == 0L) return(invisible(NULL))
+      rows <- fixed_summary[rownames(fixed_summary) == name, , drop = FALSE]
+      if (nrow(rows) == length(idx)) se_vec[idx] <<- rows[, "Std. Error"]
+    }
+    .fill_vector_se("beta_k")
+    .fill_vector_se("log_sigma_u")
+    .fill_vector_se("log_aux")
+
+    re_summary <- tryCatch(summary(sdr, "random"), error = function(e) NULL)
+    if (!is.null(re_summary)) {
+      u_hat <- matrix(re_summary[, "Estimate"], nrow = n_subjects, ncol = 1L)
+    } else {
+      u_hat <- matrix(0, nrow = n_subjects, ncol = 1L)
+    }
+  } else {
+    u_hat <- matrix(0, nrow = n_subjects, ncol = 1L)
+  }
+
+  variance_components <- NULL
+  if (!is.null(sdr)) {
+    variance_components <- tryCatch(summary(sdr, "report"), error = function(e) NULL)
+  }
+
+  # Rename the generic auxiliary scalar in both coefficients and se.
+  aux_name <- if (identical(family, "gaussian")) "log_sigma_e" else "log_phi"
+  names(coefficients)[names(coefficients) == "log_aux"] <- aux_name
+  names(se_vec)[names(se_vec) == "log_aux"] <- aux_name
+
+  list(
+    coefficients = coefficients,
+    se = se_vec,
+    sdr = sdr,
+    variance_components = variance_components,
+    u_hat = u_hat,
+    hessian_pd = hessian_pd
+  )
+}

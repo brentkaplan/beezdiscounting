@@ -181,12 +181,15 @@ NULL
   # Guard mu0 into the open interval so the inversion is finite.
   mu0 <- min(max(mu0, 1e-3), 1 - 1e-3)
 
-  if (identical(equation, "exponential")) {
+  if (x_min <= 0) {
+    # Cannot invert discounting function at x=0 (division by zero); use safe default.
+    k0 <- 0.01
+  } else if (identical(equation, "exponential")) {
     # mu = exp(-k * x_min)  =>  k = -log(mu) / x_min
-    k0 <- -log(mu0) / max(x_min, 1e-8)
+    k0 <- -log(mu0) / x_min
   } else {
     # mazur: mu = 1 / (1 + k * x_min)  =>  k = (1/mu - 1) / x_min
-    k0 <- (1 / mu0 - 1) / max(x_min, 1e-8)
+    k0 <- (1 / mu0 - 1) / x_min
   }
   if (!is.finite(k0) || k0 <= 0) k0 <- 0.01
   log_k0 <- log(k0)

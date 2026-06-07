@@ -175,6 +175,42 @@ describe(".dd_tmb_default_starts()", {
     expect_equal(st$log_aux, log(0.1))
   })
 
+  it("derives log_k intercept from exponential inversion (equation = 'exponential')", {
+    # median y at min delay (x=7) = 0.8 -> mu=0.8 -> k = -log(mu)/x_min
+    prep <- list(
+      y = c(0.8, 0.8, 0.3, 0.3), x = c(7, 7, 365, 365),
+      subject_id = c(0L, 1L, 0L, 1L), subject_levels = c("a", "b"),
+      n_subjects = 2L, n_obs = 4L,
+      data = data.frame(id = c("a", "b", "a", "b"),
+                        x = c(7, 7, 365, 365), y = c(0.8, 0.8, 0.3, 0.3))
+    )
+    design <- list(X = matrix(1, 4, 1, dimnames = list(NULL, "(Intercept)")),
+                   rhs = "~ 1")
+    st <- .dd_tmb_default_starts(prep, design, family = "sltb",
+                                 equation = "exponential")
+    k_implied <- -log(0.8) / 7
+    expect_equal(st$beta_k[1], log(k_implied), tolerance = 1e-8)
+  })
+
+  it("falls back to log(0.01) intercept when x_min <= 0", {
+    # x_min = 0: inversion would divide by zero; must use safe default k0 = 0.01
+    prep <- list(
+      y = c(0.9, 0.8, 0.3, 0.3), x = c(0, 0, 365, 365),
+      subject_id = c(0L, 1L, 0L, 1L), subject_levels = c("a", "b"),
+      n_subjects = 2L, n_obs = 4L,
+      data = data.frame(id = c("a", "b", "a", "b"),
+                        x = c(0, 0, 365, 365), y = c(0.9, 0.8, 0.3, 0.3))
+    )
+    design <- list(X = matrix(1, 4, 1, dimnames = list(NULL, "(Intercept)")),
+                   rhs = "~ 1")
+    st_mazur <- .dd_tmb_default_starts(prep, design, family = "sltb",
+                                       equation = "mazur")
+    st_exp <- .dd_tmb_default_starts(prep, design, family = "sltb",
+                                     equation = "exponential")
+    expect_equal(st_mazur$beta_k[1], log(0.01), tolerance = 1e-8)
+    expect_equal(st_exp$beta_k[1],   log(0.01), tolerance = 1e-8)
+  })
+
   it("zero-pads beta_k for multi-column designs", {
     prep <- list(y = c(0.8, 0.5), x = c(7, 7), subject_id = c(0L, 1L),
                  subject_levels = c("a", "b"), n_subjects = 2L, n_obs = 2L,

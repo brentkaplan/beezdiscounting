@@ -25,16 +25,11 @@
   `ranef()`, `confint()`, `predict()`, `summary()`, `logLik()`, `AIC()`,
   `BIC()`, `nobs()`, `print()`.
 
-- **`jarvis2019`** dataset: a de-duplicated Jarvis (2019) delay-discounting
-  fixture (126 subject-records x 7 delays) with boundary indifference points,
-  used by the new `sltb-discounting` vignette to demonstrate the SLT-beta
-  family.
-
 ### Documentation
 
 - New vignette `sltb-discounting`: why bounded error distributions matter for
   indifference points, the SLT-beta density, a boundary demonstration on the
-  Jarvis (2019) data, and the mixed-effects workflow.
+  bundled example data, and the mixed-effects workflow.
 
 ### Notes
 

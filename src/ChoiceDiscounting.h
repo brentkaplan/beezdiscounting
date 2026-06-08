@@ -54,18 +54,24 @@ Type ChoiceDiscounting(objective_function<Type>* obj) {
     // Discount value (SS immediate => V_SS = ss_amount).
     Type D;
     if (eqn_type == 0) {
-      D = Type(1.0) / (Type(1.0) + k_i * delay(i));
+      D = Type(1.0) / (Type(1.0) + k_i * delay(i));   // mazur
+    } else if (eqn_type == 1) {
+      D = exp(-k_i * delay(i));                        // exponential
     } else {
-      D = exp(-k_i * delay(i));
+      error("ChoiceDiscounting: unknown eqn_type (expected 0=mazur, 1=exponential).");
     }
     // Scale-invariant relative comparison.
+    // ss_amount > 0 is guaranteed by .dd_validate_choice (no zero-division guard here).
     Type eta = gamma * ((ll_amount(i) / ss_amount(i)) * D - Type(1.0));
-    if (has_intercept == 1) eta += beta0;
+    if (has_intercept == 1) {
+      eta += beta0;
+    }
 
     // Binomial/logit log-likelihood, numerically robust (logit-parameterized).
     nll -= dbinom_robust(choice(i), Type(1.0), eta, true);
   }
 
+  ADREPORT(beta_k);
   ADREPORT(gamma);
   ADREPORT(sigma_u);
   return nll;

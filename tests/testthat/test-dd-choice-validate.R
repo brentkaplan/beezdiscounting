@@ -43,6 +43,11 @@ describe(".dd_validate_choice()", {
     expect_named(v$data, c("id", "ss_amount", "ll_amount", "delay", "choice"))
   })
 
+  it("errors on non-data-frame input and missing required columns", {
+    expect_error(.dd_validate_choice(list()), "must be a data frame")
+    expect_error(.dd_validate_choice(good[, -1]), "not found")
+  })
+
   it("retains declared extra_cols verbatim and rejects missing/colliding ones", {
     nd <- data.frame(
       id = c("a", "b"), ss_amount = c(40, 31), ll_amount = c(65, 85),

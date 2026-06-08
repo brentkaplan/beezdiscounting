@@ -1,6 +1,3 @@
-#' @useDynLib beezdiscounting, .registration = TRUE
-NULL
-
 # ==============================================================================
 # Choice family (Family 2) — trial-level SS-vs-LL binomial GLMM (structural).
 # ==============================================================================
@@ -51,10 +48,10 @@ NULL
   }
 
   # amounts finite & > 0.
-  for (nm in c("ss_amount", "ll_amount")) {
-    v <- long[[nm]]
+  for (pair in list(c("ss_amount", ss_var), c("ll_amount", ll_var))) {
+    v <- long[[pair[[1]]]]
     if (any(!is.na(v) & (!is.finite(v) | v <= 0))) {
-      stop(sprintf("`%s` must be finite and positive.", nm), call. = FALSE)
+      stop(sprintf("`%s` must be finite and positive.", pair[[2]]), call. = FALSE)
     }
   }
   # delay finite & > 0.

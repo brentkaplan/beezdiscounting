@@ -2,9 +2,10 @@
 #'
 #' Single source of truth for the canonical parameters of the IP-family
 #' mixed-effects discounting model: the subject discount rate `k`, the
-#' SLT-beta precision `phi`, and the (currently fixed) scale constant `s`.
-#' Fields mirror `beezdemand`'s `.beezdemand_param_registry` (canonical,
-#' description, constraint, valid_scales, default_scale).
+#' SLT-beta precision `phi`, and the hyperboloid nonlinearity exponent `s`
+#' (Green-Myerson / Rachlin). Fields mirror `beezdemand`'s
+#' `.beezdemand_param_registry` (canonical, description, constraint,
+#' valid_scales, default_scale).
 #'
 #' @keywords internal
 #' @noRd
@@ -27,8 +28,8 @@
 
   s = list(
     canonical = "s",
-    description = "SLT scale constant (fixed at 1.0000001 in the MVP)",
-    constraint = "s >= 1",
+    description = "Hyperboloid nonlinearity exponent (Green-Myerson / Rachlin)",
+    constraint = "s > 0",
     valid_scales = c("natural", "log", "log10"),
     default_scale = "natural"
   )

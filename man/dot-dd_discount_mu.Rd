@@ -2,7 +2,7 @@
 % Please edit documentation in R/dd-tmb-methods.R
 \name{.dd_discount_mu}
 \alias{.dd_discount_mu}
-\title{Discounting function value mu = E\link[ggplot2:y]{y} for a vector of k and x}
+\title{Discounting function value (mean indifference proportion) for k and x}
 \usage{
 .dd_discount_mu(k, x, equation, s = 1)
 }

@@ -11,8 +11,8 @@
 #' Kim, Kaplan, Koffarnus & Franck (2025; arXiv:2509.13167).
 #'
 #' The scale-location-truncation (SLT) constants are the *reference-code*
-#' values `s = 1.0000001` (= 1 + 1e-7) and `l = 1e-8`. The truncation
-#' normalizer `Z = pbeta(1/s + l, a, b) - pbeta(l, a, b)` is load-bearing
+#' values `s_slt = 1.0000001` (= 1 + 1e-7) and `l = 1e-8`. The truncation
+#' normalizer `Z = pbeta(1/s_slt + l, a, b) - pbeta(l, a, b)` is load-bearing
 #' (NOT approx 1 at small shapes) and the boundaries are finite at y = 0 and
 #' y = 1 by construction.
 #'

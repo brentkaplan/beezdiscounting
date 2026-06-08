@@ -170,7 +170,7 @@ ranef.beezdiscounting_tmb <- function(object, ...) {
 
 # --- predict ---
 
-#' Discounting function value mu = E[y] for a vector of k and x
+#' Discounting function value (mean indifference proportion) for k and x
 #'
 #' Mazur: `mu = 1 / (1 + k * x)`; exponential: `mu = exp(-k * x)`;
 #' Green-Myerson: `mu = (1 + k * x)^(-s)`; Rachlin: `mu = 1 / (1 + k * x^s)`

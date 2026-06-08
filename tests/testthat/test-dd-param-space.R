@@ -131,3 +131,14 @@ describe("%||%", {
     expect_equal(NULL %||% "fallback", "fallback")
   })
 })
+
+describe(".dd_param_registry (s entry)", {
+  it("declares s as the discounting nonlinearity exponent (s > 0, natural)", {
+    s_reg <- .dd_param_registry$s
+    expect_identical(s_reg$constraint, "s > 0")
+    expect_identical(s_reg$default_scale, "natural")
+    expect_setequal(s_reg$valid_scales, c("natural", "log", "log10"))
+    expect_match(s_reg$description, "Green-Myerson|Rachlin|hyperboloid|exponent",
+                 ignore.case = TRUE)
+  })
+})

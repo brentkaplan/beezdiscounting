@@ -294,7 +294,10 @@ residuals.beezdiscounting_choice <- function(object,
   level <- match.arg(level)
   fr    <- .dd_choice_fitted_resid(object, level = level)
   if (type == "response") return(fr$.resid)
-  fr$.resid / sqrt(fr$.fitted * (1 - fr$.fitted))
+  # Clamp the probability in the Pearson SD denominator so a fitted prob that
+  # saturates to 0/1 does not divide-by-zero. The response residual stays exact.
+  p_sd <- pmin(pmax(fr$.fitted, 1e-6), 1 - 1e-6)
+  fr$.resid / sqrt(p_sd * (1 - p_sd))
 }
 
 
@@ -319,7 +322,10 @@ augment.beezdiscounting_choice <- function(x, newdata = NULL, ...) {
   out <- tibble::as_tibble(fr$data)
   out$.fitted    <- fr$.fitted
   out$.resid     <- fr$.resid
-  out$.std_resid <- fr$.resid / sqrt(fr$.fitted * (1 - fr$.fitted))
+  # Clamp the probability in the Pearson SD denominator so a fitted prob that
+  # saturates to 0/1 does not divide-by-zero. The response residual stays exact.
+  p_sd <- pmin(pmax(fr$.fitted, 1e-6), 1 - 1e-6)
+  out$.std_resid <- fr$.resid / sqrt(p_sd * (1 - p_sd))
   out
 }
 
@@ -436,11 +442,13 @@ tidy.beezdiscounting_choice <- function(x,
       estimate = unname(coefs[g_pos]), se = unname(se[g_pos]),
       from = "log", to = to_g
     )
+    # to_g is exhaustive over {natural, log10, log}; the stop() is a defensive
+    # guard that can never fire given the upstream match.arg on report_space.
     g_disp <- switch(to_g,
       natural = "gamma",
       log10   = "log10(gamma)",
       log     = "log(gamma)",
-      "gamma"
+      stop("unexpected report space '", to_g, "'", call. = FALSE)
     )
     shape <- tibble::tibble(
       term           = "gamma",

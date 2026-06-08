@@ -171,3 +171,245 @@
   D <- .dd_choice_D(k, delay, equation)
   beta0 + gamma * ((ll_amount / ss_amount) * D - 1)
 }
+
+
+# ==============================================================================
+# Structural choice fit pipeline (direct-k binomial GLMM via TMB).
+# ==============================================================================
+
+#' TMB `map` for the structural choice model: fix beta0 when intercept is off
+#' @keywords internal
+#' @noRd
+.dd_choice_build_map <- function(intercept) {
+  if (isTRUE(intercept)) return(NULL)
+  list(beta0 = factor(NA))
+}
+
+#' Default starts for the structural choice model
+#' @keywords internal
+#' @noRd
+.dd_choice_default_starts <- function(prepared, design) {
+  p <- ncol(design$X)
+  beta_k <- rep(0, p)
+  beta_k[1] <- log(0.01)                  # generic mid-range k start
+  list(
+    beta_k = beta_k, log_sigma_u = log(0.5),
+    log_gamma = log(1), beta0 = 0,
+    u = matrix(0, nrow = prepared$n_subjects, ncol = 1L)
+  )
+}
+
+#' Extract estimates from a structural choice fit (sdreport + SEs)
+#' @keywords internal
+#' @noRd
+.dd_choice_extract_estimates <- function(obj, opt, n_subjects, intercept,
+                                         verbose = 1) {
+  sdr <- tryCatch(TMB::sdreport(obj), error = function(e) NULL)
+  hessian_pd <- if (!is.null(sdr)) isTRUE(sdr$pdHess) else NA
+  par_full <- opt$par
+  par_names <- names(par_full)
+  free_beta0 <- "beta0" %in% par_names
+  if (!identical(free_beta0, isTRUE(intercept))) {
+    stop("internal: free beta0 (", free_beta0, ") != intercept (",
+         isTRUE(intercept), "); check map threading.", call. = FALSE)
+  }
+  coefficients <- par_full
+  se_vec <- stats::setNames(rep(NA_real_, length(par_full)), par_names)
+  if (!is.null(sdr)) {
+    fixed_summary <- summary(sdr, "fixed")
+    fill <- function(name) {
+      idx <- which(par_names == name)
+      rows <- fixed_summary[rownames(fixed_summary) == name, , drop = FALSE]
+      if (length(idx) && nrow(rows) == length(idx)) se_vec[idx] <<- rows[, "Std. Error"]
+    }
+    fill("beta_k")
+    fill("log_sigma_u")
+    fill("log_gamma")
+    fill("beta0")
+    re_summary <- tryCatch(summary(sdr, "random"), error = function(e) NULL)
+    u_hat <- if (!is.null(re_summary)) {
+      matrix(re_summary[, "Estimate"], nrow = n_subjects, ncol = 1L)
+    } else {
+      matrix(0, n_subjects, 1L)
+    }
+  } else {
+    u_hat <- matrix(0, n_subjects, 1L)
+  }
+  list(coefficients = coefficients, se = se_vec, sdr = sdr,
+       u_hat = u_hat, hessian_pd = hessian_pd)
+}
+
+#' Fit a structural SS-vs-LL choice model (binomial GLMM) via TMB
+#'
+#' Estimates the discount rate `k` directly from trial-level binary choices via
+#' the scale-invariant relative value comparison
+#' `logit P(LL) = beta0 + gamma * ((ll/ss) * D(k, delay) - 1)`,
+#' `k = exp(X beta_k + sigma_u u)`. Shares the IP family's `k`/emmeans contract.
+#'
+#' @param data Trial-level data frame (see the `*_var` args).
+#' @param mode `"structural"` (this release). `"descriptive"` errors (Plan B).
+#' @param id_var,ss_var,ll_var,delay_var,choice_var Column names.
+#' @param equation `"mazur"` or `"exponential"`.
+#' @param intercept Logical; include the choice-bias `beta0` (default `FALSE`).
+#' @param factors,factor_interaction,continuous_covariates Between-subject design
+#'   on `log k` (same semantics as [fit_dd_tmb()]).
+#' @param start_values,tmb_control,multi_start,verbose,... As in [fit_dd_tmb()].
+#' @return An object of class `beezdiscounting_choice`.
+#' @export
+fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
+                          id_var = "id", ss_var = "ss_amount",
+                          ll_var = "ll_amount", delay_var = "delay",
+                          choice_var = "choice",
+                          equation = c("mazur", "exponential"),
+                          intercept = FALSE,
+                          factors = NULL, factor_interaction = FALSE,
+                          continuous_covariates = NULL,
+                          start_values = NULL,
+                          tmb_control = list(iter_max = 1000, eval_max = 2000),
+                          multi_start = TRUE, verbose = 1, ...) {
+  cl <- match.call()
+  mode <- match.arg(mode)
+  equation <- match.arg(equation)
+  if (mode == "descriptive") {
+    cli::cli_abort(c(
+      "{.code mode = \"descriptive\"} is not yet implemented.",
+      "i" = "The descriptive (Young 2018) model + random-slope machinery ship \\
+             in a later release (Plan B)."
+    ))
+  }
+
+  # R1: validate + prepare retaining factor/covariate columns for the log-k design
+  extra_cols <- unique(c(factors, continuous_covariates))
+  validated <- .dd_validate_choice(data, id_var = id_var, ss_var = ss_var,
+                                   ll_var = ll_var, delay_var = delay_var,
+                                   choice_var = choice_var, extra_cols = extra_cols)
+  prepared <- .dd_choice_prepare_data(validated$data, extra_cols = extra_cols)
+  for (f in factors) {
+    if (f %in% names(prepared$data) && !is.factor(prepared$data[[f]])) {
+      prepared$data[[f]] <- as.factor(prepared$data[[f]])
+    }
+  }
+  for (cv in continuous_covariates) {
+    if (cv %in% names(prepared$data)) {
+      v <- prepared$data[[cv]]
+      if (!is.numeric(v) || any(!is.finite(v))) {
+        cli::cli_abort("Continuous covariate {.val {cv}} must be numeric and finite.")
+      }
+    }
+  }
+  .dd_check_between_subject(prepared$data, extra_cols)
+  design <- .dd_tmb_build_design(prepared$data, factors = factors,
+                                 factor_interaction = factor_interaction,
+                                 continuous_covariates = continuous_covariates)
+
+  tmb_data <- list(
+    model = "ChoiceDiscounting", mode = 0L,
+    eqn_type = if (equation == "mazur") 0L else 1L,
+    has_intercept = as.integer(isTRUE(intercept)),
+    choice = as.numeric(prepared$choice),
+    ss_amount = as.numeric(prepared$ss_amount),
+    ll_amount = as.numeric(prepared$ll_amount),
+    delay = as.numeric(prepared$delay),
+    subject_id = as.integer(prepared$subject_id),
+    X = as.matrix(design$X),
+    n_obs = as.integer(prepared$n_obs),
+    n_subjects = as.integer(prepared$n_subjects)
+  )
+  starts <- .dd_choice_default_starts(prepared, design)
+  if (!is.null(start_values)) {
+    for (nm in names(start_values)) if (nm %in% names(starts)) starts[[nm]] <- start_values[[nm]]
+  }
+  map <- .dd_choice_build_map(intercept)
+
+  default_control <- list(iter_max = 1000, eval_max = 2000, optimizer = "nlminb",
+                          rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)
+  user_specified <- names(tmb_control)
+  tmb_control <- utils::modifyList(default_control, tmb_control)
+
+  perturb_beta_k <- function(delta) {
+    b <- starts$beta_k
+    b[1] <- b[1] + delta
+    b
+  }
+  start_sets <- list(
+    starts,
+    utils::modifyList(starts, list(beta_k = perturb_beta_k(-1.5),
+                                   log_sigma_u = log(0.3))),
+    utils::modifyList(starts, list(beta_k = perturb_beta_k(1.5),
+                                   log_sigma_u = log(0.8)))
+  )
+  if (!isTRUE(multi_start)) start_sets <- start_sets[1]
+
+  # R7: best_kept (passes log-k blow-up guard) AND best_any (lowest finite nll).
+  best_kept <- NULL
+  best_kept_nll <- Inf
+  best_any <- NULL
+  best_any_nll <- Inf
+  opt_warnings <- character(0)
+  for (s in start_sets) {
+    res <- tryCatch({
+      o <- TMB::MakeADFun(tmb_data, s, map = map, random = "u",
+                          DLL = "beezdiscounting", silent = verbose < 2)
+      opt_res <- .dd_tmb_run_optimizer(o, o$par, tmb_control, user_specified, verbose)
+      list(obj = o, opt = opt_res$opt, nll = opt_res$opt$objective,
+           warnings = opt_res$warnings)
+    }, error = function(e) NULL)
+    if (is.null(res) || !is.finite(res$nll)) next
+    if (length(res$warnings)) opt_warnings <- c(opt_warnings, res$warnings)
+    if (res$nll < best_any_nll) {
+      best_any_nll <- res$nll
+      best_any <- res
+    }
+    if (!.dd_logk_blowup(res$opt, tmb_data$X) && res$nll < best_kept_nll) {
+      best_kept_nll <- res$nll
+      best_kept <- res
+    }
+  }
+  best <- best_kept
+  if (is.null(best)) {
+    if (is.null(best_any)) {
+      stop("All starting value sets failed for fit_dd_choice().", call. = FALSE)
+    }
+    best <- best_any
+    warning("All choice fits hit the log-k blow-up guard; returning the best ",
+            "available fit (estimates may be unstable).", call. = FALSE)
+  }
+  obj <- best$obj
+  opt <- best$opt
+  converged <- isTRUE(opt$convergence == 0)
+
+  try(obj$fn(opt$par), silent = TRUE)   # R4: refresh last.par.best so sdreport is fresh
+
+  est <- .dd_choice_extract_estimates(obj, opt, prepared$n_subjects, intercept,
+                                      verbose)
+  subject_pars <- .dd_tmb_compute_subject_pars(
+    coefficients = est$coefficients, u_hat = est$u_hat,
+    subject_levels = prepared$subject_levels, design_X = design$X,
+    subject_id = prepared$subject_id, equation = equation, family = "sltb")
+  # Contract: subject_pars is exactly id/u_i/k (subset/rename if the helper adds more).
+  subject_pars <- subject_pars[, c("id", "u_i", "k")]
+
+  nll <- opt$objective
+  loglik <- -nll
+  np <- length(opt$par)
+  structure(list(
+    call = cl, opt = opt,
+    model = list(coefficients = est$coefficients, se = est$se),
+    sdr = est$sdr, hessian_pd = est$hessian_pd,
+    param_info = list(
+      mode = "structural", equation = equation, intercept = isTRUE(intercept),
+      n_obs = prepared$n_obs, n_subjects = prepared$n_subjects,
+      n_random_effects = 1L, subject_levels = prepared$subject_levels,
+      id_var = "id", x_var = "delay", y_var = "choice",
+      factors = intersect(factors, all.vars(design$rhs)),
+      factor_interaction = factor_interaction,
+      continuous_covariates = continuous_covariates),
+    formula_details = list(X = design$X, rhs = design$rhs,
+                           contrasts = design$contrasts),
+    subject_pars = subject_pars, loglik = loglik,
+    AIC = 2 * nll + 2 * np, BIC = 2 * nll + np * log(prepared$n_obs),
+    converged = converged, opt_warnings = opt_warnings,
+    se_available = !is.null(est$sdr) && isTRUE(est$hessian_pd),
+    data = prepared$data, coercion_info = validated$coercion_info
+  ), class = "beezdiscounting_choice")
+}

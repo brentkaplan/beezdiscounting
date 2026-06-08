@@ -21,6 +21,13 @@ inst/doc
 # Other files #
 ###########
 other/
-tests/
+personal_tests/
 *.html
 /.quarto/
+
+# pkgdown local build output (deployed to gh-pages via CI; not committed) #
+###########
+docs/
+# Dev working notes — specs, plans, handoffs, audits (kept local, untracked) #
+###########
+dev/notes/

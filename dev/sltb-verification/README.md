@@ -35,7 +35,7 @@ log f(y|μ,φ) = lgamma(a+b) − lgamma(a) − lgamma(b)
 - Data note: `Data_brent.csv` `PID` is non-unique (78/126) — use the row as the subject
   unit; a mixed model must not group duplicated PIDs as one subject.
 
-## Audit findings folded into the design (`docs/specs/2026-06-06-...md`)
+## Audit findings folded into the design (`dev/notes/specs/2026-06-06-...md`)
 1. Reference `ll.temp * ifelse(IP∈[0,1],1,0)` mask is buggy (`0*NaN=NaN`) → **filter rows, never mask.**
 2. Reference optim is unconstrained → **estimate `log k`, `log φ`.**
 3. Exponential μ underflows at long delays → **guard μ∈[1e-6,1−1e-6].**

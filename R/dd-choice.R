@@ -101,7 +101,7 @@
 #' name, never positionally), and returns parallel arrays + the single filtered
 #' frame. Retained factor extras are `droplevels()`-ed after row filtering.
 #'
-#' @param data Canonical frame (+ extras) from [.dd_validate_choice()].
+#' @param data Canonical frame (+ extras) from `.dd_validate_choice()`.
 #' @param extra_cols Optional character vector of extra columns to keep.
 #' @return list(ss_amount, ll_amount, delay, choice, subject_id, subject_levels,
 #'   n_subjects, n_obs, data).

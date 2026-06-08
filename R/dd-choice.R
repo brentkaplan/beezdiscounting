@@ -133,3 +133,41 @@
     data = cleaned
   )
 }
+
+
+#' Discount function value for the structural choice model (mazur/exponential)
+#'
+#' This slice supports the two 1-parameter equations only (GM/Rachlin deferred).
+#' SS is immediate, so `D(k, 0) = 1` and `V_SS = ss_amount`.
+#' @keywords internal
+#' @noRd
+.dd_choice_D <- function(k, delay, equation) {
+  switch(equation,
+    mazur = 1 / (1 + k * delay),
+    exponential = exp(-k * delay),
+    stop("unsupported equation '", equation,
+         "' (structural choice: mazur or exponential)", call. = FALSE)
+  )
+}
+
+#' Structural choice linear predictor (logit scale), scale-invariant form
+#'
+#' `eta = beta0 + gamma * ((ll/ss) * D(k, delay) - 1)`, i.e.
+#' `beta0 + gamma * (V_LL - V_SS) / V_SS` with `V_SS = ss_amount`,
+#' `V_LL = ll_amount * D(k, delay)`. Magnitude enters only through the `ll/ss`
+#' ratio (scale-invariant). With `beta0 = 0`, `eta = 0` <=> `V_LL = V_SS`
+#' (the indifference point), so `k` is the classical discount rate.
+#'
+#' @param k Numeric vector of per-row discount rates (or scalar recycled).
+#' @param ss_amount,ll_amount,delay Numeric per-row trial values.
+#' @param equation `"mazur"` or `"exponential"`.
+#' @param gamma Choice sensitivity (> 0).
+#' @param beta0 Choice-bias intercept (0 when `intercept = FALSE`).
+#' @return Numeric vector of logit-scale linear predictors.
+#' @keywords internal
+#' @noRd
+.dd_choice_structural_eta <- function(k, ss_amount, ll_amount, delay, equation,
+                                      gamma, beta0 = 0) {
+  D <- .dd_choice_D(k, delay, equation)
+  beta0 + gamma * ((ll_amount / ss_amount) * D - 1)
+}

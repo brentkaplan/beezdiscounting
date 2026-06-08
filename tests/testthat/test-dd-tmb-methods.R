@@ -24,6 +24,20 @@ skip_if_not_installed("TMB")
   .ddm_cache$fit
 }
 
+.get_gm_fit_for_methods <- function() {
+  if (!exists("gm_fit", envir = .ddm_cache)) {
+    dat <- simulate_dd_ip(n_subjects = 40,
+                          delays = c(1, 7, 30, 180, 365, 730, 1460, 2920),
+                          log_k_pop = log(0.01), sigma_u = 0.5, phi = 15,
+                          s = 0.6, family = "sltb",
+                          equation = "green-myerson", seed = 501)
+    .ddm_cache$gm_fit <- fit_dd_tmb(dat, equation = "green-myerson",
+                                    family = "sltb", multi_start = TRUE,
+                                    verbose = 0)
+  }
+  .ddm_cache$gm_fit
+}
+
 # ---------------------------------------------------------------------------
 # M.0: shared helpers
 # ---------------------------------------------------------------------------
@@ -38,6 +52,13 @@ describe(".dd_tmb_build_term_names()", {
     expect_true("log_sigma_u" %in% tn$term)
     expect_length(tn$k_idx, ncol(fit$formula_details$X))
     expect_type(tn$other_idx, "integer")
+  })
+
+  it("maps log_s to the display term s for a 2-parameter fit", {
+    fit <- .get_gm_fit_for_methods()
+    tn <- .dd_tmb_build_term_names(fit)
+    expect_true("s" %in% tn$term)
+    expect_false("log_s" %in% tn$term)   # raw name is mapped to display "s"
   })
 })
 
@@ -98,6 +119,11 @@ describe("coef / fixef", {
   it("fixef() returns the same named numeric vector as coef()", {
     fit <- .get_fit_for_methods()
     expect_identical(nlme::fixef(fit), coef(fit))
+  })
+
+  it("coef() returns log_s for a 2-parameter (green-myerson) fit", {
+    fit <- .get_gm_fit_for_methods()
+    expect_true("log_s" %in% names(coef(fit)))
   })
 })
 
@@ -221,6 +247,18 @@ describe("predict", {
       predict(f3, newdata = nd, type = "response", level = "population"),
       regexp = "not seen in the fit|unseen"
     )
+  })
+
+  it("green-myerson predictions use (1+k*x)^(-s) at population level", {
+    fit <- .get_gm_fit_for_methods()
+    nd <- data.frame(x = c(7, 180, 730))
+    pr <- predict(fit, newdata = nd, type = "response", level = "population")
+    k_pop <- exp(unname(fit$model$coefficients[
+      names(fit$model$coefficients) == "beta_k"][1]))
+    s_hat <- exp(unname(fit$model$coefficients[["log_s"]]))
+    mu_raw <- (1 + k_pop * nd$x)^(-s_hat)
+    expect_equal(pr$predict.fixed, pmin(pmax(mu_raw, 1e-6), 1 - 1e-6),
+                 tolerance = 1e-8)
   })
 })
 
@@ -399,6 +437,37 @@ describe("tidy", {
     expect_equal(tl$estimate, ti$estimate)
     expect_true(all(tl$estimate_scale == "log"))
   })
+
+  it("emits an s shape row for a 2-parameter fit (8-col contract, natural)", {
+    fit <- .get_gm_fit_for_methods()
+    td <- tidy(fit, report_space = "natural")
+    expect_named(td, c("term", "estimate", "std.error", "statistic",
+                       "p.value", "component", "estimate_scale",
+                       "term_display"))
+    s_row <- td[td$term == "s", ]
+    expect_equal(nrow(s_row), 1L)
+    expect_equal(s_row$component, "shape")
+    # natural-scale s == exp(log_s), with a real Wald SE (not NA)
+    expect_equal(s_row$estimate,
+                 exp(unname(fit$model$coefficients[["log_s"]])),
+                 tolerance = 1e-8)
+    expect_false(is.na(s_row$std.error))
+  })
+
+  it("internal space leaves s on the log scale (= log_s)", {
+    fit <- .get_gm_fit_for_methods()
+    td <- tidy(fit, report_space = "internal")
+    s_row <- td[td$term == "s", ]
+    expect_equal(s_row$estimate, unname(fit$model$coefficients[["log_s"]]),
+                 tolerance = 1e-10)
+    expect_equal(s_row$estimate_scale, "log")
+  })
+
+  it("a mazur fit emits NO s row", {
+    fit <- .get_fit_for_methods()
+    td <- tidy(fit)
+    expect_false("s" %in% td$term)
+  })
 })
 
 # ---------------------------------------------------------------------------
@@ -497,6 +566,23 @@ describe("confint", {
     expect_true(ci90$conf.high < ci95$conf.high)
     expect_true(all(ci90$level == 0.90))
   })
+
+  it("includes an s row and back-transforms it under natural space", {
+    fit <- .get_gm_fit_for_methods()
+    ci_i <- confint(fit, parm = "s", report_space = "internal")
+    ci_n <- confint(fit, parm = "s", report_space = "natural")
+    expect_equal(nrow(ci_i), 1L)
+    expect_equal(ci_n$estimate, exp(ci_i$estimate), tolerance = 1e-8)
+    expect_equal(ci_n$conf.low, exp(ci_i$conf.low), tolerance = 1e-8)
+    expect_equal(ci_n$conf.high, exp(ci_i$conf.high), tolerance = 1e-8)
+    # finite interval => the s SE was populated (Codex 7)
+    expect_true(is.finite(ci_i$conf.low) && is.finite(ci_i$conf.high))
+  })
+
+  it("filters the s row by raw name log_s too", {
+    fit <- .get_gm_fit_for_methods()
+    expect_equal(nrow(confint(fit, parm = "log_s")), 1L)
+  })
 })
 
 # ---------------------------------------------------------------------------
@@ -572,6 +658,30 @@ describe("summary / print", {
     # it must NOT be the optimizer message (R5)
     expect_false(identical(s$call, fit$opt$message))
     expect_true(is.call(s$call) || is.null(s$call))
+  })
+
+  it("summary() shows s in the coefficient table for a 2-parameter fit", {
+    fit <- .get_gm_fit_for_methods()
+    s <- summary(fit, report_space = "natural")
+    srow <- s$coefficients[s$coefficients$term == "s", ]
+    expect_equal(nrow(srow), 1L)
+    expect_equal(srow$component, "shape")
+    expect_equal(srow$estimate,
+                 exp(unname(fit$model$coefficients[["log_s"]])),
+                 tolerance = 1e-8)
+  })
+
+  it("summary() of a mazur fit has no s row", {
+    fit <- .get_fit_for_methods()
+    s <- summary(fit)
+    expect_false("s" %in% s$coefficients$term)
+  })
+
+  it("summary notes flag the shape parameter for a 2-parameter fit", {
+    fit <- .get_gm_fit_for_methods()
+    s <- summary(fit)
+    expect_true(any(grepl("shape parameter", s$notes)))
+    expect_output(print(s), "shape parameter")
   })
 })
 

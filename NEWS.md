@@ -2,6 +2,13 @@
 
 ### New Features
 
+* New `fit_dd_choice(mode = "structural")` fits trial-level smaller-sooner vs
+  larger-later choice as a binomial GLMM, estimating the discount rate `k`
+  directly (scale-invariant value comparison, optional choice-bias intercept).
+  It shares the `get_dd_param_emms()`/`get_dd_comparisons()` `k` contract with
+  `fit_dd_tmb()` and is validated by an IP-vs-choice tie-out. `simulate_dd_choice()`
+  generates structural choice data. (Descriptive Young-2018 model: forthcoming.)
+
 * `fit_dd_tmb()` and `simulate_dd_ip()` gain the two-parameter hyperboloid
   equations `"green-myerson"` (`mu = (1 + k*x)^(-s)`) and `"rachlin"`
   (`mu = 1 / (1 + k*x^s)`), with a single population nonlinearity exponent `s`

@@ -28,9 +28,9 @@ simulate_dd_choice <- function(n_subjects = 50,
                                equation = c("mazur", "exponential"),
                                seed = NULL) {
   equation <- match.arg(equation)
-  if (!is.null(seed)) set.seed(seed)
   stopifnot(length(ss_amount) == length(ll_amount),
             length(ss_amount) == length(delay))
+  if (!is.null(seed)) set.seed(seed)
   n_tr <- length(delay)
   u <- stats::rnorm(n_subjects, 0, sigma_u)
   k <- exp(log_k_pop + u)

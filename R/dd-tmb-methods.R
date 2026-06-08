@@ -621,8 +621,9 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #' @param ... Unused.
 #' @return A tibble with exactly 8 columns in this order: `term`, `estimate`,
 #'   `std.error`, `statistic`, `p.value`, `component`, `estimate_scale`,
-#'   `term_display`. Fixed-effect rows carry `component == "fixed"`; variance
-#'   rows carry `component == "variance"`.
+#'   `term_display`. Fixed-effect rows carry `component == "fixed"`; the
+#'   shape-parameter row (2-parameter equations only) carries
+#'   `component == "shape"`; variance rows carry `component == "variance"`.
 #'
 #' @importFrom generics tidy
 #' @export
@@ -686,15 +687,13 @@ tidy.beezdiscounting_tmb <- function(x,
     # Population shape parameter s (2-parameter equations only). It is NOT a
     # variance component: it carries a real Wald SE. New row, same 8 columns.
     if (isTRUE(x$param_info$has_s)) {
-      coefs2 <- x$model$coefficients
-      se2    <- .dd_tmb_model_se(x)
-      s_pos  <- which(names(coefs2) == "log_s")
-      z_s    <- coefs2[s_pos] / se2[s_pos]
-      p_s    <- 2 * stats::pnorm(-abs(z_s))
+      s_pos <- which(nms == "log_s")
+      z_s   <- coefs[s_pos] / se[s_pos]
+      p_s   <- 2 * stats::pnorm(-abs(z_s))
       shape <- tibble::tibble(
         term           = "s",
-        estimate       = unname(coefs2[s_pos]),
-        std.error      = unname(se2[s_pos]),
+        estimate       = unname(coefs[s_pos]),
+        std.error      = unname(se[s_pos]),
         statistic      = unname(z_s),
         p.value        = unname(p_s),
         component      = "shape",

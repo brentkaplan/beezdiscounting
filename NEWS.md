@@ -2,6 +2,12 @@
 
 ### New Features
 
+* `fit_dd_tmb()` and `simulate_dd_ip()` gain the two-parameter hyperboloid
+  equations `"green-myerson"` (`mu = (1 + k*x)^(-s)`) and `"rachlin"`
+  (`mu = 1 / (1 + k*x^s)`), with a single population nonlinearity exponent `s`
+  (reported by `tidy()`/`summary()`/`confint()`). Both reduce to `"mazur"` at
+  `s = 1`.
+
 - **Mixed-effects discounting via TMB** (`fit_dd_tmb()`): fits the
   indifference-point (IP) family discounting model — Mazur hyperbolic or
   exponential mean with a subject random intercept on `log k` — under either the

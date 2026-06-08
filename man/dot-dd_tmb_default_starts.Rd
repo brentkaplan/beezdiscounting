@@ -17,7 +17,8 @@
 }
 \value{
 A parameters list: \code{beta_k} (length \code{ncol(X)}), \code{log_sigma_u},
-\code{log_aux}, \code{u} (matrix \code{n_subjects} x 1).
+\code{log_aux}, \code{log_s} (always present; held fixed for 1-parameter equations),
+\code{u} (matrix \code{n_subjects} x 1).
 }
 \description{
 \code{beta_k} intercept is data-driven: invert the discounting function at the

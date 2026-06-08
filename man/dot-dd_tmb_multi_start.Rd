@@ -9,7 +9,8 @@
   start_values,
   tmb_control,
   user_specified,
-  verbose
+  verbose,
+  has_s = FALSE
 )
 }
 \arguments{

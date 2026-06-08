@@ -12,7 +12,8 @@ simulate_dd_ip(
   phi = 10,
   sigma_e = 0.1,
   family = c("sltb", "gaussian"),
-  equation = c("mazur", "exponential"),
+  equation = c("mazur", "exponential", "green-myerson", "rachlin"),
+  s = 1,
   n_conditions = 1,
   delta_k = NULL,
   seed = NULL
@@ -33,7 +34,12 @@ simulate_dd_ip(
 
 \item{family}{One of \code{"sltb"} (default) or \code{"gaussian"}.}
 
-\item{equation}{One of \code{"mazur"} (default) or \code{"exponential"}.}
+\item{equation}{One of \code{"mazur"} (default), \code{"exponential"},
+\code{"green-myerson"}, or \code{"rachlin"}. The two 2-parameter forms use the
+nonlinearity exponent \code{s} and reduce to \code{"mazur"} at \code{s = 1}.}
+
+\item{s}{Numeric nonlinearity exponent for the 2-parameter equations
+(Green-Myerson / Rachlin); ignored by \code{"mazur"} / \code{"exponential"}.}
 
 \item{n_conditions}{Integer; number of between-subject condition levels. When
 \verb{> 1}, a \code{condition} factor is added and subjects are split across levels.}
@@ -54,17 +60,18 @@ Generates long-format indifference-point data from the mixed-effects
 discounting model used by \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}. Each subject \code{i} has a random
 discount rate \verb{log k_i = log_k_pop + delta_k[condition] + u_i},
 \code{u_i ~ N(0, sigma_u^2)}. The mean indifference proportion at delay \code{x} is the
-discounting function \code{mu} (Mazur hyperbola or exponential), and observed \code{y}
+discounting function \code{mu} (Mazur hyperbola, exponential, Green-Myerson, or
+Rachlin), and observed \code{y}
 is drawn from the scale-location-truncated beta (\code{family = "sltb"}) via the
 inverse-CDF on the truncated beta, or from a clamped Gaussian
 (\code{family = "gaussian"}).
 }
 \details{
 The SLT draw uses the same constants as the C++ template and the verified
-reference density: \code{s = 1.0000001}, \code{l = 1e-8}, with
+reference density: \code{s_slt = 1.0000001}, \code{l = 1e-8}, with
 \code{a = mu * phi}, \code{b = (1 - mu) * phi}, and
-\code{y = (qbeta(U, a, b) - l) * s} where
-\code{U ~ Uniform(pbeta(l, a, b), pbeta(1/s + l, a, b))}.
+\code{y = (qbeta(U, a, b) - l) * s_slt} where
+\code{U ~ Uniform(pbeta(l, a, b), pbeta(1/s_slt + l, a, b))}.
 }
 \examples{
 # A small SLT-beta mixed-effects discounting dataset (id, x, y)

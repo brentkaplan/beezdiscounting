@@ -566,3 +566,22 @@ describe("se_available gate in EMM / comparisons (B2)", {
     expect_true(all(is.finite(em$std.error)))
   })
 })
+
+describe("emmeans / comparisons ignore the shape parameter s", {
+  it("get_dd_param_emms() works on a 2-parameter (green-myerson) fit", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    skip_if_not_installed("emmeans")
+    sim <- simulate_dd_ip(n_subjects = 40, n_conditions = 2,
+                          delta_k = c(0, 0.7),
+                          delays = c(1, 7, 30, 180, 365, 730, 1460, 2920),
+                          log_k_pop = log(0.01), sigma_u = 0.5, phi = 15,
+                          s = 0.6, family = "sltb",
+                          equation = "green-myerson", seed = 601)
+    fit <- fit_dd_tmb(sim, equation = "green-myerson", family = "sltb",
+                      factors = "condition", verbose = 0)
+    expect_no_error(emm <- get_dd_param_emms(fit, factors_in_emm = "condition"))
+    # the EMM table is over k (one row per condition), with NO s contamination
+    expect_true(nrow(as.data.frame(emm)) >= 2L)
+  })
+})

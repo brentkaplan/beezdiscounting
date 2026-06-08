@@ -927,3 +927,113 @@ describe("fit_dd_tmb() log_s mapping (1- vs 2-parameter df)", {
     )
   })
 })
+
+# ==============================================================================
+# 3E: Recovery + reduction-to-Mazur (GM/Rachlin x both families)
+# ==============================================================================
+
+describe("fit_dd_tmb() recovers (k, s) for the 2-parameter equations", {
+  rich_delays <- c(1, 7, 14, 30, 90, 180, 365, 730, 1460, 2920)
+
+  it("recovers k and s for green-myerson (sltb)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 100, delays = rich_delays,
+                          log_k_pop = log(0.01), sigma_u = 0.5, phi = 15,
+                          s = 0.6, family = "sltb",
+                          equation = "green-myerson", seed = 401)
+    fit <- fit_dd_tmb(sim, equation = "green-myerson", family = "sltb",
+                      verbose = 0)
+    expect_true(fit$converged)
+    co <- fit$model$coefficients
+    k_hat <- exp(unname(co[names(co) == "beta_k"][1]))
+    s_hat <- exp(unname(co[["log_s"]]))
+    expect_lt(abs(k_hat - 0.01) / 0.01, 0.20)
+    expect_lt(abs(s_hat - 0.6) / 0.6, 0.25)
+  })
+
+  it("recovers k and s for rachlin (sltb)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 100, delays = rich_delays,
+                          log_k_pop = log(0.01), sigma_u = 0.5, phi = 15,
+                          s = 1.4, family = "sltb",
+                          equation = "rachlin", seed = 402)
+    fit <- fit_dd_tmb(sim, equation = "rachlin", family = "sltb", verbose = 0)
+    expect_true(fit$converged)
+    co <- fit$model$coefficients
+    k_hat <- exp(unname(co[names(co) == "beta_k"][1]))
+    s_hat <- exp(unname(co[["log_s"]]))
+    expect_lt(abs(k_hat - 0.01) / 0.01, 0.20)
+    expect_lt(abs(s_hat - 1.4) / 1.4, 0.25)
+  })
+
+  it("recovers k and s for green-myerson (gaussian, looser tol)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 100, delays = rich_delays,
+                          log_k_pop = log(0.01), sigma_u = 0.5, sigma_e = 0.06,
+                          s = 0.6, family = "gaussian",
+                          equation = "green-myerson", seed = 403)
+    fit <- fit_dd_tmb(sim, equation = "green-myerson", family = "gaussian",
+                      verbose = 0)
+    expect_true(fit$converged)
+    co <- fit$model$coefficients
+    k_hat <- exp(unname(co[names(co) == "beta_k"][1]))
+    s_hat <- exp(unname(co[["log_s"]]))
+    expect_lt(abs(k_hat - 0.01) / 0.01, 0.30)
+    expect_lt(abs(s_hat - 0.6) / 0.6, 0.35)
+  })
+
+  it("recovers k and s for rachlin (gaussian, looser tol)", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 100, delays = rich_delays,
+                          log_k_pop = log(0.01), sigma_u = 0.5, sigma_e = 0.06,
+                          s = 1.4, family = "gaussian",
+                          equation = "rachlin", seed = 1404)
+    fit <- fit_dd_tmb(sim, equation = "rachlin", family = "gaussian",
+                      verbose = 0)
+    expect_true(fit$converged)
+    co <- fit$model$coefficients
+    k_hat <- exp(unname(co[names(co) == "beta_k"][1]))
+    s_hat <- exp(unname(co[["log_s"]]))
+    expect_lt(abs(k_hat - 0.01) / 0.01, 0.30)
+    expect_lt(abs(s_hat - 1.4) / 1.4, 0.35)
+  })
+})
+
+describe("fit_dd_tmb() 2-parameter eqns reduce to Mazur at s = 1", {
+  it("green-myerson on mazur-simulated data estimates s ~ 1 and recovers k", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 100,
+                          delays = c(1, 7, 14, 30, 90, 180, 365, 730, 1460, 2920),
+                          log_k_pop = log(0.01), sigma_u = 0.5, phi = 15,
+                          family = "sltb", equation = "mazur", seed = 411)
+    fit <- fit_dd_tmb(sim, equation = "green-myerson", family = "sltb",
+                      verbose = 0)
+    expect_true("log_s" %in% names(fit$model$coefficients))  # log_s was free
+    s_hat <- exp(unname(fit$model$coefficients[["log_s"]]))
+    k_hat <- exp(unname(fit$model$coefficients[
+      names(fit$model$coefficients) == "beta_k"][1]))
+    expect_lt(abs(s_hat - 1) / 1, 0.20)
+    expect_lt(abs(k_hat - 0.01) / 0.01, 0.25)
+  })
+
+  it("rachlin on mazur-simulated data estimates s ~ 1 and recovers k", {
+    skip_on_cran()
+    skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 100,
+                          delays = c(1, 7, 14, 30, 90, 180, 365, 730, 1460, 2920),
+                          log_k_pop = log(0.01), sigma_u = 0.5, phi = 15,
+                          family = "sltb", equation = "mazur", seed = 412)
+    fit <- fit_dd_tmb(sim, equation = "rachlin", family = "sltb", verbose = 0)
+    expect_true("log_s" %in% names(fit$model$coefficients))
+    s_hat <- exp(unname(fit$model$coefficients[["log_s"]]))
+    k_hat <- exp(unname(fit$model$coefficients[
+      names(fit$model$coefficients) == "beta_k"][1]))
+    expect_lt(abs(s_hat - 1) / 1, 0.20)
+    expect_lt(abs(k_hat - 0.01) / 0.01, 0.25)
+  })
+})

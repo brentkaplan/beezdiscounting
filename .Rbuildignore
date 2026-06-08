@@ -28,5 +28,4 @@ hex-beezdiscounting.png
 \.DS_Store$
 ^\.Rhistory$
 ^\.Rprofile$
-^docs/handoff.*
 ^\.lintr$

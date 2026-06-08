@@ -206,6 +206,16 @@
                                          verbose = 1) {
   sdr <- tryCatch(TMB::sdreport(obj), error = function(e) NULL)
   hessian_pd <- if (!is.null(sdr)) isTRUE(sdr$pdHess) else NA
+  if (isTRUE(verbose >= 1)) {
+    if (is.null(sdr)) {
+      cli::cli_warn(c("Standard errors unavailable: {.fn TMB::sdreport} failed.",
+                      "i" = "Fixed-effect SEs/CIs will be {.val NA}."))
+    } else if (!isTRUE(hessian_pd)) {
+      cli::cli_warn(c("Standard errors may be unreliable: the Hessian is not \\
+                       positive-definite.",
+                      "i" = "Fixed-effect SEs/CIs will be {.val NA}."))
+    }
+  }
   par_full <- opt$par
   par_names <- names(par_full)
   free_beta0 <- "beta0" %in% par_names
@@ -340,6 +350,11 @@ fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
   )
   if (!isTRUE(multi_start)) start_sets <- start_sets[1]
 
+  # NOTE: this best_kept/best_any + log-k blow-up guard parallels
+  # .dd_tmb_multi_start() in R/dd-tmb.R. The choice family keeps its own copy
+  # (choice-specific tmb_data, map, and beta_k/log_sigma_u perturbations, and to
+  # avoid modifying the IP helper) — keep the selection logic in sync if either
+  # changes.
   # R7: best_kept (passes log-k blow-up guard) AND best_any (lowest finite nll).
   best_kept <- NULL
   best_kept_nll <- Inf
@@ -382,6 +397,8 @@ fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
 
   est <- .dd_choice_extract_estimates(obj, opt, prepared$n_subjects, intercept,
                                       verbose)
+  # `family`/`equation` are reserved-but-cosmetic here: subject k is computed only
+  # from beta_k + sigma_u * u_i (the choice likelihood is irrelevant to this helper).
   subject_pars <- .dd_tmb_compute_subject_pars(
     coefficients = est$coefficients, u_hat = est$u_hat,
     subject_levels = prepared$subject_levels, design_X = design$X,

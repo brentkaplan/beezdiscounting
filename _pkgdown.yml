@@ -50,6 +50,14 @@ reference:
       - fit_dd_tmb
       - simulate_dd_ip
 
+  - title: Choice-based discounting (TMB)
+    desc: >
+      Fit the structural smaller-sooner vs larger-later choice model — a binomial
+      GLMM that estimates the discount rate directly — and simulate from it.
+    contents:
+      - fit_dd_choice
+      - simulate_dd_choice
+
   - title: Estimated marginal means & comparisons
     desc: >
       Post-hoc estimated marginal means and pairwise comparisons for fitted

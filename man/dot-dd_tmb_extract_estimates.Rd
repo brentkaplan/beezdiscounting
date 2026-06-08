@@ -4,7 +4,14 @@
 \alias{.dd_tmb_extract_estimates}
 \title{Extract estimates from a TMB discounting fit}
 \usage{
-.dd_tmb_extract_estimates(obj, opt, n_subjects, family, verbose = 1)
+.dd_tmb_extract_estimates(
+  obj,
+  opt,
+  n_subjects,
+  family,
+  has_s = FALSE,
+  verbose = 1
+)
 }
 \arguments{
 \item{obj}{TMB objective object.}
@@ -14,6 +21,9 @@
 \item{n_subjects}{Integer number of subjects.}
 
 \item{family}{One of "sltb", "gaussian".}
+
+\item{has_s}{Logical; \code{TRUE} for the 2-parameter equations (green-myerson /
+rachlin), where \code{log_s} is a free coefficient.}
 
 \item{verbose}{Integer verbosity.}
 }

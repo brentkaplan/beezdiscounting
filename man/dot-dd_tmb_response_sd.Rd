@@ -16,7 +16,7 @@ Numeric vector of per-row response SDs, same length as \code{mu}.
 }
 \description{
 Gaussian: constant \code{sigma_e = exp(log_sigma_e)}. SLT-beta: the
-delta-method SLT SD \code{s * sqrt(mu * (1 - mu) / (phi + 1))} (the SLT
-variance at \code{s ~ 1}), so residuals near the bounds are down-weighted.
+delta-method SLT SD \code{s_slt * sqrt(mu * (1 - mu) / (phi + 1))} (the SLT
+variance at \code{s_slt ~ 1}), so residuals near the bounds are down-weighted.
 }
 \keyword{internal}

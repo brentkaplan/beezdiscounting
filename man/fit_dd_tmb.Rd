@@ -9,7 +9,7 @@ fit_dd_tmb(
   y_var = "y",
   x_var = "x",
   id_var = "id",
-  equation = c("mazur", "exponential"),
+  equation = c("mazur", "exponential", "green-myerson", "rachlin"),
   family = c("sltb", "gaussian"),
   random_effects = k ~ 1,
   factors = NULL,
@@ -30,7 +30,10 @@ proportion columns.}
 
 \item{y_var, x_var, id_var}{Column names (defaults \code{"y"}, \code{"x"}, \code{"id"}).}
 
-\item{equation}{One of \code{"mazur"}, \code{"exponential"}.}
+\item{equation}{One of \code{"mazur"}, \code{"exponential"}, \code{"green-myerson"}, or
+\code{"rachlin"}. The two 2-parameter (hyperboloid) forms add a single
+population nonlinearity exponent \code{s} (estimated on the log scale) and
+reduce to \code{"mazur"} at \code{s = 1}.}
 
 \item{family}{Observation family: \code{"sltb"} (default) or \code{"gaussian"}.}
 

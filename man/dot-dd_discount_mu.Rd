@@ -4,20 +4,26 @@
 \alias{.dd_discount_mu}
 \title{Discounting function value mu = E\link[ggplot2:y]{y} for a vector of k and x}
 \usage{
-.dd_discount_mu(k, x, equation)
+.dd_discount_mu(k, x, equation, s = 1)
 }
 \arguments{
 \item{k}{Numeric vector of discount rates.}
 
 \item{x}{Numeric vector of delays (same length as \code{k}).}
 
-\item{equation}{Character, \code{"mazur"} or \code{"exponential"}.}
+\item{equation}{Character: \code{"mazur"}, \code{"exponential"}, \code{"green-myerson"},
+or \code{"rachlin"}.}
+
+\item{s}{Numeric nonlinearity exponent (Green-Myerson / Rachlin). Default
+\code{1} so 1-parameter callers are unchanged.}
 }
 \value{
 Numeric vector of mu values clamped to \verb{[1e-6, 1-1e-6]}.
 }
 \description{
-Mazur: \code{mu = 1 / (1 + k * x)}; exponential: \code{mu = exp(-k * x)}. Guards mu
-to \verb{[1e-6, 1 - 1e-6]} to match the C++ template bounds.
+Mazur: \code{mu = 1 / (1 + k * x)}; exponential: \code{mu = exp(-k * x)};
+Green-Myerson: \code{mu = (1 + k * x)^(-s)}; Rachlin: \code{mu = 1 / (1 + k * x^s)}
+with \code{x = 0 -> mu = 1}. Guards mu to \verb{[1e-6, 1 - 1e-6]} to match the C++
+template bounds. The two 2-parameter forms reduce to Mazur at \code{s = 1}.
 }
 \keyword{internal}

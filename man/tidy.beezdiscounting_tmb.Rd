@@ -27,8 +27,9 @@ reporting scale for fixed-effect \code{estimate}/\code{std.error} (\code{"intern
 \value{
 A tibble with exactly 8 columns in this order: \code{term}, \code{estimate},
 \code{std.error}, \code{statistic}, \code{p.value}, \code{component}, \code{estimate_scale},
-\code{term_display}. Fixed-effect rows carry \code{component == "fixed"}; variance
-rows carry \code{component == "variance"}.
+\code{term_display}. Fixed-effect rows carry \code{component == "fixed"}; the
+shape-parameter row (2-parameter equations only) carries
+\code{component == "shape"}; variance rows carry \code{component == "variance"}.
 }
 \description{
 Returns fixed-effect rows (the log-k coefficients) and/or variance-component

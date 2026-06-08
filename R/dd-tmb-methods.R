@@ -30,6 +30,9 @@
   term <- character(length(nms))
   term[k_idx] <- paste0("k:", k_colnames)
   term[other_idx] <- nms[other_idx]
+  # Display the raw shape coefficient log_s as canonical "s" so the param-space
+  # transformer (keys on ^s($|_)) back-transforms it under report_space.
+  term[nms == "log_s"] <- "s"
 
   list(
     term = term,
@@ -363,6 +366,11 @@ predict.beezdiscounting_tmb <- function(object,
   # type == "response"
   equation <- object$param_info$equation
   x_var    <- object$param_info$x_var
+  s_hat    <- if (isTRUE(object$param_info$has_s)) {
+    exp(unname(object$model$coefficients[["log_s"]]))
+  } else {
+    1
+  }
   if (is.null(newdata)) newdata <- object$data
   out <- tibble::as_tibble(newdata)
   x   <- newdata[[x_var]]
@@ -381,18 +389,18 @@ predict.beezdiscounting_tmb <- function(object,
   # Single "subject" level: historical .fitted column name for backward compat.
   if (identical(level, "subject")) {
     k_row       <- .dd_tmb_predict_k(object, newdata, level = "subject")
-    out$.fitted <- .dd_discount_mu(k_row, x, equation)
+    out$.fitted <- .dd_discount_mu(k_row, x, equation, s = s_hat)
     return(out)
   }
 
   # "population" and/or both: use nlme-style column names.
   if ("population" %in% level) {
     k_pop            <- .dd_tmb_predict_k(object, newdata, level = "population")
-    out$predict.fixed <- .dd_discount_mu(k_pop, x, equation)
+    out$predict.fixed <- .dd_discount_mu(k_pop, x, equation, s = s_hat)
   }
   if ("subject" %in% level) {
     k_sub          <- .dd_tmb_predict_k(object, newdata, level = "subject")
-    out$predict.id <- .dd_discount_mu(k_sub, x, equation)
+    out$predict.id <- .dd_discount_mu(k_sub, x, equation, s = s_hat)
   }
   out
 }
@@ -674,6 +682,31 @@ tidy.beezdiscounting_tmb <- function(x,
     fixed <- fixed[, setdiff(names(fixed), "estimate_internal"), drop = FALSE]
 
     result <- dplyr::bind_rows(result, fixed)
+
+    # Population shape parameter s (2-parameter equations only). It is NOT a
+    # variance component: it carries a real Wald SE. New row, same 8 columns.
+    if (isTRUE(x$param_info$has_s)) {
+      coefs2 <- x$model$coefficients
+      se2    <- .dd_tmb_model_se(x)
+      s_pos  <- which(names(coefs2) == "log_s")
+      z_s    <- coefs2[s_pos] / se2[s_pos]
+      p_s    <- 2 * stats::pnorm(-abs(z_s))
+      shape <- tibble::tibble(
+        term           = "s",
+        estimate       = unname(coefs2[s_pos]),
+        std.error      = unname(se2[s_pos]),
+        statistic      = unname(z_s),
+        p.value        = unname(p_s),
+        component      = "shape",
+        estimate_scale = "log",
+        term_display   = "s"
+      )
+      shape <- .dd_transform_coef_table(
+        coef_tbl = shape, report_space = report_space, internal_space = "log"
+      )
+      shape <- shape[, setdiff(names(shape), "estimate_internal"), drop = FALSE]
+      result <- dplyr::bind_rows(result, shape)
+    }
   }
 
   if ("ran_pars" %in% effects) {
@@ -808,6 +841,12 @@ confint.beezdiscounting_tmb <- function(object,
       conf_low[k_pos]  <- exp(conf_low[k_pos])
       conf_high[k_pos] <- exp(conf_high[k_pos])
     }
+    s_pos <- which(nms == "log_s")
+    if (length(s_pos) > 0L) {
+      estimates[s_pos] <- exp(estimates[s_pos])
+      conf_low[s_pos]  <- exp(conf_low[s_pos])
+      conf_high[s_pos] <- exp(conf_high[s_pos])
+    }
   }
 
   tibble::tibble(
@@ -857,7 +896,8 @@ summary.beezdiscounting_tmb <- function(object,
   nms    <- names(coefs)
   tn     <- .dd_tmb_build_term_names(object, nms)
 
-  component      <- ifelse(nms == "beta_k", "fixed", "variance")
+  component      <- ifelse(nms == "beta_k", "fixed",
+                          ifelse(nms == "log_s", "shape", "variance"))
   estimate_scale <- rep("log", length(nms))
 
   z_val <- coefs / se_vec
@@ -875,7 +915,8 @@ summary.beezdiscounting_tmb <- function(object,
     estimate_scale = estimate_scale,
     term_display   = tn$term
   )
-  coefficients <- coefficients[coefficients$component == "fixed", , drop = FALSE]
+  coefficients <- coefficients[coefficients$component %in% c("fixed", "shape"), ,
+                               drop = FALSE]
 
   # Back-transform estimate + std.error to report_space; statistic/p.value stay
   # on the estimation (log-k) scale (broom/emmeans convention).
@@ -907,6 +948,10 @@ summary.beezdiscounting_tmb <- function(object,
   if (!is.null(object$param_info$factors) && length(object$param_info$factors) > 0L) {
     notes <- c(notes,
       "Population k reflects the reference level. Use get_dd_param_emms() for per-group estimates.")
+  }
+  if (isTRUE(object$param_info$has_s)) {
+    notes <- c(notes,
+      "s is the population hyperboloid shape parameter (the equation reduces to Mazur at s = 1).")
   }
 
   structure(

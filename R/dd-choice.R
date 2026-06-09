@@ -288,15 +288,30 @@
 # Structural choice fit pipeline (direct-k binomial GLMM via TMB).
 # ==============================================================================
 
-#' TMB `map` for the structural choice model: fix beta0 when intercept is off
+#' TMB `map` for the structural choice model
+#'
+#' The shared template declares the descriptive (mode 1) parameters
+#' (`theta`/`log_sd_re`/`cor_re`/`b`) unconditionally, so the structural path
+#' must always fix them at their (unused) start values. `beta0` is additionally
+#' fixed when the choice-bias intercept is off.
 #' @keywords internal
 #' @noRd
-.dd_choice_build_map <- function(intercept) {
-  if (isTRUE(intercept)) return(NULL)
-  list(beta0 = factor(NA))
+.dd_choice_build_map <- function(intercept, starts) {
+  map <- list(
+    theta = factor(rep(NA, length(starts$theta))),
+    log_sd_re = factor(rep(NA, length(starts$log_sd_re))),
+    cor_re = factor(rep(NA, length(starts$cor_re))),
+    b = factor(rep(NA, length(starts$b)))
+  )
+  if (!isTRUE(intercept)) map$beta0 <- factor(NA)
+  map
 }
 
 #' Default starts for the structural choice model
+#'
+#' Includes the (unused-in-structural) descriptive blocks so the shared template
+#' — which declares them unconditionally — can be instantiated; they are fixed
+#' via [.dd_choice_build_map()].
 #' @keywords internal
 #' @noRd
 .dd_choice_default_starts <- function(prepared, design) {
@@ -306,7 +321,9 @@
   list(
     beta_k = beta_k, log_sigma_u = log(0.5),
     log_gamma = log(1), beta0 = 0,
-    u = matrix(0, nrow = prepared$n_subjects, ncol = 1L)
+    u = matrix(0, nrow = prepared$n_subjects, ncol = 1L),
+    theta = 0, log_sd_re = rep(log(0.5), 2L), cor_re = 0,
+    b = matrix(0, nrow = prepared$n_subjects, ncol = 2L)
   )
 }
 
@@ -433,6 +450,11 @@ fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
     delay = as.numeric(prepared$delay),
     subject_id = as.integer(prepared$subject_id),
     X = as.matrix(design$X),
+    # Descriptive (mode 1) design blocks are declared unconditionally by the
+    # shared template; supply inert placeholders for the structural path.
+    Z = matrix(0, nrow = prepared$n_obs, ncol = 1L),
+    Zre = matrix(0, nrow = prepared$n_obs, ncol = 1L),
+    n_re = 0L,
     n_obs = as.integer(prepared$n_obs),
     n_subjects = as.integer(prepared$n_subjects)
   )
@@ -440,7 +462,7 @@ fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
   if (!is.null(start_values)) {
     for (nm in names(start_values)) if (nm %in% names(starts)) starts[[nm]] <- start_values[[nm]]
   }
-  map <- .dd_choice_build_map(intercept)
+  map <- .dd_choice_build_map(intercept, starts)
 
   default_control <- list(iter_max = 1000, eval_max = 2000, optimizer = "nlminb",
                           rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)

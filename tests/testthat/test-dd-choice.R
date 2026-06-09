@@ -1,8 +1,26 @@
 describe(".dd_choice_build_map()", {
+  starts <- list(
+    beta_k = 0, log_sigma_u = 0, log_gamma = 0, beta0 = 0,
+    u = matrix(0, 2L, 1L),
+    theta = 0, log_sd_re = rep(0, 2L), cor_re = 0, b = matrix(0, 2L, 2L)
+  )
+  it("always fixes the descriptive blocks (theta/log_sd_re/cor_re/b)", {
+    for (intercept in c(TRUE, FALSE)) {
+      m <- .dd_choice_build_map(intercept = intercept, starts = starts)
+      expect_true(all(c("theta", "log_sd_re", "cor_re", "b") %in% names(m)))
+      expect_true(all(is.na(m$theta)))
+      expect_equal(length(m$log_sd_re), length(starts$log_sd_re))
+      expect_true(all(is.na(m$log_sd_re)))
+      expect_true(all(is.na(m$cor_re)))
+      expect_equal(length(m$b), length(starts$b))
+      expect_true(all(is.na(m$b)))
+    }
+  })
   it("maps beta0 when intercept is FALSE and frees it when TRUE", {
-    m_off <- .dd_choice_build_map(intercept = FALSE)
+    m_off <- .dd_choice_build_map(intercept = FALSE, starts = starts)
     expect_true("beta0" %in% names(m_off)); expect_true(all(is.na(m_off$beta0)))
-    expect_null(.dd_choice_build_map(intercept = TRUE))
+    expect_false("beta0" %in% names(.dd_choice_build_map(intercept = TRUE,
+                                                         starts = starts)))
   })
 })
 

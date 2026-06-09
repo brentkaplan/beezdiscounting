@@ -174,6 +174,117 @@
 
 
 # ==============================================================================
+# Descriptive choice helpers (Young 2018) — pure R, no TMB.
+# ==============================================================================
+
+#' Default descriptive (Young 2018) predictor formula
+#' @keywords internal
+#' @noRd
+.dd_choice_default_predictors <- function() {
+  stats::as.formula("~ 0 + log(ll_amount / ss_amount) + log(delay + 1)")
+}
+
+#' Build the descriptive fixed (`Z`) and random-slope (`Zre`) designs
+#'
+#' `Z` comes from `predictors` (default = Young's two scale-invariant predictors,
+#' no intercept) and is rank-guarded. `Zre` is ALWAYS Young's two predictors
+#' (q = 2) when `random_slopes = TRUE`, else a 0-column matrix (q = 0, pooled).
+#' Random slopes live on exactly the two Young predictors this slice
+#' (general-q / re_formula deferred).
+#'
+#' @param data Cleaned canonical frame (`id`/`ss_amount`/`ll_amount`/`delay`/
+#'   `choice` + any extras).
+#' @param predictors One-sided formula for the fixed design, or `NULL` (Young).
+#' @param random_slopes Logical; `TRUE` => q = 2 correlated slopes.
+#' @return list(Z, Zre, q, predictors = formula, re_terms = colnames(Zre),
+#'   contrasts, xlevels) — `contrasts`/`xlevels` let `predict()` rebuild a
+#'   column-aligned `Z` on newdata and reject unseen factor levels.
+#' @keywords internal
+#' @noRd
+.dd_choice_descriptive_design <- function(data, predictors = NULL,
+                                          random_slopes = TRUE) {
+  if (is.null(predictors)) predictors <- .dd_choice_default_predictors()
+  if (!inherits(predictors, "formula")) {
+    cli::cli_abort("{.arg predictors} must be a one-sided formula or {.code NULL}.")
+  }
+  mf <- stats::model.frame(predictors, data = data)
+  Z <- stats::model.matrix(predictors, data = mf)
+  if (ncol(Z) > 0L) {
+    qrz <- qr(Z)
+    if (qrz$rank < ncol(Z)) {
+      aliased <- colnames(Z)[qrz$pivot[(qrz$rank + 1L):ncol(Z)]]
+      cli::cli_abort(c(
+        "The descriptive fixed-effect design is rank-deficient \\
+         ({qrz$rank}/{ncol(Z)} columns independent).",
+        "x" = "Non-estimable (aliased/collinear) column{?s}: {.val {aliased}}.",
+        "i" = "Drop the redundant predictor or collapse empty cells."
+      ))
+    }
+  }
+  re_form <- .dd_choice_default_predictors()       # Young's 2, always
+  Zre_full <- stats::model.matrix(re_form, data = data)
+  if (isTRUE(random_slopes)) {
+    Zre <- Zre_full
+    q <- ncol(Zre)                                  # == 2L by construction
+    # Random slopes need a matching fixed effect in Z (else the population-mean
+    # slope is constrained to 0). The default `predictors` includes Young's two
+    # terms; warn if a caller override drops them.
+    missing_anchor <- setdiff(colnames(Zre), colnames(Z))
+    if (length(missing_anchor)) {
+      cli::cli_warn(c(
+        "Random slope term(s) have no matching fixed effect in {.arg predictors}: \\
+         {.val {missing_anchor}}.",
+        "i" = "Their population-mean slope is constrained to 0. Include these \\
+               terms in {.arg predictors} (the default does) unless intended."))
+    }
+  } else {
+    Zre <- Zre_full[, integer(0), drop = FALSE]
+    q <- 0L
+  }
+  list(Z = Z, Zre = Zre, q = q, predictors = predictors,
+       re_terms = colnames(Zre),
+       contrasts = attr(Z, "contrasts"),
+       xlevels = stats::.getXlevels(stats::terms(predictors), mf))
+}
+
+#' 2-RE covariance from log-SDs + an unconstrained correlation
+#'
+#' Mirrors the `beezdemand` 2-RE pattern: `rho = tanh(cor_re)`,
+#' `Sigma = diag(sd) %*% R %*% diag(sd)`, `L = chol(Sigma)` (lower-triangular).
+#' For q = 2 `cor_re` is a scalar.
+#'
+#' @param log_sd_re Length-2 numeric (log SDs).
+#' @param cor_re Length-1 numeric (unconstrained; `rho = tanh(cor_re)`).
+#' @return list(Sigma = 2x2, L = lower-tri Cholesky, sd = c(sd1, sd2), rho).
+#' @keywords internal
+#' @noRd
+.dd_chol_sigma <- function(log_sd_re, cor_re) {
+  sd <- exp(log_sd_re)
+  rho <- tanh(cor_re[[1]])
+  Sigma <- matrix(c(sd[1]^2, rho * sd[1] * sd[2],
+                    rho * sd[1] * sd[2], sd[2]^2), nrow = 2L)
+  L <- t(chol(Sigma))                                # lower-triangular
+  list(Sigma = Sigma, L = L, sd = sd, rho = rho)
+}
+
+#' Descriptive (Young) linear predictor reference (pure R; compile-gate ref)
+#'
+#' `eta_i = Z_i theta + Zre_i (L b_{subj_i})`. `b` is the n_subjects x q matrix
+#' of STANDARDIZED deviates; `L` is the Cholesky factor of Sigma.
+#'
+#' @keywords internal
+#' @noRd
+.dd_choice_descriptive_eta <- function(Z, theta, Zre, b, L, subject_id) {
+  eta <- as.numeric(Z %*% theta)
+  if (ncol(Zre) > 0L) {
+    re <- t(L %*% t(b))                              # n_subjects x q on natural scale
+    eta <- eta + rowSums(Zre * re[subject_id + 1L, , drop = FALSE])
+  }
+  unname(eta)
+}
+
+
+# ==============================================================================
 # Structural choice fit pipeline (direct-k binomial GLMM via TMB).
 # ==============================================================================
 

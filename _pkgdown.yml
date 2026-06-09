@@ -114,6 +114,7 @@ reference:
       - summarize_mcq
       - prop_ss
       - get_lookup_table
+      - mcq27_to_choice
       - generate_data_mcq
       - wide_to_long_mcq
       - long_to_wide_mcq

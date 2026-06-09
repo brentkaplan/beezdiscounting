@@ -7,7 +7,9 @@
 get_lookup_table()
 }
 \value{
-Dataframe with questionid, magnitude, and kindiff
+Data frame with the complete Kirby, Petry, & Bickel (1999) 27-item
+design: questionid, magnitude, kindiff, k_rank, ss_amount, ll_amount, and
+delay (days)
 }
 \description{
 Get internal lookup table for the 27-item MCQ

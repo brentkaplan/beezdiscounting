@@ -9,6 +9,13 @@
   `fit_dd_tmb()` and is validated by an IP-vs-choice tie-out. `simulate_dd_choice()`
   generates structural choice data. (Descriptive Young-2018 model: forthcoming.)
 
+* New `mcq27_to_choice()` reshapes long-form 27-item Monetary Choice
+  Questionnaire responses (`subjectid`/`questionid`/`response`) into the
+  per-trial `id`/`ss_amount`/`ll_amount`/`delay`/`choice` frame consumed by
+  `fit_dd_choice()`, using the canonical Kirby, Petry, & Bickel (1999) item
+  design. `get_lookup_table()` now returns that complete design (adds
+  `ss_amount`, `ll_amount`, and `delay`).
+
 * `fit_dd_tmb()` and `simulate_dd_ip()` gain the two-parameter hyperboloid
   equations `"green-myerson"` (`mu = (1 + k*x)^(-s)`) and `"rachlin"`
   (`mu = 1 / (1 + k*x^s)`), with a single population nonlinearity exponent `s`

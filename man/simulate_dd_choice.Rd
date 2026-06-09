@@ -2,44 +2,78 @@
 % Please edit documentation in R/simulate-dd-choice.R
 \name{simulate_dd_choice}
 \alias{simulate_dd_choice}
-\title{Simulate trial-level SS-vs-LL choice data (structural model)}
+\title{Simulate trial-level SS-vs-LL choice data}
 \usage{
 simulate_dd_choice(
   n_subjects = 50,
   ss_amount = c(40, 55, 31, 14, 47, 25, 78, 40, 11, 67),
   ll_amount = c(65, 75, 85, 25, 60, 30, 80, 65, 30, 75),
   delay = c(25, 61, 14, 19, 160, 7, 4, 62, 7, 119),
+  mode = c("structural", "descriptive"),
   log_k_pop = log(0.02),
   sigma_u = 0.5,
   gamma = 4,
   beta0 = 0,
   equation = c("mazur", "exponential"),
+  theta = c(1.5, -0.4),
+  re_sd = c(0.5, 0.3),
+  re_cor = -0.2,
+  return_truth = FALSE,
   seed = NULL
 )
 }
 \arguments{
-\item{n_subjects}{Integer.}
+\item{n_subjects}{Integer number of subjects.}
 
 \item{ss_amount, ll_amount, delay}{Numeric trial-design vectors (same length);
 each subject is presented all trials. Defaults are a built-in grid.}
 
-\item{log_k_pop, sigma_u, gamma, beta0}{Structural truth.}
+\item{mode}{\code{"structural"} (default) or \code{"descriptive"}. Selects the
+generative model.}
 
-\item{equation}{\code{"mazur"} or \code{"exponential"}.}
+\item{log_k_pop, sigma_u, gamma, beta0}{Structural truth (used only when
+\code{mode = "structural"}).}
 
-\item{seed}{Optional integer seed.}
+\item{equation}{\code{"mazur"} or \code{"exponential"} (structural mode only).}
+
+\item{theta}{Length-2 numeric vector of population-level slopes for the
+descriptive model: \code{theta[1]} on \code{log(ll/ss)}, \code{theta[2]} on
+\code{log(delay + 1)}.}
+
+\item{re_sd}{Length-2 numeric vector of random-effect standard deviations
+(descriptive mode only).}
+
+\item{re_cor}{Correlation between the two random slopes (descriptive mode
+only).}
+
+\item{return_truth}{Logical. If \code{TRUE} and \code{mode = "descriptive"}, the
+returned tibble carries two attributes: \code{subject_slopes} (n_subjects x 2
+matrix of realized \code{b_i} values) and \code{Sigma} (the 2x2 covariance matrix).}
+
+\item{seed}{Optional integer seed for reproducibility.}
 }
 \value{
-A \link[tibble:tibble]{tibble} with \code{id}, \code{ss_amount}, \code{ll_amount},
-\code{delay}, \code{choice} (0/1, 1 = LL).
+A \link[tibble:tibble]{tibble} with columns \code{id}, \code{ss_amount},
+\code{ll_amount}, \code{delay}, \code{choice} (0/1, 1 = LL chosen). When
+\code{mode = "descriptive"} and \code{return_truth = TRUE}, the tibble also carries
+\code{subject_slopes} and \code{Sigma} attributes.
 }
 \description{
-Generates binary choices from the structural choice model:
-\code{P(LL) = plogis(beta0 + gamma * ((ll/ss) * D(k, delay) - 1))},
-\code{k_i = exp(log_k_pop + sigma_u * u_i)}. Each subject sees the supplied
-trial design (default = a built-in 10-item SS/LL/delay grid).
+Generates binary choices from either the structural or descriptive choice
+model. When \code{mode = "structural"} (default) choices are drawn from the
+structural model: \code{P(LL) = plogis(beta0 + gamma * ((ll/ss) * D(k, delay) - 1))}, \code{k_i = exp(log_k_pop + sigma_u * u_i)}. When \code{mode = "descriptive"}
+choices follow Young's (2018) correlated random-slope logistic model: each
+subject receives per-subject slopes drawn from a bivariate normal with mean
+\code{theta} and covariance \code{Sigma}, and \code{P(LL) = plogis((theta[1] + b_i[1]) * log(ll/ss) + (theta[2] + b_i[2]) * log(delay + 1))}. The descriptive branch
+is the known-truth generator used by recovery tests.
 }
 \examples{
+# Structural (default)
 sim <- simulate_dd_choice(n_subjects = 20, seed = 1)
 head(sim)
+
+# Descriptive (Young 2018 correlated random-slope model)
+sim_desc <- simulate_dd_choice(n_subjects = 20, mode = "descriptive",
+                               theta = c(1.5, -0.4), seed = 42)
+head(sim_desc)
 }

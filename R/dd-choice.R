@@ -288,22 +288,38 @@
 # Structural choice fit pipeline (direct-k binomial GLMM via TMB).
 # ==============================================================================
 
-#' TMB `map` for the structural choice model
+#' Full per-mode TMB `map` for the choice template
 #'
-#' The shared template declares the descriptive (mode 1) parameters
-#' (`theta`/`log_sd_re`/`cor_re`/`b`) unconditionally, so the structural path
-#' must always fix them at their (unused) start values. `beta0` is additionally
-#' fixed when the choice-bias intercept is off.
+#' Fixes every parameter block irrelevant to the active mode (thread through
+#' EVERY `MakeADFun` call). Structural fixes the descriptive blocks
+#' (`theta`/`log_sd_re`/`cor_re`/`b`) and `beta0` when intercept is off.
+#' Descriptive fixes the structural blocks (`beta_k`/`log_sigma_u`/`log_gamma`/
+#' `beta0`/`u`); with `random_slopes = FALSE` it additionally fixes the RE blocks
+#' (`log_sd_re`/`cor_re`/`b`).
 #' @keywords internal
 #' @noRd
-.dd_choice_build_map <- function(intercept, starts) {
-  map <- list(
-    theta = factor(rep(NA, length(starts$theta))),
-    log_sd_re = factor(rep(NA, length(starts$log_sd_re))),
-    cor_re = factor(rep(NA, length(starts$cor_re))),
-    b = factor(rep(NA, length(starts$b)))
-  )
-  if (!isTRUE(intercept)) map$beta0 <- factor(NA)
+.dd_choice_build_map <- function(mode, intercept = FALSE,
+                                 random_slopes = TRUE, starts) {
+  na_f <- function(x) factor(rep(NA, length(unlist(x))))
+  map <- list()
+  if (mode == "structural") {
+    if (!isTRUE(intercept)) map$beta0 <- factor(NA)
+    map$theta <- na_f(starts$theta)
+    map$log_sd_re <- na_f(starts$log_sd_re)
+    map$cor_re <- na_f(starts$cor_re)
+    map$b <- na_f(starts$b)
+  } else {
+    map$beta_k <- na_f(starts$beta_k)
+    map$log_sigma_u <- factor(NA)
+    map$log_gamma <- factor(NA)
+    map$beta0 <- factor(NA)
+    map$u <- na_f(starts$u)
+    if (!isTRUE(random_slopes)) {
+      map$log_sd_re <- na_f(starts$log_sd_re)
+      map$cor_re <- na_f(starts$cor_re)
+      map$b <- na_f(starts$b)
+    }
+  }
   map
 }
 
@@ -324,6 +340,21 @@
     u = matrix(0, nrow = prepared$n_subjects, ncol = 1L),
     theta = 0, log_sd_re = rep(log(0.5), 2L), cor_re = 0,
     b = matrix(0, nrow = prepared$n_subjects, ncol = 2L)
+  )
+}
+
+#' Default start list carrying BOTH modes' parameter blocks (descriptive fit)
+#' @keywords internal
+#' @noRd
+.dd_choice_full_starts <- function(prepared, n_x, n_z, q) {
+  beta_k <- rep(0, max(n_x, 1L)); beta_k[1] <- log(0.01)
+  list(
+    beta_k = beta_k, log_sigma_u = log(0.5), log_gamma = log(1), beta0 = 0,
+    u = matrix(0, prepared$n_subjects, 1L),
+    theta = rep(0, max(n_z, 1L)),
+    log_sd_re = rep(log(0.5), 2L),       # q = 2 slots; mapped out when q != 2
+    cor_re = 0,
+    b = matrix(0, prepared$n_subjects, 2L)
   )
 }
 
@@ -351,6 +382,10 @@
     stop("internal: free beta0 (", free_beta0, ") != intercept (",
          isTRUE(intercept), "); check map threading.", call. = FALSE)
   }
+  if (any(c("theta", "log_sd_re", "cor_re") %in% par_names)) {
+    stop("internal: descriptive parameters are free in a structural fit; check map threading.",
+         call. = FALSE)
+  }
   coefficients <- par_full
   se_vec <- stats::setNames(rep(NA_real_, length(par_full)), par_names)
   if (!is.null(sdr)) {
@@ -377,6 +412,176 @@
        u_hat = u_hat, hessian_pd = hessian_pd)
 }
 
+#' Extract estimates from a descriptive choice fit (sdreport + SEs + slopes)
+#' @keywords internal
+#' @noRd
+.dd_choice_extract_descriptive <- function(obj, opt, prepared, design,
+                                           random_slopes, verbose = 1) {
+  sdr <- tryCatch(TMB::sdreport(obj), error = function(e) NULL)
+  hessian_pd <- if (!is.null(sdr)) isTRUE(sdr$pdHess) else NA
+  if (isTRUE(verbose >= 1) && (is.null(sdr) || !isTRUE(hessian_pd))) {
+    cli::cli_warn(c("Standard errors may be unreliable (sdreport failed or \\
+                     non-PD Hessian).", "i" = "Fixed-effect SEs/CIs will be {.val NA}."))
+  }
+  par_full <- opt$par
+  par_names <- names(par_full)
+  se_vec <- stats::setNames(rep(NA_real_, length(par_full)), par_names)
+  if (!is.null(sdr)) {
+    fs <- summary(sdr, "fixed")
+    for (nm in unique(par_names)) {
+      idx <- which(par_names == nm)
+      rows <- fs[rownames(fs) == nm, , drop = FALSE]
+      if (length(idx) && nrow(rows) == length(idx)) se_vec[idx] <- rows[, "Std. Error"]
+    }
+  }
+  # Per-subject slopes b_i (natural scale) = L %*% b_std_i. Pooled (q=0): an
+  # id-only frame so subject_pars is ALWAYS a data frame (never NULL).
+  slopes <- data.frame(id = prepared$subject_levels, stringsAsFactors = FALSE)
+  Sigma <- NULL
+  if (isTRUE(random_slopes)) {
+    cs <- .dd_chol_sigma(unname(par_full[par_names == "log_sd_re"]),
+                         unname(par_full[par_names == "cor_re"]))
+    Sigma <- cs$Sigma
+    re_summary <- tryCatch(summary(sdr, "random"), error = function(e) NULL)
+    b_std <- if (!is.null(re_summary)) {
+      matrix(re_summary[, "Estimate"], nrow = prepared$n_subjects, ncol = 2L)
+    } else {
+      matrix(0, prepared$n_subjects, 2L)
+    }
+    nat <- t(cs$L %*% t(b_std))
+    slopes <- data.frame(
+      id = prepared$subject_levels,
+      b_mag = nat[, 1], b_delay = nat[, 2], stringsAsFactors = FALSE)
+  }
+  list(coefficients = par_full, se = se_vec, sdr = sdr,
+       hessian_pd = hessian_pd, Sigma = Sigma, slopes = slopes)
+}
+
+#' Descriptive sanity guard: reject non-finite params or runaway |theta|
+#' @keywords internal
+#' @noRd
+.dd_choice_descr_blowup <- function(opt, max_abs = 30) {
+  par <- opt$par
+  v <- unname(par[names(par) %in% c("theta", "log_sd_re", "cor_re")])
+  if (any(!is.finite(v))) return(TRUE)
+  th <- unname(par[names(par) == "theta"])
+  any(abs(th) > max_abs)
+}
+
+#' Descriptive (Young 2018) choice fit (internal dispatch target)
+#' @keywords internal
+#' @noRd
+.fit_dd_choice_descriptive <- function(data, cl, id_var, ss_var, ll_var,
+                                       delay_var, choice_var, predictors,
+                                       random_slopes, factors,
+                                       continuous_covariates, start_values,
+                                       tmb_control, multi_start, verbose) {
+  if (!is.null(factors) || !is.null(continuous_covariates)) {
+    cli::cli_warn(c(
+      "{.arg factors} / {.arg continuous_covariates} are ignored for \\
+       {.code mode = \"descriptive\"}.",
+      "i" = "The descriptive (Young 2018) model uses {.arg predictors} for its \\
+             fixed design. Add between-subject terms there, e.g. \\
+             {.code predictors = ~ 0 + log(ll_amount/ss_amount) + log(delay + 1) + group}."))
+  }
+  extra_cols <- unique(c(factors, continuous_covariates,
+                         all.vars(predictors %||% .dd_choice_default_predictors())))
+  extra_cols <- setdiff(extra_cols, c("ss_amount", "ll_amount", "delay"))
+  validated <- .dd_validate_choice(data, id_var = id_var, ss_var = ss_var,
+                                   ll_var = ll_var, delay_var = delay_var,
+                                   choice_var = choice_var, extra_cols = extra_cols)
+  prepared <- .dd_choice_prepare_data(validated$data, extra_cols = extra_cols)
+  design <- .dd_choice_descriptive_design(prepared$data, predictors = predictors,
+                                          random_slopes = random_slopes)
+
+  tmb_data <- list(
+    model = "ChoiceDiscounting", mode = 1L, eqn_type = 0L, has_intercept = 0L,
+    choice = as.numeric(prepared$choice),
+    ss_amount = as.numeric(prepared$ss_amount),
+    ll_amount = as.numeric(prepared$ll_amount),
+    delay = as.numeric(prepared$delay),
+    subject_id = as.integer(prepared$subject_id),
+    X = matrix(1, prepared$n_obs, 1L),     # structural design unused (mapped out)
+    Z = as.matrix(design$Z), Zre = as.matrix(design$Zre),
+    n_obs = as.integer(prepared$n_obs),
+    n_subjects = as.integer(prepared$n_subjects),
+    n_re = as.integer(design$q))
+
+  starts <- .dd_choice_full_starts(prepared, n_x = 1L, n_z = ncol(design$Z),
+                                   q = design$q)
+  if (!is.null(start_values)) {
+    for (nm in names(start_values)) if (nm %in% names(starts)) starts[[nm]] <- start_values[[nm]]
+  }
+  map <- .dd_choice_build_map("descriptive", random_slopes = random_slopes,
+                              starts = starts)
+  random_arg <- if (isTRUE(random_slopes)) "b" else NULL
+
+  default_control <- list(iter_max = 1000, eval_max = 2000, optimizer = "nlminb",
+                          rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)
+  user_specified <- names(tmb_control)
+  tmb_control <- utils::modifyList(default_control, tmb_control)
+
+  perturb <- function(d_theta, d_sd) utils::modifyList(
+    starts, list(theta = starts$theta + d_theta, log_sd_re = log(d_sd)))
+  start_sets <- list(starts, perturb(0.5, c(0.3, 0.2)), perturb(-0.5, c(0.8, 0.6)))
+  if (!isTRUE(multi_start)) start_sets <- start_sets[1]
+
+  best_kept <- NULL; best_kept_nll <- Inf
+  best_any <- NULL; best_any_nll <- Inf
+  opt_warnings <- character(0)
+  for (s in start_sets) {
+    res <- tryCatch({
+      o <- TMB::MakeADFun(tmb_data, s, map = map, random = random_arg,
+                          DLL = "beezdiscounting", silent = verbose < 2)
+      opt_res <- .dd_tmb_run_optimizer(o, o$par, tmb_control, user_specified, verbose)
+      list(obj = o, opt = opt_res$opt, nll = opt_res$opt$objective,
+           warnings = opt_res$warnings)
+    }, error = function(e) NULL)
+    if (is.null(res) || !is.finite(res$nll)) next
+    if (length(res$warnings)) opt_warnings <- c(opt_warnings, res$warnings)
+    if (res$nll < best_any_nll) { best_any_nll <- res$nll; best_any <- res }
+    if (!.dd_choice_descr_blowup(res$opt) && res$nll < best_kept_nll) {
+      best_kept_nll <- res$nll; best_kept <- res
+    }
+  }
+  best <- best_kept %||% best_any
+  if (is.null(best)) stop("All starting value sets failed for the descriptive fit_dd_choice().",
+                          call. = FALSE)
+  obj <- best$obj; opt <- best$opt
+  converged <- isTRUE(opt$convergence == 0)
+  try(obj$fn(opt$par), silent = TRUE)
+
+  free <- names(opt$par)
+  if (any(c("beta_k", "log_gamma", "beta0", "log_sigma_u") %in% free)) {
+    stop("internal: structural parameters are free in a descriptive fit; check map threading.",
+         call. = FALSE)
+  }
+  est <- .dd_choice_extract_descriptive(obj, opt, prepared, design,
+                                        random_slopes, verbose)
+  nll <- opt$objective; np <- length(opt$par)
+  structure(list(
+    call = cl, opt = opt,
+    model = list(coefficients = est$coefficients, se = est$se),
+    sdr = est$sdr, hessian_pd = est$hessian_pd,
+    param_info = list(
+      mode = "descriptive", equation = NA_character_, intercept = FALSE,
+      n_obs = prepared$n_obs, n_subjects = prepared$n_subjects,
+      n_random_effects = design$q, subject_levels = prepared$subject_levels,
+      id_var = "id", x_var = "delay", y_var = "choice",
+      predictors = design$predictors, random_slopes = isTRUE(random_slopes),
+      re_terms = design$re_terms, factors = NULL, factor_interaction = FALSE,
+      continuous_covariates = continuous_covariates),
+    formula_details = list(Z = design$Z, Zre = design$Zre,
+                           predictors = design$predictors,
+                           contrasts = design$contrasts, xlevels = design$xlevels),
+    Sigma = est$Sigma, subject_pars = est$slopes,
+    loglik = -nll, AIC = 2 * nll + 2 * np, BIC = 2 * nll + np * log(prepared$n_obs),
+    converged = converged, opt_warnings = opt_warnings,
+    se_available = !is.null(est$sdr) && isTRUE(est$hessian_pd),
+    data = prepared$data, coercion_info = validated$coercion_info
+  ), class = "beezdiscounting_choice")
+}
+
 #' Fit a structural SS-vs-LL choice model (binomial GLMM) via TMB
 #'
 #' Estimates the discount rate `k` directly from trial-level binary choices via
@@ -385,12 +590,25 @@
 #' `k = exp(X beta_k + sigma_u u)`. Shares the IP family's `k`/emmeans contract.
 #'
 #' @param data Trial-level data frame (see the `*_var` args).
-#' @param mode `"structural"` (this release). `"descriptive"` errors (Plan B).
+#' @param mode `"structural"` estimates the discount rate `k` directly from
+#'   choices; `"descriptive"` fits the Young (2018) logistic model with optional
+#'   correlated random slopes (see `predictors`/`random_slopes`).
 #' @param id_var,ss_var,ll_var,delay_var,choice_var Column names.
 #' @param equation `"mazur"` or `"exponential"`.
 #' @param intercept Logical; include the choice-bias `beta0` (default `FALSE`).
+#'   Structural only (the descriptive design carries its own intercept policy via
+#'   `predictors`).
+#' @param predictors Descriptive (`mode = "descriptive"`) only: a one-sided
+#'   formula for the fixed-effect design on the logit of choosing the larger-later
+#'   reward, or `NULL` for Young's (2018) two scale-invariant predictors
+#'   (`~ 0 + log(ll_amount / ss_amount) + log(delay + 1)`). Ignored when
+#'   `mode = "structural"`.
+#' @param random_slopes Descriptive only: logical; `TRUE` (default) fits two
+#'   correlated per-subject random slopes on Young's predictors, `FALSE` fits a
+#'   pooled fixed-effect logistic model (no random effects). Ignored when
+#'   `mode = "structural"`.
 #' @param factors,factor_interaction,continuous_covariates Between-subject design
-#'   on `log k` (same semantics as [fit_dd_tmb()]).
+#'   on `log k` (same semantics as [fit_dd_tmb()]). Structural only.
 #' @param start_values,tmb_control,multi_start,verbose,... As in [fit_dd_tmb()].
 #' @return An object of class `beezdiscounting_choice`.
 #' @export
@@ -400,6 +618,7 @@ fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
                           choice_var = "choice",
                           equation = c("mazur", "exponential"),
                           intercept = FALSE,
+                          predictors = NULL, random_slopes = TRUE,
                           factors = NULL, factor_interaction = FALSE,
                           continuous_covariates = NULL,
                           start_values = NULL,
@@ -409,11 +628,13 @@ fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
   mode <- match.arg(mode)
   equation <- match.arg(equation)
   if (mode == "descriptive") {
-    cli::cli_abort(c(
-      "{.code mode = \"descriptive\"} is not yet implemented.",
-      "i" = "The descriptive (Young 2018) model + random-slope machinery ship \\
-             in a later release (Plan B)."
-    ))
+    return(.fit_dd_choice_descriptive(
+      data = data, cl = cl, id_var = id_var, ss_var = ss_var, ll_var = ll_var,
+      delay_var = delay_var, choice_var = choice_var,
+      predictors = predictors, random_slopes = random_slopes,
+      factors = factors, continuous_covariates = continuous_covariates,
+      start_values = start_values, tmb_control = tmb_control,
+      multi_start = multi_start, verbose = verbose))
   }
 
   # R1: validate + prepare retaining factor/covariate columns for the log-k design
@@ -462,7 +683,8 @@ fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
   if (!is.null(start_values)) {
     for (nm in names(start_values)) if (nm %in% names(starts)) starts[[nm]] <- start_values[[nm]]
   }
-  map <- .dd_choice_build_map(intercept, starts)
+  map <- .dd_choice_build_map("structural", intercept = intercept,
+                              random_slopes = FALSE, starts = starts)
 
   default_control <- list(iter_max = 1000, eval_max = 2000, optimizer = "nlminb",
                           rel_tol = 1e-10, lower = NULL, upper = NULL, trace = 0)

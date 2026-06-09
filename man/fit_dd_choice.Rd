@@ -14,6 +14,8 @@ fit_dd_choice(
   choice_var = "choice",
   equation = c("mazur", "exponential"),
   intercept = FALSE,
+  predictors = NULL,
+  random_slopes = TRUE,
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
@@ -27,16 +29,31 @@ fit_dd_choice(
 \arguments{
 \item{data}{Trial-level data frame (see the \verb{*_var} args).}
 
-\item{mode}{\code{"structural"} (this release). \code{"descriptive"} errors (Plan B).}
+\item{mode}{\code{"structural"} estimates the discount rate \code{k} directly from
+choices; \code{"descriptive"} fits the Young (2018) logistic model with optional
+correlated random slopes (see \code{predictors}/\code{random_slopes}).}
 
 \item{id_var, ss_var, ll_var, delay_var, choice_var}{Column names.}
 
 \item{equation}{\code{"mazur"} or \code{"exponential"}.}
 
-\item{intercept}{Logical; include the choice-bias \code{beta0} (default \code{FALSE}).}
+\item{intercept}{Logical; include the choice-bias \code{beta0} (default \code{FALSE}).
+Structural only (the descriptive design carries its own intercept policy via
+\code{predictors}).}
+
+\item{predictors}{Descriptive (\code{mode = "descriptive"}) only: a one-sided
+formula for the fixed-effect design on the logit of choosing the larger-later
+reward, or \code{NULL} for Young's (2018) two scale-invariant predictors
+(\code{~ 0 + log(ll_amount / ss_amount) + log(delay + 1)}). Ignored when
+\code{mode = "structural"}.}
+
+\item{random_slopes}{Descriptive only: logical; \code{TRUE} (default) fits two
+correlated per-subject random slopes on Young's predictors, \code{FALSE} fits a
+pooled fixed-effect logistic model (no random effects). Ignored when
+\code{mode = "structural"}.}
 
 \item{factors, factor_interaction, continuous_covariates}{Between-subject design
-on \verb{log k} (same semantics as \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}).}
+on \verb{log k} (same semantics as \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}). Structural only.}
 
 \item{start_values, tmb_control, multi_start, verbose, ...}{As in \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.}
 }

@@ -16,3 +16,11 @@
   }))
   rows
 }
+
+# Deterministic descriptive-choice fixture (correlated random slopes).
+.choice_desc_fixture <- function(n_subjects = 80, theta = c(1.6, -0.45),
+                                 re_sd = c(0.5, 0.3), re_cor = -0.3, seed = 11) {
+  simulate_dd_choice(
+    n_subjects = n_subjects, mode = "descriptive",
+    theta = theta, re_sd = re_sd, re_cor = re_cor, seed = seed)
+}

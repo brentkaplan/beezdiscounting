@@ -40,16 +40,17 @@
 #'   `rho_kphi`. Requires `family = "sltb"`.
 #' @param rho_kphi Numeric in `[-1, 1]`; correlation between subject random
 #'   intercepts on `log k` and `log phi`. Ignored when `sigma_phi = 0`.
-#' @param attach_truth Logical; when `TRUE` and `sigma_phi > 0`, a `phi` column
-#'   containing each observation's subject-specific precision is appended to the
-#'   returned tibble. Default `FALSE`.
+#' @param attach_truth Logical; when `TRUE`, a `phi` column containing each
+#'   observation's subject-specific precision is appended to the returned
+#'   tibble. When `sigma_phi = 0` the column equals the constant `phi` for
+#'   every observation. Default `FALSE`.
 #' @param seed Optional integer seed.
 #'
 #' @return A [tibble][tibble::tibble] with columns `id` (factor),
 #'   `condition` (factor; only when `n_conditions > 1`), `x` (delay), and
-#'   `y` (indifference proportion in `[0, 1]`). When `attach_truth = TRUE` and
-#'   `sigma_phi > 0`, an additional `phi` column is appended with the
-#'   subject-specific SLT-beta precision.
+#'   `y` (indifference proportion in `[0, 1]`). When `attach_truth = TRUE`, an
+#'   additional `phi` column is appended with the subject-specific SLT-beta
+#'   precision (equal to the constant `phi` when `sigma_phi = 0`).
 #'
 #' @examples
 #' # A small SLT-beta mixed-effects discounting dataset (id, x, y)
@@ -112,6 +113,10 @@ simulate_dd_ip <- function(
   if (sigma_phi > 0 && family != "sltb") {
     stop("Subject-random phi (`sigma_phi > 0`) requires `family = \"sltb\"` ",
          "(the Gaussian family has no precision parameter).", call. = FALSE)
+  }
+  if (sigma_phi > 0 && (sigma_u <= 0 || abs(rho_kphi) >= 1)) {
+    stop("With `sigma_phi > 0`, `sigma_u` must be > 0 and |`rho_kphi`| < 1 ",
+         "so the (log k, log phi) covariance is positive definite.", call. = FALSE)
   }
   if (sigma_phi > 0) {
     # Joint (log k, log phi) random intercepts ~ N(0, Sigma).

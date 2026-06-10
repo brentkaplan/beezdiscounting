@@ -53,6 +53,7 @@ Type MixedDiscounting(objective_function<Type>* obj) {
   DATA_INTEGER(family);         // 0 = sltb, 1 = gaussian
   DATA_INTEGER(n_obs);
   DATA_INTEGER(n_subjects);
+  DATA_INTEGER(n_re);           // 1 = single intercept on log k; 2 = (log k, log phi)
 
   // =========================================================================
   // PARAMETERS
@@ -63,11 +64,13 @@ Type MixedDiscounting(objective_function<Type>* obj) {
   PARAMETER(log_s);             // log nonlinearity exponent (GM/Rachlin);
                                 // map-fixed at 0 (s = 1) for mazur/exponential
   PARAMETER_MATRIX(u);          // n_subjects x 1 standardized random intercepts
+  PARAMETER_VECTOR(log_sd_re);  // length 2: log SDs of (k-RE, phi-RE)  [n_re == 2]
+  PARAMETER_VECTOR(cor_re);     // length 1: unconstrained; rho = tanh(cor_re(0))
+  PARAMETER_MATRIX(b);          // n_subjects x 2 standardized RE          [n_re == 2]
 
   // =========================================================================
   // TRANSFORM SCALARS
   // =========================================================================
-  Type sigma_u = exp(log_sigma_u);
   Type aux = exp(log_aux);      // phi (family 0) or sigma_e (family 1)
   Type s = exp(log_s);          // discounting nonlinearity exponent (GM/Rachlin)
 
@@ -87,19 +90,55 @@ Type MixedDiscounting(objective_function<Type>* obj) {
   // =========================================================================
   Type nll = Type(0.0);
 
-  // Standard-normal prior on the standardized random intercepts (non-centered;
-  // sigma_u enters multiplicatively in the linear predictor below).
-  for (int i = 0; i < n_subjects; i++) {
-    nll -= dnorm(u(i, 0), Type(0.0), Type(1.0), true);
+  // Per-subject random offsets on log k (rek) and log phi (rephi). The prior on
+  // the standardized deviates is accumulated here; the offsets feed the shared
+  // observation loop below. n_re is a DATA_INTEGER (plain int) so a C++ branch
+  // on it is fine.
+  vector<Type> rek(n_subjects);
+  vector<Type> rephi(n_subjects);
+
+  // Report scalars/blocks hoisted so the n_re == 1 ADREPORT order at the tail
+  // stays EXACTLY (beta_k, sigma_u, aux, s) — identical to the pre-2RE template.
+  Type sigma_u = Type(0.0);
+  vector<Type> sd_re(2);
+  matrix<Type> Sigma(2, 2);
+  Type rho = Type(0.0);
+
+  if (n_re == 1) {
+    // --- existing single random intercept on log k (UNCHANGED MATH) ---
+    sigma_u = exp(log_sigma_u);
+    for (int j = 0; j < n_subjects; j++) {
+      nll -= dnorm(u(j, 0), Type(0.0), Type(1.0), true);
+      rek(j) = sigma_u * u(j, 0);
+      rephi(j) = Type(0.0);
+    }
+  } else {
+    // --- joint 2-RE (k, phi) via a 2x2 Cholesky (ChoiceDiscounting mode 1) ---
+    sd_re = exp(log_sd_re);
+    rho = tanh(cor_re(0));
+    Sigma(0, 0) = sd_re(0) * sd_re(0);
+    Sigma(1, 1) = sd_re(1) * sd_re(1);
+    Sigma(0, 1) = rho * sd_re(0) * sd_re(1);
+    Sigma(1, 0) = Sigma(0, 1);
+    matrix<Type> L = Sigma.llt().matrixL();
+    for (int j = 0; j < n_subjects; j++) {
+      vector<Type> b_j = b.row(j);
+      vector<Type> re_j = L * b_j;
+      rek(j) = re_j(0);
+      rephi(j) = re_j(1);
+      nll -= dnorm(b(j, 0), Type(0.0), Type(1.0), true);
+      nll -= dnorm(b(j, 1), Type(0.0), Type(1.0), true);
+    }
   }
 
-  // Data likelihood.
+  // Shared data likelihood. log_k_i picks up the per-subject k-RE offset; phi
+  // (sltb) picks up the per-subject phi-RE offset (0 when n_re == 1, so phi is
+  // the population precision exp(log_aux) exactly).
   for (int i = 0; i < n_obs; i++) {
     int subj = subject_id(i);
 
-    // Linear predictor on log k: fixed effects + random intercept.
     vector<Type> x_i = X.row(i);
-    Type log_k_i = (x_i * beta_k).sum() + sigma_u * u(subj, 0);
+    Type log_k_i = (x_i * beta_k).sum() + rek(subj);
     Type k_i = exp(log_k_i);
 
     // Mean via the discounting function (identity link). eqn_type is a
@@ -134,18 +173,31 @@ Type MixedDiscounting(objective_function<Type>* obj) {
     if (family == 0) {
       // ------------------------------------------------------------------
       // SLT-beta density. aux = phi.
-      // ------------------------------------------------------------------
-      Type phi = aux;
+      // The 1-RE path uses the population precision EXACTLY (phi = aux), so it
+      // is byte-identical to the pre-2RE kernel AND preserves the
+      // user-overridable .dd_apply_phi_floor() escape hatch (a 1-RE user may set
+      // tmb_control$lower$log_aux below log(0.1); test-fit_dd_tmb.R:857). The
+      // per-subject floor (CondExp clamp at 0.1, matching .dd_phi_min) is applied
+      // ONLY for n_re == 2, where it stops a boundary subject's phi_i from
+      // collapsing to 0 via re_phi. n_re is a DATA_INTEGER, so this C++ branch is
+      // allowed.
+      Type phi;
+      if (n_re == 2) {
+        Type phi_raw = exp(log_aux + rephi(subj));
+        phi = CppAD::CondExpLt(phi_raw, Type(0.1), Type(0.1), phi_raw);
+      } else {
+        phi = aux;
+      }
       Type a = mu * phi;
-      Type b = (Type(1.0) - mu) * phi;
+      Type b_shape = (Type(1.0) - mu) * phi;
 
       Type yt = y(i) / s_slt + l;                  // scaled-location transform
-      Type Z = pbeta(Type(1.0) / s_slt + l, a, b)  // truncation normalizer
-               - pbeta(l, a, b);
+      Type Z = pbeta(Type(1.0) / s_slt + l, a, b_shape)  // truncation normalizer
+               - pbeta(l, a, b_shape);
 
-      Type logf = lgamma(a + b) - lgamma(a) - lgamma(b)
+      Type logf = lgamma(a + b_shape) - lgamma(a) - lgamma(b_shape)
                   + (a - Type(1.0)) * log(yt)
-                  + (b - Type(1.0)) * log(Type(1.0) - yt)
+                  + (b_shape - Type(1.0)) * log(Type(1.0) - yt)
                   - log(s_slt)
                   - log(Z);
       nll -= logf;
@@ -164,9 +216,16 @@ Type MixedDiscounting(objective_function<Type>* obj) {
   // ADREPORT
   // =========================================================================
   ADREPORT(beta_k);     // fixed effects on log k
-  ADREPORT(sigma_u);    // SD of random intercept on log k
+  if (n_re == 1) {
+    ADREPORT(sigma_u);  // same position as the pre-2RE template
+  }
   ADREPORT(aux);        // phi (family 0) or sigma_e (family 1)
   ADREPORT(s);          // discounting nonlinearity exponent (1 for mazur/exp)
+  if (n_re == 2) {
+    ADREPORT(sd_re);
+    ADREPORT(Sigma);
+    ADREPORT(rho);
+  }
 
   return nll;
 }

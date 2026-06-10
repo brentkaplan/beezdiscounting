@@ -65,6 +65,17 @@ describe("beezdiscounting_choice S3 (descriptive)", {
     expect_invisible(print(.get_desc_fit()))
     expect_invisible(print(summary(.get_desc_fit())))
   })
+  it("confint has distinct RE-SD labels and a bounded (tanh) correlation CI", {
+    ci <- suppressWarnings(confint(.get_desc_fit()))
+    expect_false(any(duplicated(ci$term)))             # no duplicate row labels
+    expect_true("cor_slopes" %in% ci$term)
+    cr <- ci[ci$term == "cor_slopes", ]
+    expect_true(cr$estimate >= -1 && cr$estimate <= 1) # correlation-scaled (tanh)
+    # CI bounds lie in [-1, 1] when SEs are reliable; NA otherwise (degenerate fit)
+    if (is.finite(cr$conf.low) && is.finite(cr$conf.high)) {
+      expect_true(cr$conf.low >= -1 && cr$conf.high <= 1)
+    }
+  })
 })
 
 describe("VarCorr (structural) still reports sigma_u", {

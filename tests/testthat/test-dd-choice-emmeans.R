@@ -39,7 +39,11 @@ describe("emmeans with descriptive params present in the template", {
   it("structural choice still routes beta_k through get_dd_param_emms (factor)", {
     skip_on_cran(); skip_if_not_installed("TMB"); skip_if_not_installed("emmeans")
     dat <- .choice_fit_fixture(n_subjects = 40, seed = 51)
-    dat$grp <- factor(rep(c("a", "b"), length.out = nrow(dat)))
+    # grp is BETWEEN-subject: assign per id, not per row (avoids the
+    # within-subject-predictor warning).
+    grp_by_id <- stats::setNames(
+      rep(c("a", "b"), length.out = length(unique(dat$id))), unique(dat$id))
+    dat$grp <- factor(unname(grp_by_id[dat$id]))
     fit <- fit_dd_choice(dat, mode = "structural", equation = "mazur",
                          factors = "grp", verbose = 0)
     expect_equal(which(names(fit$opt$par) == "beta_k")[1], 1L)  # beta_k first

@@ -66,12 +66,12 @@ An object of class \code{beezdiscounting_choice}.
 }
 \description{
 Fits a trial-level binary choice model from two complementary perspectives.
-The structural model (Young 2018) estimates the discount rate \code{k} directly
+The structural model estimates the discount rate \code{k} directly
 from choices via the scale-invariant relative-value comparison
 \verb{logit P(LL) = beta0 + gamma * ((ll/ss) * D(k, delay) - 1)},
-\verb{k = exp(X beta_k + sigma_u u)}. The descriptive model forgoes a discount
-function and instead characterises choices via separate magnitude and delay
-sensitivities with optional correlated per-subject random slopes.
+\verb{k = exp(X beta_k + sigma_u u)}. The descriptive model (Young 2018) forgoes a
+discount function and instead characterises choices via separate magnitude and
+delay sensitivities with optional correlated per-subject random slopes.
 }
 \details{
 The \strong{structural} model (\code{mode = "structural"}) parameterises choices

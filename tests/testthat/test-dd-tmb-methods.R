@@ -791,6 +791,11 @@ describe("2-RE (k + phi) S3 surface", {
     expect_true(all(c("id", "u_i", "k") %in% names(re)))
   })
 
+  it("model converged (guard against vacuous tests on a bad-seed fit)", {
+    fit <- make_fit("pdSymm")
+    expect_true(fit$converged)
+  })
+
   it("predict/fitted/residuals/augment run on a 2-RE fit", {
     fit <- make_fit("pdSymm")
     # predict() returns a tibble with one row per observation plus .fitted.
@@ -802,5 +807,17 @@ describe("2-RE (k + phi) S3 surface", {
     aug <- augment(fit)
     expect_true(all(c(".fitted", ".resid", ".std_resid") %in% names(aug)))
     expect_true(all(is.finite(aug$.std_resid)))
+  })
+
+  it("predict/residuals work at level = population for a 2-RE fit", {
+    fit <- make_fit("pdSymm")
+    expect_true(all(is.finite(predict(fit, level = "population")$predict.fixed)))
+    expect_true(all(is.finite(residuals(fit, type = "pearson", level = "population"))))
+  })
+
+  it("tidy ran_pars surfaces the 2-RE variance rows", {
+    td <- generics::tidy(make_fit("pdSymm"), effects = "ran_pars")
+    expect_true(any(grepl("sd_re|rho", td$term)))
+    expect_length(td, 8L)
   })
 })

@@ -199,12 +199,12 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
     rho <- Sigma[1, 2] / prod(sds)
     return(data.frame(
       Group = c("subject", "subject"),
-      Name = c("k", "phi"),
+      Term = c("k", "phi"),
       Variance = diag(Sigma), StdDev = sds,
       Corr = c(NA_real_, rho), stringsAsFactors = FALSE))
   }
   sd_u <- exp(unname(x$model$coefficients[["log_sigma_u"]]))
-  data.frame(Group = "subject", Name = "k",
+  data.frame(Group = "subject", Term = "k",
              Variance = sd_u^2, StdDev = sd_u, stringsAsFactors = FALSE)
 }
 
@@ -637,17 +637,18 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
   ln10   <- log(10)
 
   if (object$param_info$n_random_effects == 2L) {
-    # 2-RE (k + phi ~ 1): emit the two natural-log RE SDs and the (k, phi)
-    # correlation from the fitted Sigma instead of the single sigma_u row.
+    # 2-RE (k + phi ~ 1): emit the two RE SDs on the log10 scale (consistent
+    # with the 1-RE sigma_u convention: divide by log(10)) and the (k, phi)
+    # correlation from the fitted Sigma. The correlation is scale-free.
     Sigma <- object$Sigma
     sds   <- sqrt(diag(Sigma))
     rho   <- Sigma[1, 2] / prod(sds)
     rows <- list(
-      data.frame(Component = "sd_re[k] (log-k RE SD)",
-                 Estimate = unname(sds[1]), Scale = "log",
+      data.frame(Component = "sd_re[k] (log10-k RE SD)",
+                 Estimate = unname(sds[1]) / ln10, Scale = "log10",
                  stringsAsFactors = FALSE),
-      data.frame(Component = "sd_re[phi] (log-phi RE SD)",
-                 Estimate = unname(sds[2]), Scale = "log",
+      data.frame(Component = "sd_re[phi] (log10-phi RE SD)",
+                 Estimate = unname(sds[2]) / ln10, Scale = "log10",
                  stringsAsFactors = FALSE),
       data.frame(Component = "rho (k,phi)",
                  Estimate = unname(rho), Scale = "correlation",
@@ -866,6 +867,11 @@ glance.beezdiscounting_tmb <- function(x, ...) {
 #' @param ... Unused.
 #' @return A tibble with columns `term`, `estimate`, `conf.low`, `conf.high`,
 #'   `level`.
+#'
+#' @note For a 2-RE fit the `cor_re` and `log_sd_re` rows are reported on their
+#'   internal (atanh / log) scales and are NOT back-transformed by
+#'   `report_space = "natural"` (only `beta_k`/`log_s` rows are); use
+#'   `VarCorr()` to obtain the correlation and natural-log SDs.
 #'
 #' @examples
 #' \donttest{

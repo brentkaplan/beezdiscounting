@@ -57,6 +57,17 @@ describe("fit_dd_choice(mode='descriptive') — pipeline + map", {
       regexp = "ignored|descriptive|predictors"
     )
   })
+
+  it("an ignored covariate's NAs do not drop rows or error (descriptive)", {
+    # An ignored arg must not be validated/complete-cased: an all-NA `junk`
+    # column passed as continuous_covariates must NOT collapse the data.
+    dat <- .choice_desc_fixture(n_subjects = 30, seed = 17)
+    dat$junk <- NA_real_
+    fit <- suppressWarnings(
+      fit_dd_choice(dat, mode = "descriptive",
+                    continuous_covariates = "junk", verbose = 0))
+    expect_equal(fit$param_info$n_obs, nrow(dat))   # no rows dropped by `junk`
+  })
 })
 
 # Well-conditioned descriptive design: 6 magnitude pairs (ll/ss ratios 1.25-4)
@@ -87,6 +98,7 @@ describe("fit_dd_choice(mode='descriptive') — recovery", {
       theta = c(1.2, -0.6), re_sd = c(0.5, 0.3), re_cor = -0.3, seed = 308)
     fit <- fit_dd_choice(dat, mode = "descriptive", verbose = 0)
     expect_true(fit$converged)
+    expect_true(fit$se_available)   # PD Hessian: recovery is on a real optimum
     th <- unname(fit$model$coefficients[names(fit$model$coefficients) == "theta"])
     expect_equal(th[1],  1.2, tolerance = 0.25)
     expect_equal(th[2], -0.6, tolerance = 0.20)
@@ -104,6 +116,7 @@ describe("fit_dd_choice(mode='descriptive') — recovery", {
       ss_amount = dz$ss, ll_amount = dz$ll, delay = dz$delay,
       theta = c(1.4, -0.6), re_sd = c(0.4, 0.25), re_cor = -0.2, seed = 309)
     fit <- fit_dd_choice(dat, mode = "descriptive", verbose = 0)
+    expect_true(fit$converged)
     th <- unname(fit$model$coefficients[names(fit$model$coefficients) == "theta"])
     expect_gt(th[1], 0); expect_lt(th[2], 0)
   })
@@ -133,6 +146,7 @@ describe("fit_dd_choice(mode='descriptive') — MCQ27 integration", {
       ss_amount = lt$ss_amount, ll_amount = lt$ll_amount, delay = lt$delay,
       theta = c(1.5, -0.5), re_sd = c(0.4, 0.25), re_cor = -0.2, seed = 203)
     fit <- fit_dd_choice(dat, mode = "descriptive", verbose = 0)
+    expect_true(fit$converged)
     th <- unname(fit$model$coefficients[names(fit$model$coefficients) == "theta"])
     expect_gt(th[1], 0); expect_lt(th[2], 0)
   })

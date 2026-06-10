@@ -358,6 +358,26 @@
   )
 }
 
+#' Assert the free fixed-effect parameters exactly match the mode's expectation
+#'
+#' The shared template declares BOTH modes' parameter blocks; the map fixes the
+#' inactive ones and the active random-effect block (`u` structural, `b`
+#' descriptive) is integrated out, so neither ever appears in `opt$par`. This
+#' pins the EXACT free-parameter block set — catching both a leaked block and a
+#' missing one — for the known map seam. Compares the unique block names.
+#' @keywords internal
+#' @noRd
+.dd_choice_assert_free_params <- function(par_names, expected, context) {
+  got <- sort(unique(par_names))
+  exp <- sort(unique(expected))
+  if (!identical(got, exp)) {
+    stop("internal: free-parameter blocks for ", context, " do not match the ",
+         "expected map (got {", paste(got, collapse = ", "), "}; expected {",
+         paste(exp, collapse = ", "), "}); check map threading.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 #' Extract estimates from a structural choice fit (sdreport + SEs)
 #' @keywords internal
 #' @noRd
@@ -377,15 +397,9 @@
   }
   par_full <- opt$par
   par_names <- names(par_full)
-  free_beta0 <- "beta0" %in% par_names
-  if (!identical(free_beta0, isTRUE(intercept))) {
-    stop("internal: free beta0 (", free_beta0, ") != intercept (",
-         isTRUE(intercept), "); check map threading.", call. = FALSE)
-  }
-  if (any(c("theta", "log_sd_re", "cor_re") %in% par_names)) {
-    stop("internal: descriptive parameters are free in a structural fit; check map threading.",
-         call. = FALSE)
-  }
+  expected_free <- c("beta_k", "log_sigma_u", "log_gamma")
+  if (isTRUE(intercept)) expected_free <- c(expected_free, "beta0")
+  .dd_choice_assert_free_params(par_names, expected_free, "a structural choice fit")
   coefficients <- par_full
   se_vec <- stats::setNames(rep(NA_real_, length(par_full)), par_names)
   if (!is.null(sdr)) {
@@ -484,9 +498,13 @@
              fixed design. Add between-subject terms there, e.g. \\
              {.code predictors = ~ 0 + log(ll_amount/ss_amount) + log(delay + 1) + group}."))
   }
-  extra_cols <- unique(c(factors, continuous_covariates,
-                         all.vars(predictors %||% .dd_choice_default_predictors())))
-  extra_cols <- setdiff(extra_cols, c("ss_amount", "ll_amount", "delay"))
+  # Retain ONLY the variables the descriptive model actually uses (the predictor
+  # formula's terms). `factors` / `continuous_covariates` are warned-and-ignored
+  # above, so they must NOT be validated or complete-cased here (an ignored arg
+  # must not error if missing nor silently drop rows on its NAs).
+  extra_cols <- setdiff(
+    all.vars(predictors %||% .dd_choice_default_predictors()),
+    c("ss_amount", "ll_amount", "delay"))
   validated <- .dd_validate_choice(data, id_var = id_var, ss_var = ss_var,
                                    ll_var = ll_var, delay_var = delay_var,
                                    choice_var = choice_var, extra_cols = extra_cols)
@@ -551,11 +569,9 @@
   converged <- isTRUE(opt$convergence == 0)
   try(obj$fn(opt$par), silent = TRUE)
 
-  free <- names(opt$par)
-  if (any(c("beta_k", "log_gamma", "beta0", "log_sigma_u") %in% free)) {
-    stop("internal: structural parameters are free in a descriptive fit; check map threading.",
-         call. = FALSE)
-  }
+  expected_free <- "theta"
+  if (isTRUE(random_slopes)) expected_free <- c(expected_free, "log_sd_re", "cor_re")
+  .dd_choice_assert_free_params(names(opt$par), expected_free, "a descriptive choice fit")
   est <- .dd_choice_extract_descriptive(obj, opt, prepared, design,
                                         random_slopes, verbose)
   nll <- opt$objective; np <- length(opt$par)
@@ -570,7 +586,7 @@
       id_var = "id", x_var = "delay", y_var = "choice",
       predictors = design$predictors, random_slopes = isTRUE(random_slopes),
       re_terms = design$re_terms, factors = NULL, factor_interaction = FALSE,
-      continuous_covariates = continuous_covariates),
+      continuous_covariates = NULL),
     formula_details = list(Z = design$Z, Zre = design$Zre,
                            predictors = design$predictors,
                            contrasts = design$contrasts, xlevels = design$xlevels),
@@ -585,12 +601,12 @@
 #' Fit a trial-level SS-vs-LL choice model (binomial GLMM) via TMB
 #'
 #' Fits a trial-level binary choice model from two complementary perspectives.
-#' The structural model (Young 2018) estimates the discount rate `k` directly
+#' The structural model estimates the discount rate `k` directly
 #' from choices via the scale-invariant relative-value comparison
 #' `logit P(LL) = beta0 + gamma * ((ll/ss) * D(k, delay) - 1)`,
-#' `k = exp(X beta_k + sigma_u u)`. The descriptive model forgoes a discount
-#' function and instead characterises choices via separate magnitude and delay
-#' sensitivities with optional correlated per-subject random slopes.
+#' `k = exp(X beta_k + sigma_u u)`. The descriptive model (Young 2018) forgoes a
+#' discount function and instead characterises choices via separate magnitude and
+#' delay sensitivities with optional correlated per-subject random slopes.
 #'
 #' @details
 #' The **structural** model (`mode = "structural"`) parameterises choices

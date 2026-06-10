@@ -52,11 +52,13 @@ reference:
 
   - title: Choice-based discounting (TMB)
     desc: >
-      Fit the structural smaller-sooner vs larger-later choice model — a binomial
-      GLMM that estimates the discount rate directly — and simulate from it.
+      Fit the structural or descriptive (Young 2018) SS-vs-LL choice model — a
+      binomial GLMM — and simulate from either model. The descriptive mode adds
+      a VarCorr method for the random-effect covariance.
     contents:
       - fit_dd_choice
       - simulate_dd_choice
+      - VarCorr.beezdiscounting_choice
 
   - title: Estimated marginal means & comparisons
     desc: >

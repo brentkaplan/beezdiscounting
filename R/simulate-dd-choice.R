@@ -43,7 +43,7 @@
 #'                                theta = c(1.5, -0.4), seed = 42)
 #' head(sim_desc)
 #' @export
-#' @importFrom stats rnorm rbinom plogis cov
+#' @importFrom stats rnorm rbinom plogis
 #' @importFrom tibble tibble as_tibble
 simulate_dd_choice <- function(n_subjects = 50,
                                ss_amount = c(40, 55, 31, 14, 47, 25, 78, 40, 11, 67),

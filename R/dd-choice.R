@@ -582,19 +582,39 @@
   ), class = "beezdiscounting_choice")
 }
 
-#' Fit a structural SS-vs-LL choice model (binomial GLMM) via TMB
+#' Fit a trial-level SS-vs-LL choice model (binomial GLMM) via TMB
 #'
-#' Estimates the discount rate `k` directly from trial-level binary choices via
-#' the scale-invariant relative value comparison
+#' Fits a trial-level binary choice model from two complementary perspectives.
+#' The structural model (Young 2018) estimates the discount rate `k` directly
+#' from choices via the scale-invariant relative-value comparison
 #' `logit P(LL) = beta0 + gamma * ((ll/ss) * D(k, delay) - 1)`,
-#' `k = exp(X beta_k + sigma_u u)`. Shares the IP family's `k`/emmeans contract.
+#' `k = exp(X beta_k + sigma_u u)`. The descriptive model forgoes a discount
+#' function and instead characterises choices via separate magnitude and delay
+#' sensitivities with optional correlated per-subject random slopes.
+#'
+#' @details
+#' The **structural** model (`mode = "structural"`) parameterises choices
+#' through a classical discount function (Mazur hyperbolic or exponential) and
+#' shares the IP family's `k`/emmeans contract: `k` estimates and estimated
+#' marginal means are accessible via [get_dd_param_emms()] and
+#' [get_dd_comparisons()].  The **descriptive** model (`mode = "descriptive"`)
+#' follows Young (2018): it regresses binary choice on
+#' `log(ll_amount / ss_amount)` (magnitude sensitivity) and `log(delay + 1)`
+#' (delay sensitivity) with no assumed discount function.  When
+#' `random_slopes = TRUE` (default) each subject receives correlated random
+#' slopes on these two predictors; the primary inferential targets are the
+#' random-effect covariance (via [nlme::VarCorr()]) and per-subject slopes
+#' (via [nlme::ranef()]), not emmeans.
 #'
 #' @param data Trial-level data frame (see the `*_var` args).
-#' @param mode `"structural"` estimates the discount rate `k` directly from
-#'   choices; `"descriptive"` fits the Young (2018) logistic model with optional
-#'   correlated random slopes (see `predictors`/`random_slopes`).
+#' @param mode `"structural"` (default) estimates the discount rate `k`
+#'   directly from choices via a discount function (Mazur or exponential);
+#'   shares the IP family's `k`/emmeans contract.  `"descriptive"` fits the
+#'   Young (2018) correlated random-slope logistic model with separate
+#'   magnitude and delay sensitivity predictors; the inferential targets are
+#'   `VarCorr` / `ranef`, not emmeans.
 #' @param id_var,ss_var,ll_var,delay_var,choice_var Column names.
-#' @param equation `"mazur"` or `"exponential"`.
+#' @param equation `"mazur"` or `"exponential"` (structural mode only).
 #' @param intercept Logical; include the choice-bias `beta0` (default `FALSE`).
 #'   Structural only (the descriptive design carries its own intercept policy via
 #'   `predictors`).
@@ -604,13 +624,31 @@
 #'   (`~ 0 + log(ll_amount / ss_amount) + log(delay + 1)`). Ignored when
 #'   `mode = "structural"`.
 #' @param random_slopes Descriptive only: logical; `TRUE` (default) fits two
-#'   correlated per-subject random slopes on Young's predictors, `FALSE` fits a
-#'   pooled fixed-effect logistic model (no random effects). Ignored when
-#'   `mode = "structural"`.
+#'   correlated per-subject random slopes on Young's two predictors
+#'   (`log(ll/ss)` and `log(delay + 1)`), giving a full bivariate random-effect
+#'   covariance; `FALSE` fits a pooled fixed-effect logistic model with no
+#'   random effects. Ignored when `mode = "structural"`.
 #' @param factors,factor_interaction,continuous_covariates Between-subject design
 #'   on `log k` (same semantics as [fit_dd_tmb()]). Structural only.
 #' @param start_values,tmb_control,multi_start,verbose,... As in [fit_dd_tmb()].
 #' @return An object of class `beezdiscounting_choice`.
+#' @seealso [simulate_dd_choice()] for data generation; [nlme::VarCorr()] and
+#'   [nlme::ranef()] for descriptive-mode random-effect output;
+#'   [get_dd_param_emms()] and [get_dd_comparisons()] for structural-mode
+#'   emmeans.
+#' @examples
+#' \donttest{
+#' # Structural model: estimate a discount rate k from binary choices
+#' sim_s <- simulate_dd_choice(n_subjects = 30, mode = "structural", seed = 1)
+#' fit_s <- fit_dd_choice(sim_s, mode = "structural", equation = "mazur")
+#' summary(fit_s)
+#'
+#' # Descriptive (Young 2018) model: correlated per-subject magnitude/delay slopes
+#' sim_d <- simulate_dd_choice(n_subjects = 30, mode = "descriptive", seed = 1)
+#' fit_d <- fit_dd_choice(sim_d, mode = "descriptive")
+#' summary(fit_d)
+#' nlme::VarCorr(fit_d)
+#' }
 #' @export
 fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
                           id_var = "id", ss_var = "ss_amount",

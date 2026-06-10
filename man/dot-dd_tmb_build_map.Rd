@@ -2,21 +2,40 @@
 % Please edit documentation in R/dd-tmb.R
 \name{.dd_tmb_build_map}
 \alias{.dd_tmb_build_map}
-\title{Build the TMB \code{map} for the discounting shape parameter}
+\title{Build the TMB \code{map} for the discounting shape + random-effect blocks}
 \usage{
-.dd_tmb_build_map(has_s)
+.dd_tmb_build_map(has_s, n_re = 1L, covariance = "pdSymm")
 }
 \arguments{
 \item{has_s}{Logical; \code{TRUE} for green-myerson / rachlin.}
+
+\item{n_re}{Number of random-effect intercepts (\code{1L} or \code{2L}).}
+
+\item{covariance}{\code{"pdSymm"} (cor_re free) or \code{"pdDiag"} (cor_re fixed); only
+consulted when \code{n_re == 2L}.}
 }
 \value{
-\code{NULL} (free) or \code{list(log_s = factor(NA))} (fixed).
+A (possibly empty) named list of \code{factor(NA)} map entries.
 }
 \description{
-For the 1-parameter equations (\code{!has_s}) \code{log_s} is held fixed (never
-estimated) via \code{map = list(log_s = factor(NA))}; for the 2-parameter
-equations (\code{has_s}) \code{map} is \code{NULL} so \code{log_s} is free. The returned value is
-passed verbatim to EVERY \code{TMB::MakeADFun()} call so a 1-parameter fit can
-never try to estimate an unidentified \code{log_s} (singular Hessian, wrong df).
+Generalizes the old \code{has_s}-only map to cover the joint 2-RE blocks. The
+shared C++ template declares EVERY parameter (\code{log_s}, \code{log_sigma_u}/\code{u},
+\code{log_sd_re}/\code{cor_re}/\code{b}); this map fixes the inactive ones so a given fit
+only estimates the blocks it should:
+}
+\details{
+\itemize{
+\item \code{log_s} is held fixed (\code{factor(NA)}) for the 1-parameter equations
+(\code{!has_s}) and freed for the 2-parameter equations (\code{has_s}).
+\item \code{n_re == 1L} (single intercept on \verb{log k}): fix \code{log_sd_re}, \code{cor_re} (and
+\code{b} is fixed by \code{\link[=.dd_tmb_finalize_map]{.dd_tmb_finalize_map()}}, which needs the starts to size
+the factor).
+\item \code{n_re == 2L} (joint \verb{(log k, log phi)}): fix \code{log_sigma_u} (and \code{u} via
+\code{\link[=.dd_tmb_finalize_map]{.dd_tmb_finalize_map()}}); fix \code{cor_re} iff \code{covariance == "pdDiag"}.
+}
+
+The returned value is finalized by \code{\link[=.dd_tmb_finalize_map]{.dd_tmb_finalize_map()}} and passed
+verbatim to EVERY \code{TMB::MakeADFun()} call so a fit can never estimate an
+unidentified block (singular Hessian, wrong df).
 }
 \keyword{internal}

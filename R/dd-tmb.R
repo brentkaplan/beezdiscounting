@@ -146,11 +146,14 @@ NULL
 #' @param design Output from [.dd_tmb_build_design()].
 #' @param equation One of "mazur", "exponential".
 #' @param family One of "sltb", "gaussian".
+#' @param n_re Number of random-effect intercepts: `1L` (on `log k`) or `2L`
+#'   (joint `(log k, log phi)`). Defaults to `1L`.
 #' @return A list whose names match the C++ `DATA_*` macros: `model`, `y`, `x`,
 #'   `subject_id` (0-indexed integer), `X`, `eqn_type`, `family`, `n_obs`,
-#'   `n_subjects`.
+#'   `n_subjects`, `n_re`.
 #' @keywords internal
-.dd_tmb_build_tmb_data <- function(prepared, design, equation, family) {
+.dd_tmb_build_tmb_data <- function(prepared, design, equation, family,
+                                   n_re = 1L) {
   eqn_type <- switch(equation,
     mazur = 0L,
     exponential = 1L,
@@ -173,7 +176,8 @@ NULL
     eqn_type = eqn_type,
     family = fam_type,
     n_obs = as.integer(prepared$n_obs),
-    n_subjects = as.integer(prepared$n_subjects)
+    n_subjects = as.integer(prepared$n_subjects),
+    n_re = as.integer(n_re)
   )
 }
 
@@ -191,7 +195,10 @@ NULL
 #' @param equation One of "mazur", "exponential" (for the start inversion).
 #' @return A parameters list: `beta_k` (length `ncol(X)`), `log_sigma_u`,
 #'   `log_aux`, `log_s` (always present; held fixed for 1-parameter equations),
-#'   `u` (matrix `n_subjects` x 1).
+#'   `u` (matrix `n_subjects` x 1), plus the joint 2-RE blocks `log_sd_re`
+#'   (length 2), `cor_re` (length 1), and `b` (matrix `n_subjects` x 2). The
+#'   shared C++ template declares every block; the map fixes the inactive ones
+#'   per `n_re`.
 #' @keywords internal
 .dd_tmb_default_starts <- function(prepared, design, family,
                                    equation = "mazur") {
@@ -228,7 +235,12 @@ NULL
     log_sigma_u = log(0.5),
     log_aux = log_aux,
     log_s = 0,                       # s = 1 start; map-fixed for 1-param eqns
-    u = matrix(0, nrow = n_subjects, ncol = 1L)
+    u = matrix(0, nrow = n_subjects, ncol = 1L),
+    # Joint 2-RE (log k, log phi) blocks; always emitted so the shared template
+    # has every parameter. The map fixes these for a 1-RE fit (n_re == 1L).
+    log_sd_re = c(log(0.5), log(0.5)),
+    cor_re = 0,
+    b = matrix(0, nrow = n_subjects, ncol = 2L)
   )
 }
 
@@ -455,20 +467,126 @@ NULL
 .dd_s_log_upper <- log(20)
 
 
-#' Build the TMB `map` for the discounting shape parameter
+#' Build the TMB `map` for the discounting shape + random-effect blocks
 #'
-#' For the 1-parameter equations (`!has_s`) `log_s` is held fixed (never
-#' estimated) via `map = list(log_s = factor(NA))`; for the 2-parameter
-#' equations (`has_s`) `map` is `NULL` so `log_s` is free. The returned value is
-#' passed verbatim to EVERY `TMB::MakeADFun()` call so a 1-parameter fit can
-#' never try to estimate an unidentified `log_s` (singular Hessian, wrong df).
+#' Generalizes the old `has_s`-only map to cover the joint 2-RE blocks. The
+#' shared C++ template declares EVERY parameter (`log_s`, `log_sigma_u`/`u`,
+#' `log_sd_re`/`cor_re`/`b`); this map fixes the inactive ones so a given fit
+#' only estimates the blocks it should:
+#'
+#' - `log_s` is held fixed (`factor(NA)`) for the 1-parameter equations
+#'   (`!has_s`) and freed for the 2-parameter equations (`has_s`).
+#' - `n_re == 1L` (single intercept on `log k`): fix `log_sd_re`, `cor_re` (and
+#'   `b` is fixed by [.dd_tmb_finalize_map()], which needs the starts to size
+#'   the factor).
+#' - `n_re == 2L` (joint `(log k, log phi)`): fix `log_sigma_u` (and `u` via
+#'   [.dd_tmb_finalize_map()]); fix `cor_re` iff `covariance == "pdDiag"`.
+#'
+#' The returned value is finalized by [.dd_tmb_finalize_map()] and passed
+#' verbatim to EVERY `TMB::MakeADFun()` call so a fit can never estimate an
+#' unidentified block (singular Hessian, wrong df).
 #'
 #' @param has_s Logical; `TRUE` for green-myerson / rachlin.
-#' @return `NULL` (free) or `list(log_s = factor(NA))` (fixed).
+#' @param n_re Number of random-effect intercepts (`1L` or `2L`).
+#' @param covariance `"pdSymm"` (cor_re free) or `"pdDiag"` (cor_re fixed); only
+#'   consulted when `n_re == 2L`.
+#' @return A (possibly empty) named list of `factor(NA)` map entries.
 #' @keywords internal
-.dd_tmb_build_map <- function(has_s) {
-  if (isTRUE(has_s)) return(NULL)
-  list(log_s = factor(NA))
+.dd_tmb_build_map <- function(has_s, n_re = 1L, covariance = "pdSymm") {
+  map <- list()
+  if (!isTRUE(has_s)) map$log_s <- factor(NA)
+  if (n_re == 1L) {
+    map$log_sd_re <- factor(c(NA, NA))
+    map$cor_re <- factor(NA)
+    # The inactive matrix (b for 1-RE; u for 2-RE) is fixed at 0 by
+    # .dd_tmb_finalize_map(), which needs the starts to size the factor().
+  } else {
+    map$log_sigma_u <- factor(NA)
+    if (identical(covariance, "pdDiag")) map$cor_re <- factor(NA)
+  }
+  map
+}
+
+
+#' Fix the inactive random-effect matrix in the TMB map
+#'
+#' `u` (1-RE) and `b` (2-RE) are alternately the integrated random block vs a
+#' fixed-at-zero block. This appends the `factor(NA)` fix for whichever matrix
+#' is inactive, sized from its starts. Applied right before each
+#' `TMB::MakeADFun()`.
+#'
+#' @param map The map from [.dd_tmb_build_map()].
+#' @param starts The starting-value list (for the matrix lengths).
+#' @param n_re Number of random-effect intercepts (`1L` or `2L`).
+#' @return The augmented map.
+#' @keywords internal
+.dd_tmb_finalize_map <- function(map, starts, n_re) {
+  if (n_re == 1L) {
+    map$b <- factor(rep(NA, length(starts$b)))
+  } else {
+    map$u <- factor(rep(NA, length(starts$u)))
+  }
+  map
+}
+
+
+#' Assert the exact free-parameter block set at the map seam
+#'
+#' Pins the free-block set for each `(n_re, covariance, has_s)` combination so a
+#' leaked block (an unidentified parameter slipping into the optimizer) or a
+#' missing block (a free coefficient accidentally mapped out) is caught
+#' immediately rather than surfacing as a silent fit pathology.
+#'
+#' @param par_names Character vector of optimizer parameter names
+#'   (`names(opt$par)`).
+#' @param expected Character vector of expected free-block names.
+#' @param context Short label for the error message.
+#' @return Invisibly `TRUE`; stops on mismatch.
+#' @keywords internal
+.dd_assert_free_params <- function(par_names, expected, context) {
+  got <- sort(unique(par_names))
+  exp <- sort(unique(expected))
+  if (!identical(got, exp)) {
+    stop("internal: free-parameter blocks for ", context, " do not match the ",
+         "expected map (got {", paste(got, collapse = ", "), "}; expected {",
+         paste(exp, collapse = ", "), "}); check map threading.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+
+# 2-RE degeneracy guard (spec section 4): a wide lower+upper bound on log_sd_re
+# so the RE variance cannot run away and drive a boundary subject's phi_i -> 0
+# (the log_aux floor only guards the POPULATION phi). Mirrors .dd_apply_s_bounds:
+# only adds bounds when n_re == 2 and the caller has not already set them.
+.dd_re_log_sd_lower <- log(1e-3)
+.dd_re_log_sd_upper <- log(5)
+
+#' Impose wide optimizer bounds on log_sd_re for a 2-RE fit
+#'
+#' Adds lower/upper `log_sd_re` bounds (`[log(1e-3), log(5)]`) only when
+#' `n_re == 2L` and the caller has not already set a `log_sd_re` bound. Each
+#' bound is duplicated (the vector has length 2). Keeps Sigma positive-definite
+#' and stops an absurd RE-variance estimate from collapsing a boundary subject's
+#' `phi_i`.
+#'
+#' @param tmb_control Merged control list (may carry user `lower`/`upper`).
+#' @param n_re Number of random-effect intercepts (`1L` or `2L`).
+#' @return The (possibly augmented) `tmb_control` list.
+#' @keywords internal
+.dd_apply_re_bounds <- function(tmb_control, n_re) {
+  if (!identical(as.integer(n_re), 2L)) return(tmb_control)
+  lo <- tmb_control$lower
+  if (is.null(lo) || !("log_sd_re" %in% names(lo))) {
+    tmb_control$lower <- c(lo, log_sd_re = .dd_re_log_sd_lower,
+                           log_sd_re = .dd_re_log_sd_lower)
+  }
+  up <- tmb_control$upper
+  if (is.null(up) || !("log_sd_re" %in% names(up))) {
+    tmb_control$upper <- c(up, log_sd_re = .dd_re_log_sd_upper,
+                           log_sd_re = .dd_re_log_sd_upper)
+  }
+  tmb_control
 }
 
 
@@ -524,18 +642,26 @@ NULL
 #' @param tmb_control Merged control list (may carry user `lower`/`upper`).
 #' @param user_specified Character vector of user-set `tmb_control` fields.
 #' @param verbose Integer verbosity level.
+#' @param has_s Logical; `TRUE` for the 2-parameter equations.
+#' @param n_re Number of random-effect intercepts (`1L` or `2L`). Defaults to
+#'   `1L` so existing positional callers stay valid.
+#' @param covariance `"pdSymm"` or `"pdDiag"` (2-RE only).
 #' @return A list with elements `obj`, `opt`, `nll`, `start_idx`,
 #'   `opt_warnings`.
 #' @keywords internal
 .dd_tmb_multi_start <- function(tmb_data, start_values,
                                  tmb_control, user_specified, verbose,
-                                 has_s = FALSE) {
+                                 has_s = FALSE, n_re = 1L,
+                                 covariance = "pdSymm") {
   # Impose the phi floor as a log_aux lower bound for sltb (shared helper used by
   # both optimizer paths; tmb_data$family == 0L encodes "sltb").
   family_str <- if (identical(tmb_data$family, 0L)) "sltb" else "gaussian"
   tmb_control <- .dd_apply_phi_floor(tmb_control, family_str)
   tmb_control <- .dd_apply_s_bounds(tmb_control, has_s)
-  map <- .dd_tmb_build_map(has_s)
+  tmb_control <- .dd_apply_re_bounds(tmb_control, n_re)   # 2-RE degeneracy guard
+  random_block <- if (n_re == 2L) "b" else "u"
+  map <- .dd_tmb_build_map(has_s, n_re, covariance)
+  map <- .dd_tmb_finalize_map(map, start_values, n_re)
 
   # 3 starting sets: data-driven (default), low-k, high-k.
   start_sets      <- vector("list", 3L)
@@ -558,6 +684,17 @@ NULL
     start_sets[[3]]$log_s <- log(1.4)
   }
 
+  # For a 2-RE fit perturb the (poorly-identified) RE-variance/correlation axes
+  # across the restarts, analogous to the log_s perturbation.
+  if (n_re == 2L) {
+    start_sets[[2]]$log_sd_re <- c(log(0.3), log(0.3))
+    start_sets[[3]]$log_sd_re <- c(log(0.8), log(0.8))
+    if (identical(covariance, "pdSymm")) {
+      start_sets[[2]]$cor_re <- -0.2
+      start_sets[[3]]$cor_re <- 0.4
+    }
+  }
+
   # Sanity NaN/blowup guard on the FULL fitted log-k predictor (B7) -- no phi
   # rejection (the log_aux lower bound already prevents the degenerate phi->0
   # optimum).
@@ -576,7 +713,7 @@ NULL
         data       = tmb_data,
         parameters = starts_i,
         map        = map,
-        random     = "u",
+        random     = random_block,
         DLL        = "beezdiscounting",
         silent     = verbose < 2
       )
@@ -636,7 +773,39 @@ NULL
     ))
   }
 
+  # Map-seam assertion: the free-parameter blocks must match (n_re, covariance,
+  # has_s) exactly (the aux rename to log_phi/log_sigma_e happens later, so the
+  # raw optimizer name log_aux is asserted here).
+  expected_free <- .dd_expected_free_params(has_s, n_re, covariance)
+  .dd_assert_free_params(names(best_result$opt$par), expected_free,
+                         "an IP discounting fit")
+
   best_result
+}
+
+
+#' Expected free-parameter blocks for a given map configuration
+#'
+#' The exact set of optimizer parameter blocks left free by the map for a
+#' `(has_s, n_re, covariance)` combination. Uses the raw optimizer name
+#' `log_aux` (the rename to `log_phi`/`log_sigma_e` happens in
+#' [.dd_tmb_extract_estimates()]).
+#'
+#' @param has_s Logical; `TRUE` for the 2-parameter equations.
+#' @param n_re Number of random-effect intercepts (`1L` or `2L`).
+#' @param covariance `"pdSymm"` or `"pdDiag"` (2-RE only).
+#' @return Character vector of expected free-block names.
+#' @keywords internal
+.dd_expected_free_params <- function(has_s, n_re, covariance) {
+  expected <- c("beta_k", "log_aux")
+  if (isTRUE(has_s)) expected <- c(expected, "log_s")
+  if (n_re == 2L) {
+    expected <- c(expected, "log_sd_re")
+    if (identical(covariance, "pdSymm")) expected <- c(expected, "cor_re")
+  } else {
+    expected <- c(expected, "log_sigma_u")
+  }
+  expected
 }
 
 
@@ -653,10 +822,16 @@ NULL
 #' @param has_s Logical; `TRUE` for the 2-parameter equations (green-myerson /
 #'   rachlin), where `log_s` is a free coefficient.
 #' @param verbose Integer verbosity.
-#' @return list(coefficients, se, sdr, variance_components, u_hat, hessian_pd).
+#' @param n_re Number of random-effect intercepts (`1L` or `2L`). Defaults to
+#'   `1L` so existing positional callers stay valid.
+#' @return list(coefficients, se, sdr, variance_components, u_hat, hessian_pd,
+#'   Sigma). `u_hat` is the per-subject random-effect block: a 1-column matrix
+#'   of standardized `u` deviates for `n_re == 1`, an `n_subjects x 2` matrix of
+#'   standardized `b` deviates for `n_re == 2`. `Sigma` is the fitted 2x2 RE
+#'   covariance for `n_re == 2` (NULL otherwise).
 #' @keywords internal
 .dd_tmb_extract_estimates <- function(obj, opt, n_subjects, family,
-                                      has_s = FALSE, verbose = 1) {
+                                      has_s = FALSE, verbose = 1, n_re = 1L) {
   sdr <- tryCatch(
     TMB::sdreport(obj),
     error = function(e1) {
@@ -710,20 +885,37 @@ NULL
     .fill_vector_se("log_sigma_u")
     .fill_vector_se("log_aux")
     .fill_vector_se("log_s")   # no-op when log_s is mapped/absent
+    .fill_vector_se("log_sd_re")  # no-op for a 1-RE fit (mapped out)
+    .fill_vector_se("cor_re")     # no-op for a 1-RE / pdDiag fit
 
     re_summary <- tryCatch(summary(sdr, "random"), error = function(e) NULL)
+    re_ncol <- if (n_re == 2L) 2L else 1L
     if (!is.null(re_summary)) {
-      u_hat <- matrix(re_summary[, "Estimate"], nrow = n_subjects, ncol = 1L)
+      re_hat <- matrix(re_summary[, "Estimate"], nrow = n_subjects,
+                       ncol = re_ncol)
     } else {
-      u_hat <- matrix(0, nrow = n_subjects, ncol = 1L)
+      re_hat <- matrix(0, nrow = n_subjects, ncol = re_ncol)
     }
   } else {
-    u_hat <- matrix(0, nrow = n_subjects, ncol = 1L)
+    re_hat <- matrix(0, nrow = n_subjects, ncol = if (n_re == 2L) 2L else 1L)
   }
 
   variance_components <- NULL
   if (!is.null(sdr)) {
     variance_components <- tryCatch(summary(sdr, "report"), error = function(e) NULL)
+  }
+
+  # For a 2-RE fit, rebuild the fitted RE covariance from the reported sd_re/rho.
+  Sigma <- NULL
+  if (n_re == 2L && !is.null(sdr)) {
+    rep_sum <- tryCatch(summary(sdr, "report"), error = function(e) NULL)
+    if (!is.null(rep_sum)) {
+      sd_re <- rep_sum[rownames(rep_sum) == "sd_re", "Estimate"]
+      rho   <- rep_sum[rownames(rep_sum) == "rho", "Estimate"][1]
+      Sigma <- matrix(c(sd_re[1]^2, rho * sd_re[1] * sd_re[2],
+                        rho * sd_re[1] * sd_re[2], sd_re[2]^2), 2L,
+                      dimnames = list(c("k", "phi"), c("k", "phi")))
+    }
   }
 
   # Rename the generic auxiliary scalar in both coefficients and se.
@@ -736,7 +928,8 @@ NULL
     se = se_vec,
     sdr = sdr,
     variance_components = variance_components,
-    u_hat = u_hat,
+    u_hat = re_hat,
+    Sigma = Sigma,
     hessian_pd = hessian_pd
   )
 }
@@ -753,12 +946,18 @@ NULL
 #' factor/covariate-correct: subjects in non-reference groups pick up their
 #' group's `beta_k` contribution rather than the reference-group intercept.
 #'
-#' The auxiliary scalar `phi` is population-level in the MVP, so it is **not**
-#' a subject-level parameter and is never returned here (for either family).
+#' For a 1-RE fit the auxiliary scalar `phi` is population-level, so it is not a
+#' subject-level parameter (the returned frame is `id, u_i, k`). For a 2-RE fit
+#' (`k + phi ~ 1`) each subject's natural-scale `re = L * b_hat` is reconstructed
+#' (`L = chol(Sigma)` lower-triangular; the `sdreport` "random" block holds the
+#' STANDARDIZED `b_hat`, not `re`), giving `id, re_k, re_phi, k, phi` with a
+#' per-subject `phi_i` floor matching the kernel clamp.
 #'
-#' @param coefficients Named coefficient vector (with `beta_k`, `log_sigma_u`,
-#'   and `log_phi` or `log_sigma_e`).
-#' @param u_hat Matrix `n_subjects` x 1 of standardized random effects.
+#' @param coefficients Named coefficient vector (with `beta_k`, `log_sigma_u`
+#'   for 1-RE, and `log_phi` or `log_sigma_e`).
+#' @param u_hat Matrix of per-subject random effects: `n_subjects x 1`
+#'   standardized `u` deviates (1-RE) or `n_subjects x 2` standardized `b`
+#'   deviates (2-RE).
 #' @param subject_levels Character vector of subject ids (length n_subjects).
 #' @param design_X Fixed-effect design matrix (rows aligned with the prepared
 #'   arrays); columns correspond 1:1 with the `beta_k` entries.
@@ -766,7 +965,13 @@ NULL
 #'   row-for-row with `design_X`. Used to locate each subject's first design row.
 #' @param equation One of "mazur", "exponential" (reserved; k is equation-free).
 #' @param family One of "sltb", "gaussian".
-#' @return data.frame(id, u_i, k) — no phi column.
+#' @param n_re Number of random-effect intercepts (`1L` or `2L`). Defaults to
+#'   `1L` so existing positional callers stay valid.
+#' @param log_aux_name Name of the auxiliary (precision) coefficient in
+#'   `coefficients` (`"log_phi"` for sltb). Used only for `n_re == 2`.
+#' @param Sigma Fitted 2x2 RE covariance (from [.dd_tmb_extract_estimates()]);
+#'   required for `n_re == 2`.
+#' @return data.frame: `id, u_i, k` (1-RE) or `id, re_k, re_phi, k, phi` (2-RE).
 #' @note Subject-level `k` assumes between-subject predictors: the first design
 #'   row per subject defines that subject's fixed-effect contribution. A
 #'   within-subject-varying covariate would make a single per-subject `k`
@@ -774,10 +979,10 @@ NULL
 #' @keywords internal
 .dd_tmb_compute_subject_pars <- function(coefficients, u_hat, subject_levels,
                                          design_X, subject_id,
-                                         equation, family) {
+                                         equation, family, n_re = 1L,
+                                         log_aux_name = "log_phi",
+                                         Sigma = NULL) {
   beta_k <- unname(coefficients[names(coefficients) == "beta_k"])
-  sigma_u <- exp(unname(coefficients[["log_sigma_u"]]))
-  u_i <- as.numeric(u_hat[, 1L])
   n_subjects <- length(subject_levels)
 
   design_X <- as.matrix(design_X)
@@ -792,15 +997,24 @@ NULL
     xbeta_i[s] <- sum(design_X[first_row, ] * beta_k)
   }
 
-  log_k_i <- xbeta_i + sigma_u * u_i
-  k_i <- exp(log_k_i)
-
-  data.frame(
-    id = subject_levels,
-    u_i = u_i,
-    k = k_i,
-    stringsAsFactors = FALSE
-  )
+  if (n_re == 2L) {
+    b_hat <- u_hat                       # n_subjects x 2 standardized deviates
+    L <- t(chol(Sigma))                  # lower-triangular Cholesky of fitted Sigma
+    re <- t(L %*% t(b_hat))              # natural-scale (re_k, re_phi)
+    re_k <- as.numeric(re[, 1L])
+    re_phi <- as.numeric(re[, 2L])
+    log_k_i <- xbeta_i + re_k
+    log_aux <- unname(coefficients[[log_aux_name]])
+    phi_i <- pmax(exp(log_aux + re_phi), 0.1)   # same per-subject floor as the kernel clamp
+    data.frame(id = subject_levels, re_k = re_k, re_phi = re_phi,
+               k = exp(log_k_i), phi = phi_i, stringsAsFactors = FALSE)
+  } else {
+    sigma_u <- exp(unname(coefficients[["log_sigma_u"]]))
+    u_i <- as.numeric(u_hat[, 1L])
+    log_k_i <- xbeta_i + sigma_u * u_i
+    data.frame(id = subject_levels, u_i = u_i, k = exp(log_k_i),
+               stringsAsFactors = FALSE)
+  }
 }
 
 
@@ -870,7 +1084,12 @@ NULL
 #'   population nonlinearity exponent `s` (estimated on the log scale) and
 #'   reduce to `"mazur"` at `s = 1`.
 #' @param family Observation family: `"sltb"` (default) or `"gaussian"`.
-#' @param random_effects RE formula (MVP: `k ~ 1`).
+#' @param random_effects RE formula: `k ~ 1` (single random intercept on
+#'   `log k`) or `k + phi ~ 1` (a joint 2-D random intercept on
+#'   `(log k, log phi)`, SLT-beta only).
+#' @param covariance_structure Covariance for a 2-D random effect
+#'   (`k + phi ~ 1`): `"pdSymm"` (default; correlated `(log k, log phi)`) or
+#'   `"pdDiag"` (independent, correlation fixed at 0). Ignored for `k ~ 1`.
 #' @param factors Character vector of between-subject factor names.
 #' @param factor_interaction Logical; include a pairwise factor interaction.
 #' @param continuous_covariates Character vector of covariate names.
@@ -921,6 +1140,7 @@ fit_dd_tmb <- function(data,
                                     "green-myerson", "rachlin"),
                        family = c("sltb", "gaussian"),
                        random_effects = k ~ 1,
+                       covariance_structure = c("pdSymm", "pdDiag"),
                        factors = NULL,
                        factor_interaction = FALSE,
                        continuous_covariates = NULL,
@@ -934,6 +1154,7 @@ fit_dd_tmb <- function(data,
   cl <- match.call()
   equation <- match.arg(equation)
   family <- match.arg(family)
+  covariance_structure <- match.arg(covariance_structure)
   response_scale <- match.arg(response_scale)
   has_s <- equation %in% c("green-myerson", "rachlin")
 
@@ -965,9 +1186,19 @@ fit_dd_tmb <- function(data,
   long <- validated$data            # canonical id/x/y + retained extras
   coercion_info <- validated$coercion_info
 
-  # 2. Random-effects normalization (MVP: single intercept-only block).
-  re_norm <- .dd_normalize_re(random_effects, data = long)
-  n_random_effects <- 1L
+  # 2. Random-effects normalization: `k ~ 1` (1-RE) or `k + phi ~ 1` (2-RE).
+  re_norm <- .dd_normalize_re(random_effects, covariance_structure, data = long)
+  n_random_effects <- re_norm$blocks[[1]]$dim
+  re_has_phi <- "phi" %in% re_norm$blocks[[1]]$param
+  if (re_has_phi && family != "sltb") {
+    cli::cli_abort(c(
+      "A subject-random {.field phi} ({.code k + phi ~ 1}) requires \\
+       {.code family = \"sltb\"}.",
+      "i" = "The Gaussian family has no precision parameter to put a random \\
+             effect on."
+    ))
+  }
+  re_cov <- re_norm$blocks[[1]]$pdmat_class      # "pdDiag" or "pdSymm"
 
   # 3. Prepare data: ONE complete-case pass over id/x/y + extra_cols, building
   #    the 0-indexed subject_id. prepared$data is the single filtered model
@@ -1014,7 +1245,8 @@ fit_dd_tmb <- function(data,
   if (length(placed_factors) == 0L) placed_factors <- NULL
 
   # 5. TMB data + default starts.
-  tmb_data <- .dd_tmb_build_tmb_data(prepared, design, equation, family)
+  tmb_data <- .dd_tmb_build_tmb_data(prepared, design, equation, family,
+                                     n_re = n_random_effects)
   default_starts <- .dd_tmb_default_starts(prepared, design, family, equation)
   if (!is.null(start_values)) {
     # Public alias: users pass `s` (natural); convert to the optimizer's log_s.
@@ -1049,7 +1281,8 @@ fit_dd_tmb <- function(data,
   opt_warnings <- character(0)
   if (isTRUE(multi_start)) {
     result <- .dd_tmb_multi_start(tmb_data, default_starts, tmb_control,
-                                  user_specified, verbose, has_s = has_s)
+                                  user_specified, verbose, has_s = has_s,
+                                  n_re = n_random_effects, covariance = re_cov)
     obj <- result$obj
     opt <- result$opt
     opt_warnings <- result$opt_warnings %||% character(0)
@@ -1059,13 +1292,22 @@ fit_dd_tmb <- function(data,
     # cannot collapse into the degenerate phi->0 / k->inf optimum.
     tmb_control <- .dd_apply_phi_floor(tmb_control, family)
     tmb_control <- .dd_apply_s_bounds(tmb_control, has_s)
-    obj <- TMB::MakeADFun(tmb_data, default_starts, random = "u",
+    tmb_control <- .dd_apply_re_bounds(tmb_control, n_random_effects)
+    random_block <- if (n_random_effects == 2L) "b" else "u"
+    single_map <- .dd_tmb_build_map(has_s, n_random_effects, re_cov)
+    single_map <- .dd_tmb_finalize_map(single_map, default_starts,
+                                       n_random_effects)
+    obj <- TMB::MakeADFun(tmb_data, default_starts, random = random_block,
                           DLL = "beezdiscounting", silent = verbose < 2,
-                          map = .dd_tmb_build_map(has_s))
+                          map = single_map)
     opt_res <- .dd_tmb_run_optimizer(obj, obj$par, tmb_control,
                                      user_specified, verbose)
     opt <- opt_res$opt
     opt_warnings <- opt_res$warnings
+    .dd_assert_free_params(
+      names(opt$par),
+      .dd_expected_free_params(has_s, n_random_effects, re_cov),
+      "an IP discounting fit")
     # B7: the single-start path has no multi-start selection guard, so warn if the
     # fitted log-k predictor blew up (k -> Inf / non-finite).
     if (.dd_logk_blowup(opt, tmb_data$X)) {
@@ -1085,11 +1327,17 @@ fit_dd_tmb <- function(data,
   estimates <- .dd_tmb_extract_estimates(obj, opt,
                                          n_subjects = prepared$n_subjects,
                                          family = family, has_s = has_s,
-                                         verbose = verbose)
+                                         verbose = verbose,
+                                         n_re = n_random_effects)
 
-  # 9. Subject-specific parameters (id/u_i/k; no phi -- phi is population-level).
-  #    Factor/covariate-correct: each subject's k uses that subject's design row
-  #    (X_i %*% beta_k + sigma_u * u_i), not the reference-group intercept (B1).
+  # The aux scalar's renamed coefficient name (mirrors the rename in
+  # .dd_tmb_extract_estimates) -- needed for the 2-RE per-subject phi.
+  aux_name <- if (identical(family, "gaussian")) "log_sigma_e" else "log_phi"
+
+  # 9. Subject-specific parameters. 1-RE: id/u_i/k (phi is population-level).
+  #    2-RE: id/re_k/re_phi/k/phi (per-subject phi). Factor/covariate-correct:
+  #    each subject's k uses that subject's design row (X_i %*% beta_k + re_k),
+  #    not the reference-group intercept (B1).
   subject_pars <- .dd_tmb_compute_subject_pars(
     coefficients = estimates$coefficients,
     u_hat = estimates$u_hat,
@@ -1097,7 +1345,10 @@ fit_dd_tmb <- function(data,
     design_X = design$X,
     subject_id = prepared$subject_id,
     equation = equation,
-    family = family
+    family = family,
+    n_re = n_random_effects,
+    log_aux_name = aux_name,
+    Sigma = estimates$Sigma
   )
 
   # 10. Likelihood / IC.
@@ -1119,6 +1370,9 @@ fit_dd_tmb <- function(data,
         variance_components = estimates$variance_components
       ),
       sdr = estimates$sdr,
+      # Fitted 2x2 RE covariance (k, phi) for a 2-RE fit; NULL for 1-RE. Read by
+      # VarCorr.beezdiscounting_tmb and the per-subject re reconstruction.
+      Sigma = estimates$Sigma,
       hessian_pd = estimates$hessian_pd,
       param_info = list(
         equation = equation,
@@ -1128,6 +1382,7 @@ fit_dd_tmb <- function(data,
         n_obs = prepared$n_obs,
         n_subjects = prepared$n_subjects,
         n_random_effects = n_random_effects,
+        covariance_structure = re_cov,
         subject_levels = prepared$subject_levels,
         # B1: store the CANONICAL column names. The validator renames the data to
         # id/x/y, and fit$data (the default newdata for predict/fitted/residuals/

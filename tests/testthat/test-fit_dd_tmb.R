@@ -273,13 +273,25 @@ describe(".expand_bounds()", {
 })
 
 describe(".dd_tmb_build_map()", {
-  it("fixes log_s when !has_s and is NULL when has_s", {
-    m1 <- .dd_tmb_build_map(FALSE)
-    expect_true(is.list(m1))
-    expect_true("log_s" %in% names(m1))
-    expect_true(is.factor(m1$log_s))
-    expect_true(all(is.na(m1$log_s)))
-    expect_null(.dd_tmb_build_map(TRUE))
+  it("fixes log_s when !has_s and frees it when has_s (1-RE)", {
+    m1 <- .dd_tmb_build_map(FALSE, n_re = 1L)
+    expect_true(is.factor(m1$log_s) && all(is.na(m1$log_s)))
+    m2 <- .dd_tmb_build_map(TRUE, n_re = 1L)
+    expect_false("log_s" %in% names(m2))   # has_s -> log_s free
+  })
+
+  it("maps the 2-RE blocks out for a 1-RE fit", {
+    m <- .dd_tmb_build_map(FALSE, n_re = 1L)
+    expect_true(all(is.na(m$log_sd_re)))
+    expect_true(all(is.na(m$cor_re)))
+  })
+
+  it("maps log_sigma_u/u out for a 2-RE fit; cor_re only for pdDiag", {
+    ms <- .dd_tmb_build_map(FALSE, n_re = 2L, covariance = "pdSymm")
+    expect_true(all(is.na(ms$log_sigma_u)))
+    expect_false("cor_re" %in% names(ms))      # pdSymm -> cor_re free
+    md <- .dd_tmb_build_map(FALSE, n_re = 2L, covariance = "pdDiag")
+    expect_true(all(is.na(md$cor_re)))         # pdDiag -> cor_re fixed
   })
 })
 
@@ -438,7 +450,9 @@ describe(".dd_tmb_extract_estimates()", {
     tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "sltb")
     starts <- .dd_tmb_default_starts(prep, design, "sltb", "mazur")
     obj <- TMB::MakeADFun(tmb_data, starts, random = "u",
-                          map = list(log_s = factor(NA)),
+                          map = .dd_tmb_finalize_map(
+                            .dd_tmb_build_map(has_s = FALSE, n_re = 1L),
+                            starts, 1L),
                           DLL = "beezdiscounting", silent = TRUE)
     opt_res <- .dd_tmb_run_optimizer(
       obj, obj$par,
@@ -468,7 +482,9 @@ describe(".dd_tmb_extract_estimates()", {
     tmb_data <- .dd_tmb_build_tmb_data(prep, design, "mazur", "gaussian")
     starts <- .dd_tmb_default_starts(prep, design, "gaussian", "mazur")
     obj <- TMB::MakeADFun(tmb_data, starts, random = "u",
-                          map = list(log_s = factor(NA)),
+                          map = .dd_tmb_finalize_map(
+                            .dd_tmb_build_map(has_s = FALSE, n_re = 1L),
+                            starts, 1L),
                           DLL = "beezdiscounting", silent = TRUE)
     opt_res <- .dd_tmb_run_optimizer(
       obj, obj$par,
@@ -1040,5 +1056,49 @@ describe("fit_dd_tmb() 2-parameter eqns reduce to Mazur at s = 1", {
       names(fit$model$coefficients) == "beta_k"][1]))
     expect_lt(abs(s_hat - 1) / 1, 0.20)
     expect_lt(abs(k_hat - 0.01) / 0.01, 0.25)
+  })
+})
+
+describe("fit_dd_tmb 2-RE (k + phi ~ 1)", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+
+  it("fits a pdSymm 2-RE model and reports n_random_effects = 2", {
+    sim <- simulate_dd_ip(n_subjects = 25, sigma_u = 0.5, sigma_phi = 0.4,
+                          rho_kphi = 0.3, phi = 10, seed = 11)
+    fit <- fit_dd_tmb(sim, random_effects = k + phi ~ 1,
+                      covariance_structure = "pdSymm", verbose = 0)
+    expect_s3_class(fit, "beezdiscounting_tmb")
+    expect_identical(fit$param_info$n_random_effects, 2L)
+    # free blocks: beta_k, log_aux, log_sd_re, cor_re (u/b integrated out;
+    # log_sigma_u, log_s mapped out)
+    expect_setequal(unique(names(fit$opt$par)),
+                    c("beta_k", "log_aux", "log_sd_re", "cor_re"))
+  })
+
+  it("fits a pdDiag 2-RE model with cor_re mapped out", {
+    sim <- simulate_dd_ip(n_subjects = 25, sigma_u = 0.5, sigma_phi = 0.4,
+                          rho_kphi = 0, phi = 10, seed = 12)
+    fit <- fit_dd_tmb(sim, random_effects = k + phi ~ 1,
+                      covariance_structure = "pdDiag", verbose = 0)
+    expect_false("cor_re" %in% names(fit$opt$par))
+    expect_setequal(unique(names(fit$opt$par)),
+                    c("beta_k", "log_aux", "log_sd_re"))
+  })
+
+  it("errors on k + phi ~ 1 with family = gaussian", {
+    sim <- simulate_dd_ip(n_subjects = 10, seed = 3)
+    expect_error(
+      fit_dd_tmb(sim, random_effects = k + phi ~ 1, family = "gaussian",
+                 verbose = 0),
+      regexp = "sltb|phi|gaussian")
+  })
+
+  it("leaves the default k ~ 1 fit free-param set unchanged", {
+    sim <- simulate_dd_ip(n_subjects = 15, seed = 4)
+    fit <- fit_dd_tmb(sim, verbose = 0)
+    expect_identical(fit$param_info$n_random_effects, 1L)
+    expect_setequal(unique(names(fit$opt$par)),
+                    c("beta_k", "log_sigma_u", "log_aux"))
   })
 })

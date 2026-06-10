@@ -11,14 +11,19 @@
   design_X,
   subject_id,
   equation,
-  family
+  family,
+  n_re = 1L,
+  log_aux_name = "log_phi",
+  Sigma = NULL
 )
 }
 \arguments{
-\item{coefficients}{Named coefficient vector (with \code{beta_k}, \code{log_sigma_u},
-and \code{log_phi} or \code{log_sigma_e}).}
+\item{coefficients}{Named coefficient vector (with \code{beta_k}, \code{log_sigma_u}
+for 1-RE, and \code{log_phi} or \code{log_sigma_e}).}
 
-\item{u_hat}{Matrix \code{n_subjects} x 1 of standardized random effects.}
+\item{u_hat}{Matrix of per-subject random effects: \verb{n_subjects x 1}
+standardized \code{u} deviates (1-RE) or \verb{n_subjects x 2} standardized \code{b}
+deviates (2-RE).}
 
 \item{subject_levels}{Character vector of subject ids (length n_subjects).}
 
@@ -31,9 +36,18 @@ row-for-row with \code{design_X}. Used to locate each subject's first design row
 \item{equation}{One of "mazur", "exponential" (reserved; k is equation-free).}
 
 \item{family}{One of "sltb", "gaussian".}
+
+\item{n_re}{Number of random-effect intercepts (\code{1L} or \code{2L}). Defaults to
+\code{1L} so existing positional callers stay valid.}
+
+\item{log_aux_name}{Name of the auxiliary (precision) coefficient in
+\code{coefficients} (\code{"log_phi"} for sltb). Used only for \code{n_re == 2}.}
+
+\item{Sigma}{Fitted 2x2 RE covariance (from \code{\link[=.dd_tmb_extract_estimates]{.dd_tmb_extract_estimates()}});
+required for \code{n_re == 2}.}
 }
 \value{
-data.frame(id, u_i, k) — no phi column.
+data.frame: \verb{id, u_i, k} (1-RE) or \verb{id, re_k, re_phi, k, phi} (2-RE).
 }
 \description{
 Reconstructs each subject's \code{k_i = exp(eta_i)} where
@@ -46,8 +60,12 @@ factor/covariate-correct: subjects in non-reference groups pick up their
 group's \code{beta_k} contribution rather than the reference-group intercept.
 }
 \details{
-The auxiliary scalar \code{phi} is population-level in the MVP, so it is \strong{not}
-a subject-level parameter and is never returned here (for either family).
+For a 1-RE fit the auxiliary scalar \code{phi} is population-level, so it is not a
+subject-level parameter (the returned frame is \verb{id, u_i, k}). For a 2-RE fit
+(\code{k + phi ~ 1}) each subject's natural-scale \code{re = L * b_hat} is reconstructed
+(\code{L = chol(Sigma)} lower-triangular; the \code{sdreport} "random" block holds the
+STANDARDIZED \code{b_hat}, not \code{re}), giving \verb{id, re_k, re_phi, k, phi} with a
+per-subject \code{phi_i} floor matching the kernel clamp.
 }
 \note{
 Subject-level \code{k} assumes between-subject predictors: the first design

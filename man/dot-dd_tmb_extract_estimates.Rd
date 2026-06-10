@@ -10,7 +10,8 @@
   n_subjects,
   family,
   has_s = FALSE,
-  verbose = 1
+  verbose = 1,
+  n_re = 1L
 )
 }
 \arguments{
@@ -26,9 +27,16 @@
 rachlin), where \code{log_s} is a free coefficient.}
 
 \item{verbose}{Integer verbosity.}
+
+\item{n_re}{Number of random-effect intercepts (\code{1L} or \code{2L}). Defaults to
+\code{1L} so existing positional callers stay valid.}
 }
 \value{
-list(coefficients, se, sdr, variance_components, u_hat, hessian_pd).
+list(coefficients, se, sdr, variance_components, u_hat, hessian_pd,
+Sigma). \code{u_hat} is the per-subject random-effect block: a 1-column matrix
+of standardized \code{u} deviates for \code{n_re == 1}, an \verb{n_subjects x 2} matrix of
+standardized \code{b} deviates for \code{n_re == 2}. \code{Sigma} is the fitted 2x2 RE
+covariance for \code{n_re == 2} (NULL otherwise).
 }
 \description{
 Computes \code{TMB::sdreport}, gates on \code{isTRUE(sdr$pdHess)} (warn, never abort),

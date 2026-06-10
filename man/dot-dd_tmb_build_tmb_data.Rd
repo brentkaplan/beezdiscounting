@@ -4,7 +4,7 @@
 \alias{.dd_tmb_build_tmb_data}
 \title{Build the TMB data list for MixedDiscounting}
 \usage{
-.dd_tmb_build_tmb_data(prepared, design, equation, family)
+.dd_tmb_build_tmb_data(prepared, design, equation, family, n_re = 1L)
 }
 \arguments{
 \item{prepared}{Output from \code{\link[=.dd_tmb_prepare_data]{.dd_tmb_prepare_data()}}.}
@@ -14,11 +14,14 @@
 \item{equation}{One of "mazur", "exponential".}
 
 \item{family}{One of "sltb", "gaussian".}
+
+\item{n_re}{Number of random-effect intercepts: \code{1L} (on \verb{log k}) or \code{2L}
+(joint \verb{(log k, log phi)}). Defaults to \code{1L}.}
 }
 \value{
 A list whose names match the C++ \verb{DATA_*} macros: \code{model}, \code{y}, \code{x},
 \code{subject_id} (0-indexed integer), \code{X}, \code{eqn_type}, \code{family}, \code{n_obs},
-\code{n_subjects}.
+\code{n_subjects}, \code{n_re}.
 }
 \description{
 Build the TMB data list for MixedDiscounting

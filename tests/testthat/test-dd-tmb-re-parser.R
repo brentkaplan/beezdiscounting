@@ -27,6 +27,7 @@ describe(".dd_normalize_re", {
     res <- .dd_normalize_re(phi + k ~ 1, covariance_structure = "pdDiag")
     expect_identical(res$blocks[[1]]$param, c("k", "phi"))
     expect_identical(res$blocks[[1]]$pdmat_class, "pdDiag")
+    expect_identical(deparse1(res$blocks[[1]]$formula), "k + phi ~ 1")
   })
 
   it("defaults covariance_structure to pdSymm for the 2-D block", {
@@ -56,7 +57,7 @@ describe(".dd_normalize_re", {
   })
 
   it("rejects a third LHS parameter (k + phi + s ~ 1)", {
-    expect_error(.dd_normalize_re(k + phi + s ~ 1), regexp = "k.*phi|only.*k.*phi")
+    expect_error(.dd_normalize_re(k + phi + s ~ 1), regexp = "may only be|only.*k.*and/or.*phi")
   })
 
   it("rejects a duplicated LHS parameter (k + k ~ 1)", {
@@ -74,5 +75,26 @@ describe(".dd_normalize_re", {
 
   it("rejects a one-sided formula (~ 1)", {
     expect_error(.dd_normalize_re(~ 1), regexp = "two-sided|k ~ 1")
+  })
+
+  it("ignores covariance_structure for a 1-D block", {
+    expect_identical(
+      .dd_normalize_re(k ~ 1, covariance_structure = "pdSymm")$blocks[[1]]$pdmat_class,
+      "pdDiag"
+    )
+    expect_identical(
+      .dd_normalize_re(k ~ 1, covariance_structure = "pdDiag")$blocks[[1]]$pdmat_class,
+      "pdDiag"
+    )
+  })
+
+  it("stores the canonical formula for a k ~ 1 block", {
+    res <- .dd_normalize_re(k ~ 1)
+    expect_identical(deparse1(res$blocks[[1]]$formula), "k ~ 1")
+  })
+
+  it("stores the canonical formula for a k + phi ~ 1 block", {
+    res <- .dd_normalize_re(k + phi ~ 1)
+    expect_identical(deparse1(res$blocks[[1]]$formula), "k + phi ~ 1")
   })
 })

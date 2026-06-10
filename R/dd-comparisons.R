@@ -330,6 +330,13 @@ get_dd_param_emms <- function(
   ci_level = 0.95,
   ...
 ) {
+  if (inherits(fit, "beezdiscounting_choice") &&
+      identical(fit$param_info$mode, "descriptive")) {
+    cli::cli_abort(c(
+      "emmeans is not available for descriptive (Young 2018) choice models.",
+      "i" = "The descriptive model has no discount rate {.code k}; use \\
+             {.fn VarCorr} / {.fn ranef} for per-subject slope (co)variances."))
+  }
   coefs <- fit$model$coefficients
   beta_idx <- which(names(coefs) == "beta_k")
   beta <- unname(coefs[beta_idx])
@@ -472,6 +479,13 @@ get_dd_comparisons <- function(
   report_ratios = TRUE,
   ...
 ) {
+  if (inherits(fit, "beezdiscounting_choice") &&
+      identical(fit$param_info$mode, "descriptive")) {
+    cli::cli_abort(c(
+      "emmeans is not available for descriptive (Young 2018) choice models.",
+      "i" = "The descriptive model has no discount rate {.code k}; use \\
+             {.fn VarCorr} / {.fn ranef} for per-subject slope (co)variances."))
+  }
   contrast_type <- match.arg(contrast_type)
 
   fitted_factors <- fit$param_info$factors %||% character(0)

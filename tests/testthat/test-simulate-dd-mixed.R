@@ -110,6 +110,18 @@ describe("simulate_dd_ip subject-random phi", {
     expect_error(simulate_dd_ip(sigma_phi = 0.5, family = "gaussian"),
       regexp = "sltb|gaussian|phi")
   })
+
+  it("does not attach phi when attach_truth = FALSE even if sigma_phi > 0", {
+    sim <- simulate_dd_ip(n_subjects = 6, sigma_phi = 0.4, seed = 2)
+    expect_false("phi" %in% names(sim))
+  })
+
+  it("errors on a non-positive-definite Sigma (sigma_u = 0 or |rho| = 1) when sigma_phi > 0", {
+    expect_error(simulate_dd_ip(n_subjects = 6, sigma_u = 0, sigma_phi = 0.4),
+                 "positive definite")
+    expect_error(simulate_dd_ip(n_subjects = 6, rho_kphi = 1, sigma_phi = 0.4),
+                 "positive definite")
+  })
 })
 
 describe("simulate_dd_ip() recovery through fit_dd_tmb()", {

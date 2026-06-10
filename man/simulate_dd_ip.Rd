@@ -44,9 +44,10 @@ only). When \verb{> 0}, the \verb{(log k, log phi)} pair is drawn jointly from
 \item{rho_kphi}{Numeric in \verb{[-1, 1]}; correlation between subject random
 intercepts on \verb{log k} and \verb{log phi}. Ignored when \code{sigma_phi = 0}.}
 
-\item{attach_truth}{Logical; when \code{TRUE} and \code{sigma_phi > 0}, a \code{phi} column
-containing each observation's subject-specific precision is appended to the
-returned tibble. Default \code{FALSE}.}
+\item{attach_truth}{Logical; when \code{TRUE}, a \code{phi} column containing each
+observation's subject-specific precision is appended to the returned
+tibble. When \code{sigma_phi = 0} the column equals the constant \code{phi} for
+every observation. Default \code{FALSE}.}
 
 \item{family}{One of \code{"sltb"} (default) or \code{"gaussian"}.}
 
@@ -69,9 +70,9 @@ Required (non-\code{NULL}) when \code{n_conditions > 1}.}
 \value{
 A \link[tibble:tibble]{tibble} with columns \code{id} (factor),
 \code{condition} (factor; only when \code{n_conditions > 1}), \code{x} (delay), and
-\code{y} (indifference proportion in \verb{[0, 1]}). When \code{attach_truth = TRUE} and
-\code{sigma_phi > 0}, an additional \code{phi} column is appended with the
-subject-specific SLT-beta precision.
+\code{y} (indifference proportion in \verb{[0, 1]}). When \code{attach_truth = TRUE}, an
+additional \code{phi} column is appended with the subject-specific SLT-beta
+precision (equal to the constant \code{phi} when \code{sigma_phi = 0}).
 }
 \description{
 Generates long-format indifference-point data from the mixed-effects

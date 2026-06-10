@@ -12,6 +12,7 @@ fit_dd_tmb(
   equation = c("mazur", "exponential", "green-myerson", "rachlin"),
   family = c("sltb", "gaussian"),
   random_effects = k ~ 1,
+  covariance_structure = c("pdSymm", "pdDiag"),
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
@@ -37,7 +38,13 @@ reduce to \code{"mazur"} at \code{s = 1}.}
 
 \item{family}{Observation family: \code{"sltb"} (default) or \code{"gaussian"}.}
 
-\item{random_effects}{RE formula (MVP: \code{k ~ 1}).}
+\item{random_effects}{RE formula: \code{k ~ 1} (single random intercept on
+\verb{log k}) or \code{k + phi ~ 1} (a joint 2-D random intercept on
+\verb{(log k, log phi)}, SLT-beta only).}
+
+\item{covariance_structure}{Covariance for a 2-D random effect
+(\code{k + phi ~ 1}): \code{"pdSymm"} (default; correlated \verb{(log k, log phi)}) or
+\code{"pdDiag"} (independent, correlation fixed at 0). Ignored for \code{k ~ 1}.}
 
 \item{factors}{Character vector of between-subject factor names.}
 

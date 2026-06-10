@@ -10,7 +10,9 @@
   tmb_control,
   user_specified,
   verbose,
-  has_s = FALSE
+  has_s = FALSE,
+  n_re = 1L,
+  covariance = "pdSymm"
 )
 }
 \arguments{
@@ -23,6 +25,13 @@
 \item{user_specified}{Character vector of user-set \code{tmb_control} fields.}
 
 \item{verbose}{Integer verbosity level.}
+
+\item{has_s}{Logical; \code{TRUE} for the 2-parameter equations.}
+
+\item{n_re}{Number of random-effect intercepts (\code{1L} or \code{2L}). Defaults to
+\code{1L} so existing positional callers stay valid.}
+
+\item{covariance}{\code{"pdSymm"} or \code{"pdDiag"} (2-RE only).}
 }
 \value{
 A list with elements \code{obj}, \code{opt}, \code{nll}, \code{start_idx},

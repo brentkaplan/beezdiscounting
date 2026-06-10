@@ -578,6 +578,9 @@ NULL
   if (!identical(as.integer(n_re), 2L)) return(tmb_control)
   lo <- tmb_control$lower
   if (is.null(lo) || !("log_sd_re" %in% names(lo))) {
+    # Both log_sd_re entries must be equal: .expand_bounds recycles only the
+    # first matched value across all log_sd_re optimizer positions, so differing
+    # per-axis values would be silently dropped.
     tmb_control$lower <- c(lo, log_sd_re = .dd_re_log_sd_lower,
                            log_sd_re = .dd_re_log_sd_lower)
   }
@@ -906,16 +909,15 @@ NULL
   }
 
   # For a 2-RE fit, rebuild the fitted RE covariance from the reported sd_re/rho.
+  # Reuse the already-computed variance_components (the report summary) rather
+  # than calling summary(sdr, "report") a second time.
   Sigma <- NULL
-  if (n_re == 2L && !is.null(sdr)) {
-    rep_sum <- tryCatch(summary(sdr, "report"), error = function(e) NULL)
-    if (!is.null(rep_sum)) {
-      sd_re <- rep_sum[rownames(rep_sum) == "sd_re", "Estimate"]
-      rho   <- rep_sum[rownames(rep_sum) == "rho", "Estimate"][1]
-      Sigma <- matrix(c(sd_re[1]^2, rho * sd_re[1] * sd_re[2],
-                        rho * sd_re[1] * sd_re[2], sd_re[2]^2), 2L,
-                      dimnames = list(c("k", "phi"), c("k", "phi")))
-    }
+  if (n_re == 2L && !is.null(variance_components)) {
+    sd_re <- variance_components[rownames(variance_components) == "sd_re", "Estimate"]
+    rho   <- variance_components[rownames(variance_components) == "rho", "Estimate"][1]
+    Sigma <- matrix(c(sd_re[1]^2, rho * sd_re[1] * sd_re[2],
+                      rho * sd_re[1] * sd_re[2], sd_re[2]^2), 2L,
+                    dimnames = list(c("k", "phi"), c("k", "phi")))
   }
 
   # Rename the generic auxiliary scalar in both coefficients and se.

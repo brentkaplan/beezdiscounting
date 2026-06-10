@@ -2,7 +2,7 @@
 % Please edit documentation in R/dd-choice-methods.R
 \name{ranef.beezdiscounting_choice}
 \alias{ranef.beezdiscounting_choice}
-\title{Extract subject-level random effects from a structural choice model}
+\title{Extract subject-level random effects from a choice model}
 \usage{
 \method{ranef}{beezdiscounting_choice}(object, ...)
 }
@@ -12,10 +12,13 @@
 \item{...}{Unused.}
 }
 \value{
-Data frame with \code{id}, the standardized random-intercept deviate
-\code{u_i} (such that \verb{log k_i = X beta + sigma_u * u_i}), and the resolved
-per-subject discount rate \code{k}.
+Data frame: structural \code{id}/\code{u_i}/\code{k}; descriptive \code{id}/\code{b_mag}/
+\code{b_delay} (or id-only when pooled).
 }
 \description{
-Extract subject-level random effects from a structural choice model
+Structural: \code{id}, the standardized random-intercept deviate \code{u_i} (such that
+\verb{log k_i = X beta + sigma_u * u_i}), and the resolved per-subject discount
+rate \code{k}. Descriptive (Young 2018): \code{id} plus the per-subject magnitude and
+delay random slopes (\code{b_mag}, \code{b_delay}); pooled (\code{random_slopes = FALSE})
+returns an id-only frame.
 }

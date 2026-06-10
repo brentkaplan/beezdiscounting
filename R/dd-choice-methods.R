@@ -741,17 +741,29 @@ confint.beezdiscounting_choice <- function(object,
       paste0("theta", seq_len(sum(nms_d == "theta")))
     term_d <- nms_d
     term_d[nms_d == "theta"] <- labs_z
+    # Distinct labels for the two random-slope SD rows (Zre column order is
+    # always mag, delay), and a friendly name for the correlation row.
+    if (sum(nms_d == "log_sd_re") == 2L) {
+      term_d[nms_d == "log_sd_re"] <- paste0("log_sd_re[", c("mag", "delay"), "]")
+    }
+    term_d[nms_d == "cor_re"] <- "cor_slopes"
     if (!is.null(parm)) {
       keep   <- term_d %in% parm | nms_d %in% parm
-      co_d   <- co_d[keep]; se_d <- se_d[keep]; term_d <- term_d[keep]
+      co_d   <- co_d[keep]; se_d <- se_d[keep]
+      term_d <- term_d[keep]; nms_d <- nms_d[keep]
     }
-    z_d <- stats::qnorm((1 + level) / 2)
+    z_d  <- stats::qnorm((1 + level) / 2)
+    est  <- unname(co_d)
+    lo   <- unname(co_d - z_d * se_d)
+    hi   <- unname(co_d + z_d * se_d)
+    # cor_re is estimated on the unconstrained atanh scale; report the
+    # correlation (tanh) so the interval is interpretable and bounded in [-1, 1].
+    cpos <- which(nms_d == "cor_re")
+    if (length(cpos)) {
+      est[cpos] <- tanh(est[cpos]); lo[cpos] <- tanh(lo[cpos]); hi[cpos] <- tanh(hi[cpos])
+    }
     return(tibble::tibble(
-      term      = term_d,
-      estimate  = unname(co_d),
-      conf.low  = unname(co_d - z_d * se_d),
-      conf.high = unname(co_d + z_d * se_d),
-      level     = level))
+      term = term_d, estimate = est, conf.low = lo, conf.high = hi, level = level))
   }
 
   coefs  <- object$model$coefficients

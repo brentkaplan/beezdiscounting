@@ -88,6 +88,30 @@ describe("simulate_dd_ip()", {
   })
 })
 
+describe("simulate_dd_ip subject-random phi", {
+  it("is unchanged (no phi column) when sigma_phi = 0", {
+    a <- simulate_dd_ip(n_subjects = 5, seed = 1)
+    b <- simulate_dd_ip(n_subjects = 5, sigma_phi = 0, seed = 1)
+    expect_identical(a, b)
+    expect_false("phi" %in% names(a))
+  })
+
+  it("attaches a per-subject phi column when sigma_phi > 0", {
+    sim <- simulate_dd_ip(n_subjects = 8, sigma_phi = 0.5, rho_kphi = 0.3,
+                          seed = 1, attach_truth = TRUE)
+    expect_true(all(c("id", "x", "y", "phi") %in% names(sim)))
+    # phi constant within a subject, varies across subjects
+    by_id <- tapply(sim$phi, sim$id, function(v) length(unique(round(v, 10))))
+    expect_true(all(by_id == 1L))
+    expect_gt(length(unique(round(sim$phi, 6))), 1L)
+  })
+
+  it("errors on family = gaussian with sigma_phi > 0", {
+    expect_error(simulate_dd_ip(sigma_phi = 0.5, family = "gaussian"),
+      regexp = "sltb|gaussian|phi")
+  })
+})
+
 describe("simulate_dd_ip() recovery through fit_dd_tmb()", {
   it("recovers population k within 0.15 relative (sltb, mazur)", {
     skip_on_cran()

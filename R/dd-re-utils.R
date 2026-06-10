@@ -24,7 +24,8 @@
     if (!is.symbol(t)) {
       stop("The random-effects LHS must be bare symbol(s) (`k` or `k + phi`); ",
            "got `", deparse1(t), "`. Transforms of a parameter (e.g. `log(k)`) ",
-           "and random slopes are out of scope.", call. = FALSE)
+           "must be a bare symbol. Subject-random `s`/`gamma`, transforms, and ",
+           "random slopes are a fast-follow.", call. = FALSE)
     }
     as.character(t)
   }, character(1))
@@ -91,8 +92,10 @@
          call. = FALSE)
   }
 
-  dim <- length(params)
-  pdmat_class <- if (dim == 1L) "pdDiag" else covariance_structure
+  n_params <- length(params)
+  pdmat_class <- if (n_params == 1L) "pdDiag" else covariance_structure
+
+  canon_formula <- stats::as.formula(paste(paste(params, collapse = " + "), "~ 1"))
 
   list(
     source = "formula",
@@ -100,8 +103,8 @@
       param       = params,
       terms       = "(Intercept)",
       pdmat_class = pdmat_class,
-      formula     = random_effects,
-      dim         = dim
+      formula     = canon_formula,
+      dim         = n_params
     ))
   )
 }

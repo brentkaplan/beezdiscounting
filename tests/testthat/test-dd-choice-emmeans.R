@@ -34,3 +34,30 @@ describe("get_dd_param_emms / get_dd_comparisons on a structural choice fit", {
     }
   })
 })
+
+describe("emmeans with descriptive params present in the template", {
+  it("structural choice still routes beta_k through get_dd_param_emms (factor)", {
+    skip_on_cran(); skip_if_not_installed("TMB"); skip_if_not_installed("emmeans")
+    dat <- .choice_fit_fixture(n_subjects = 40, seed = 51)
+    dat$grp <- factor(rep(c("a", "b"), length.out = nrow(dat)))
+    fit <- fit_dd_choice(dat, mode = "structural", equation = "mazur",
+                         factors = "grp", verbose = 0)
+    expect_equal(which(names(fit$opt$par) == "beta_k")[1], 1L)  # beta_k first
+    emm <- get_dd_param_emms(fit, factors_in_emm = "grp")
+    expect_gte(nrow(as.data.frame(emm)), 2L)
+    expect_true(all(c("k", "k_log") %in% names(as.data.frame(emm))))
+  })
+  it("descriptive fits are rejected by get_dd_param_emms with a clear message", {
+    skip_on_cran(); skip_if_not_installed("TMB")
+    dat <- .choice_desc_fixture(n_subjects = 40, seed = 52)
+    fit <- fit_dd_choice(dat, mode = "descriptive", verbose = 0)
+    expect_error(get_dd_param_emms(fit),
+                 regexp = "descriptive|not available|VarCorr|ranef")
+  })
+  it("get_dd_comparisons also rejects descriptive fits", {
+    skip_on_cran(); skip_if_not_installed("TMB")
+    dat <- .choice_desc_fixture(n_subjects = 40, seed = 53)
+    fit <- fit_dd_choice(dat, mode = "descriptive", verbose = 0)
+    expect_error(get_dd_comparisons(fit), regexp = "descriptive|not available|VarCorr|ranef")
+  })
+})

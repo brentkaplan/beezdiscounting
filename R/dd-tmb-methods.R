@@ -479,7 +479,7 @@ predict.beezdiscounting_tmb <- function(object,
   # sltb: delta-method SD with the SLT-beta scale constant s_slt ~ 1 (fixed at 1
   # in the MVP), NOT the discounting exponent. The SLT variance is
   # s_slt^2 * mu*(1-mu)/(phi+1), so SD = s_slt * sqrt(mu*(1-mu)/(phi+1)).
-  s_slt <- 1.0000001
+  s_slt <- 1
   if (object$param_info$n_random_effects == 2L && !is.null(ids)) {
     phi_by_id <- stats::setNames(object$subject_pars$phi,
                                  as.character(object$subject_pars$id))

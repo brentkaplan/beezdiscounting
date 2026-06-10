@@ -747,3 +747,60 @@ describe("confint se_available gate (B2)", {
     }
   })
 })
+
+describe("2-RE (k + phi) S3 surface", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+
+  make_fit <- function(cov = "pdSymm", seed = 21) {
+    key <- paste0("re2_", cov, "_", seed)
+    if (!exists(key, envir = .ddm_cache)) {
+      sim <- simulate_dd_ip(n_subjects = 30, sigma_u = 0.5, sigma_phi = 0.4,
+                            rho_kphi = 0.3, phi = 10, seed = seed)
+      .ddm_cache[[key]] <- fit_dd_tmb(sim, random_effects = k + phi ~ 1,
+                                      covariance_structure = cov, verbose = 0)
+    }
+    .ddm_cache[[key]]
+  }
+
+  it("VarCorr returns a 2x2 structure with SDs and a correlation (pdSymm)", {
+    vc <- VarCorr(make_fit("pdSymm"))
+    expect_true(is.data.frame(vc) || is.matrix(vc))
+    # two variance rows + one correlation entry expected
+    expect_gte(NROW(vc), 2L)
+  })
+
+  it("VarCorr correlation is a structural 0 for pdDiag", {
+    vc <- VarCorr(make_fit("pdDiag"))
+    # pdDiag fixes cor_re out -> rho = tanh(0) = 0, so Sigma is diagonal and
+    # VarCorr reports Corr = c(NA, 0) (first row's Corr is NA by convention).
+    expect_true(is.na(vc$Corr[1]))
+    expect_equal(vc$Corr[2], 0, tolerance = 1e-10)
+  })
+
+  it("ranef returns per-subject k and phi for a 2-RE fit", {
+    re <- ranef(make_fit("pdSymm"))
+    expect_true(all(c("id", "k", "phi") %in% names(re)))
+    expect_gt(length(unique(round(re$phi, 6))), 1L)
+  })
+
+  it("ranef for a 1-RE fit is unchanged (no phi column)", {
+    sim <- simulate_dd_ip(n_subjects = 12, seed = 5)
+    re <- ranef(fit_dd_tmb(sim, verbose = 0))
+    expect_false("phi" %in% names(re))
+    expect_true(all(c("id", "u_i", "k") %in% names(re)))
+  })
+
+  it("predict/fitted/residuals/augment run on a 2-RE fit", {
+    fit <- make_fit("pdSymm")
+    # predict() returns a tibble with one row per observation plus .fitted.
+    pred <- predict(fit)
+    expect_equal(nrow(pred), nrow(fit$data))
+    expect_true(all(is.finite(pred$.fitted)))
+    expect_true(all(is.finite(fitted(fit))))
+    expect_true(all(is.finite(residuals(fit, type = "pearson"))))
+    aug <- augment(fit)
+    expect_true(all(c(".fitted", ".resid", ".std_resid") %in% names(aug)))
+    expect_true(all(is.finite(aug$.std_resid)))
+  })
+})

@@ -4,12 +4,17 @@
 \alias{.dd_tmb_response_sd}
 \title{Per-row response SD on the \verb{[0,1]} scale for standardized residuals}
 \usage{
-.dd_tmb_response_sd(object, mu)
+.dd_tmb_response_sd(object, mu, ids = NULL)
 }
 \arguments{
 \item{object}{A \code{beezdiscounting_tmb} fit.}
 
 \item{mu}{Numeric vector of fitted mu values (from \code{.dd_discount_mu}).}
+
+\item{ids}{Optional per-row subject ids (length \code{mu}). For a 2-RE SLT fit at
+the subject level, supplying \code{ids} uses each subject's \code{phi_i} so the SD is
+subject-conditional; \code{NULL} (population level, or any 1-RE fit) uses the
+population precision \code{exp(log_phi)}.}
 }
 \value{
 Numeric vector of per-row response SDs, same length as \code{mu}.

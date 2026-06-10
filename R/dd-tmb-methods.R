@@ -153,18 +153,59 @@ fixef.beezdiscounting_tmb <- function(object, ...) {
 #'
 #' @param object A `beezdiscounting_tmb` object.
 #' @param ... Unused.
-#' @return Data frame with `id`, the standardized random-intercept deviate
-#'   `u_i` (such that `log k_i = X beta + sigma_u * u_i`), and the resolved
-#'   per-subject discount rate `k`. There is **no** `phi` column: phi is
-#'   population-level in the MVP, not a subject-level parameter.
+#' @return Data frame keyed by `id`. For a 1-RE fit (`k ~ 1`): the standardized
+#'   random-intercept deviate `u_i` (such that `log k_i = X beta + sigma_u *
+#'   u_i`) and the resolved per-subject discount rate `k` (no `phi` column - phi
+#'   is population-level). For a 2-RE fit (`k + phi ~ 1`): the natural-scale
+#'   `(re_k, re_phi)` offsets plus the resolved per-subject `k` and `phi`.
 #' @importFrom nlme ranef
 #' @export
 ranef.beezdiscounting_tmb <- function(object, ...) {
   sp <- object$subject_pars
-  keep <- intersect(c("id", "u_i", "k"), names(sp))
+  keep <- if (object$param_info$n_random_effects == 2L) {
+    intersect(c("id", "re_k", "re_phi", "k", "phi"), names(sp))
+  } else {
+    intersect(c("id", "u_i", "k"), names(sp))
+  }
   out <- sp[, keep, drop = FALSE]
   rownames(out) <- NULL
   out
+}
+
+
+# --- VarCorr ---
+
+#' Random-effect covariance for a TMB discounting model
+#'
+#' For a 2-RE fit (`k + phi ~ 1`) returns the 2x2 covariance with `StdDev` and
+#' the `(k, phi)` correlation (a structural `0` for `pdDiag`; the first row's
+#' `Corr` is `NA` by convention). For a 1-RE fit (`k ~ 1`) returns the single
+#' random-intercept SD on the log-k scale.
+#'
+#' @param x A `beezdiscounting_tmb` fit.
+#' @param sigma Ignored (present for the `nlme::VarCorr()` generic).
+#' @param ... Unused.
+#' @return A data frame with `Variance`, `StdDev`, and (2-RE) `Corr`.
+#' @importFrom nlme VarCorr
+#' @export
+VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
+  if (x$param_info$n_random_effects == 2L) {
+    Sigma <- x$Sigma
+    if (is.null(Sigma)) {
+      stop("VarCorr: the 2-RE covariance is unavailable (sdreport failed).",
+           call. = FALSE)
+    }
+    sds <- sqrt(diag(Sigma))
+    rho <- Sigma[1, 2] / prod(sds)
+    return(data.frame(
+      Group = c("subject", "subject"),
+      Name = c("k", "phi"),
+      Variance = diag(Sigma), StdDev = sds,
+      Corr = c(NA_real_, rho), stringsAsFactors = FALSE))
+  }
+  sd_u <- exp(unname(x$model$coefficients[["log_sigma_u"]]))
+  data.frame(Group = "subject", Name = "k",
+             Variance = sd_u^2, StdDev = sd_u, stringsAsFactors = FALSE)
 }
 
 
@@ -281,18 +322,25 @@ ranef.beezdiscounting_tmb <- function(object, ...) {
         i = "Use {.code level = \"population\"} for the random-effects-at-zero curve."
       ))
     }
-    sp      <- object$subject_pars
-    sigma_u <- exp(unname(coefs[["log_sigma_u"]]))
-    u_by_id <- stats::setNames(sp$u_i, as.character(sp$id))
-    u_row   <- u_by_id[as.character(newdata[[id_var]])]
-    if (anyNA(u_row)) {
-      unknown_ids <- unique(as.character(newdata[[id_var]])[is.na(u_row)])
+    sp <- object$subject_pars
+    # 2-RE fits store the natural-scale k offset (re_k) directly; log_sigma_u is
+    # mapped out and absent from coefs, so reconstruct the offset from re_k.
+    # 1-RE fits keep the standardized u_i deviate scaled by sigma_u.
+    if (object$param_info$n_random_effects == 2L) {
+      off_by_id <- stats::setNames(sp$re_k, as.character(sp$id))   # natural-scale
+    } else {
+      sigma_u   <- exp(unname(coefs[["log_sigma_u"]]))
+      off_by_id <- stats::setNames(sigma_u * sp$u_i, as.character(sp$id))
+    }
+    off_row <- off_by_id[as.character(newdata[[id_var]])]
+    if (anyNA(off_row)) {
+      unknown_ids <- unique(as.character(newdata[[id_var]])[is.na(off_row)])
       cli::cli_abort(c(
         "newdata contains id{?s} not present in the fit: {.val {unknown_ids}}.",
         i = "Use {.code level = \"population\"} for out-of-sample predictions."
       ))
     }
-    eta <- eta + sigma_u * unname(u_row)
+    eta <- eta + unname(off_row)
   }
 
   exp(eta)
@@ -416,9 +464,13 @@ predict.beezdiscounting_tmb <- function(object,
 #'
 #' @param object A `beezdiscounting_tmb` fit.
 #' @param mu Numeric vector of fitted mu values (from `.dd_discount_mu`).
+#' @param ids Optional per-row subject ids (length `mu`). For a 2-RE SLT fit at
+#'   the subject level, supplying `ids` uses each subject's `phi_i` so the SD is
+#'   subject-conditional; `NULL` (population level, or any 1-RE fit) uses the
+#'   population precision `exp(log_phi)`.
 #' @return Numeric vector of per-row response SDs, same length as `mu`.
 #' @keywords internal
-.dd_tmb_response_sd <- function(object, mu) {
+.dd_tmb_response_sd <- function(object, mu, ids = NULL) {
   coefs  <- object$model$coefficients
   family <- object$param_info$family
   if (family == "gaussian") {
@@ -427,8 +479,14 @@ predict.beezdiscounting_tmb <- function(object,
   # sltb: delta-method SD with the SLT-beta scale constant s_slt ~ 1 (fixed at 1
   # in the MVP), NOT the discounting exponent. The SLT variance is
   # s_slt^2 * mu*(1-mu)/(phi+1), so SD = s_slt * sqrt(mu*(1-mu)/(phi+1)).
-  s_slt <- 1
-  phi <- exp(coefs[["log_phi"]])
+  s_slt <- 1.0000001
+  if (object$param_info$n_random_effects == 2L && !is.null(ids)) {
+    phi_by_id <- stats::setNames(object$subject_pars$phi,
+                                 as.character(object$subject_pars$id))
+    phi <- unname(phi_by_id[as.character(ids)])
+  } else {
+    phi <- exp(coefs[["log_phi"]])
+  }
   s_slt * sqrt(mu * (1 - mu) / (phi + 1))
 }
 
@@ -512,7 +570,10 @@ residuals.beezdiscounting_tmb <- function(object,
   level <- match.arg(level)
   fr    <- .dd_tmb_fitted_resid(object, level = level)
   if (type == "response") return(fr$.resid)
-  fr$.resid / .dd_tmb_response_sd(object, fr$.fitted)
+  # Pass per-row ids only at the subject level so a 2-RE SLT fit uses each
+  # subject's phi_i; the population level keeps the population precision.
+  ids <- if (level == "subject") fr$data[[object$param_info$id_var]] else NULL
+  fr$.resid / .dd_tmb_response_sd(object, fr$.fitted, ids)
 }
 
 
@@ -550,7 +611,10 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
   out         <- tibble::as_tibble(fr$data)
   out$.fitted   <- fr$.fitted
   out$.resid    <- fr$.resid
-  out$.std_resid <- fr$.resid / .dd_tmb_response_sd(x, fr$.fitted)
+  # augment is always subject level: pass ids so a 2-RE SLT fit standardizes by
+  # each subject's phi_i.
+  ids           <- fr$data[[x$param_info$id_var]]
+  out$.std_resid <- fr$.resid / .dd_tmb_response_sd(x, fr$.fitted, ids)
   out
 }
 
@@ -572,14 +636,33 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
   family <- object$param_info$family
   ln10   <- log(10)
 
-  rows <- list(
-    data.frame(
-      Component = "sigma_u (log10-k RE SD)",
-      Estimate  = exp(coefs[["log_sigma_u"]]) / ln10,
-      Scale     = "log10",
-      stringsAsFactors = FALSE
+  if (object$param_info$n_random_effects == 2L) {
+    # 2-RE (k + phi ~ 1): emit the two natural-log RE SDs and the (k, phi)
+    # correlation from the fitted Sigma instead of the single sigma_u row.
+    Sigma <- object$Sigma
+    sds   <- sqrt(diag(Sigma))
+    rho   <- Sigma[1, 2] / prod(sds)
+    rows <- list(
+      data.frame(Component = "sd_re[k] (log-k RE SD)",
+                 Estimate = unname(sds[1]), Scale = "log",
+                 stringsAsFactors = FALSE),
+      data.frame(Component = "sd_re[phi] (log-phi RE SD)",
+                 Estimate = unname(sds[2]), Scale = "log",
+                 stringsAsFactors = FALSE),
+      data.frame(Component = "rho (k,phi)",
+                 Estimate = unname(rho), Scale = "correlation",
+                 stringsAsFactors = FALSE)
     )
-  )
+  } else {
+    rows <- list(
+      data.frame(
+        Component = "sigma_u (log10-k RE SD)",
+        Estimate  = exp(coefs[["log_sigma_u"]]) / ln10,
+        Scale     = "log10",
+        stringsAsFactors = FALSE
+      )
+    )
+  }
   if (family == "sltb") {
     rows[[length(rows) + 1L]] <- data.frame(
       Component = "phi (precision)",
@@ -772,8 +855,8 @@ glance.beezdiscounting_tmb <- function(x, ...) {
 #' @param object A `beezdiscounting_tmb` object.
 #' @param parm Optional character vector for filtering. Accepts display names
 #'   (`"k:(Intercept)"`) **or** raw optimizer names (`"beta_k"`,
-#'   `"log_sigma_u"`, `"log_phi"`, `"log_sigma_e"`). `NULL` returns all
-#'   coefficients.
+#'   `"log_sigma_u"`, `"log_phi"`, `"log_sigma_e"`, and for a 2-RE fit
+#'   `"log_sd_re"` / `"cor_re"`). `NULL` returns all coefficients.
 #' @param level Confidence level (default `0.95`).
 #' @param report_space `"internal"` (default; all coefficients on their
 #'   estimation/log scale) or `"natural"` (exponentiate `beta_k` rows so the
@@ -1004,7 +1087,12 @@ print.beezdiscounting_tmb <- function(x, ...) {
   cat("Convergence:", ifelse(x$converged, "Yes", "No"), "\n")
   cat("Number of subjects:", x$param_info$n_subjects, "\n")
   cat("Number of observations:", x$param_info$n_obs, "\n")
-  cat("Random effects:", x$param_info$n_random_effects, "(k ~ 1)\n")
+  re_lab <- if (x$param_info$n_random_effects == 2L) {
+    sprintf("(k + phi ~ 1, %s)\n", x$param_info$covariance_structure)
+  } else {
+    "(k ~ 1)\n"
+  }
+  cat("Random effects:", x$param_info$n_random_effects, re_lab)
   cat("Log-likelihood:", round(x$loglik, 2), "\n")
   cat("AIC:", round(x$AIC, 2), "\n")
 

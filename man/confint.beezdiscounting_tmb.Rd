@@ -17,8 +17,8 @@
 
 \item{parm}{Optional character vector for filtering. Accepts display names
 (\code{"k:(Intercept)"}) \strong{or} raw optimizer names (\code{"beta_k"},
-\code{"log_sigma_u"}, \code{"log_phi"}, \code{"log_sigma_e"}). \code{NULL} returns all
-coefficients.}
+\code{"log_sigma_u"}, \code{"log_phi"}, \code{"log_sigma_e"}, and for a 2-RE fit
+\code{"log_sd_re"} / \code{"cor_re"}). \code{NULL} returns all coefficients.}
 
 \item{level}{Confidence level (default \code{0.95}).}
 

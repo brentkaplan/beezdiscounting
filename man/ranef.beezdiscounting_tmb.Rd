@@ -12,10 +12,10 @@
 \item{...}{Unused.}
 }
 \value{
-Data frame with \code{id}, the standardized random-intercept deviate
-\code{u_i} (such that \verb{log k_i = X beta + sigma_u * u_i}), and the resolved
-per-subject discount rate \code{k}. There is \strong{no} \code{phi} column: phi is
-population-level in the MVP, not a subject-level parameter.
+Data frame keyed by \code{id}. For a 1-RE fit (\code{k ~ 1}): the standardized
+random-intercept deviate \code{u_i} (such that \verb{log k_i = X beta + sigma_u * u_i}) and the resolved per-subject discount rate \code{k} (no \code{phi} column - phi
+is population-level). For a 2-RE fit (\code{k + phi ~ 1}): the natural-scale
+\verb{(re_k, re_phi)} offsets plus the resolved per-subject \code{k} and \code{phi}.
 }
 \description{
 Extract subject-level random effects from a TMB discounting model

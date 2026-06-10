@@ -38,6 +38,12 @@ A tibble with columns \code{term}, \code{estimate}, \code{conf.low}, \code{conf.
 Wald (Hessian-based) confidence intervals: \verb{estimate +/- z * se} on the
 internal (log-k) scale, then back-transformed to \code{report_space}.
 }
+\note{
+For a 2-RE fit the \code{cor_re} and \code{log_sd_re} rows are reported on their
+internal (atanh / log) scales and are NOT back-transformed by
+\code{report_space = "natural"} (only \code{beta_k}/\code{log_s} rows are); use
+\code{VarCorr()} to obtain the correlation and natural-log SDs.
+}
 \examples{
 \donttest{
 dd <- simulate_dd_ip(n_subjects = 20, seed = 1)

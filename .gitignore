@@ -31,3 +31,7 @@ docs/
 # Dev working notes — specs, plans, handoffs, audits (kept local, untracked) #
 ###########
 dev/notes/
+src/*.o
+src/*.so
+src/*.dll
+revdep/

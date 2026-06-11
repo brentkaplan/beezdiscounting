@@ -85,7 +85,7 @@ follows Young (2018): it regresses binary choice on
 \code{random_slopes = TRUE} (default) each subject receives correlated random
 slopes on these two predictors; the primary inferential targets are the
 random-effect covariance (via \code{\link[nlme:VarCorr]{nlme::VarCorr()}}) and per-subject slopes
-(via \code{\link[nlme:ranef]{nlme::ranef()}}), not emmeans.
+(via \code{\link[nlme:random.effects]{nlme::ranef()}}), not emmeans.
 }
 \examples{
 \donttest{
@@ -103,7 +103,7 @@ nlme::VarCorr(fit_d)
 }
 \seealso{
 \code{\link[=simulate_dd_choice]{simulate_dd_choice()}} for data generation; \code{\link[nlme:VarCorr]{nlme::VarCorr()}} and
-\code{\link[nlme:ranef]{nlme::ranef()}} for descriptive-mode random-effect output;
+\code{\link[nlme:random.effects]{nlme::ranef()}} for descriptive-mode random-effect output;
 \code{\link[=get_dd_param_emms]{get_dd_param_emms()}} and \code{\link[=get_dd_comparisons]{get_dd_comparisons()}} for structural-mode
 emmeans.
 }

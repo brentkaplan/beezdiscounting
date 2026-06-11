@@ -49,6 +49,7 @@ reference:
     contents:
       - fit_dd_tmb
       - simulate_dd_ip
+      - VarCorr.beezdiscounting_tmb
 
   - title: Choice-based discounting (TMB)
     desc: >
@@ -59,6 +60,14 @@ reference:
       - fit_dd_choice
       - simulate_dd_choice
       - VarCorr.beezdiscounting_choice
+
+  - title: Bayesian discounting (brms)
+    desc: >
+      Default priors for the Bayesian (brms/Stan) tier of the discounting
+      models; the fitters land with the remainder of the tier.
+    contents:
+      - default_dd_priors
+      - default_dd_choice_priors
 
   - title: Estimated marginal means & comparisons
     desc: >

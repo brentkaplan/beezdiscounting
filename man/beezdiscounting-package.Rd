@@ -22,10 +22,5 @@ Useful links:
 \author{
 \strong{Maintainer}: Brent A. Kaplan \email{bkaplan.ku@gmail.com} (\href{https://orcid.org/0000-0002-3758-6776}{ORCID}) [copyright holder]
 
-Authors:
-\itemize{
-  \item Brent A. Kaplan \email{bkaplan.ku@gmail.com} (\href{https://orcid.org/0000-0002-3758-6776}{ORCID}) [copyright holder]
-}
-
 }
 \keyword{internal}

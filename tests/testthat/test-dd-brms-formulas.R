@@ -38,7 +38,7 @@ test_that("mazur beta formula carries the sltb-analog squish and identity link",
   expect_s3_class(spec$formula, "brmsformula")
   expect_identical(
     squish(mu_formula(spec)),
-    "y~1e-06+(1-2e-06)*(1/(1+exp(logk)*x))"
+    "y~1/(10^6)+(1-2/(10^6))*(1/(1+exp(logk)*x))"
   )
   expect_identical(spec$family$family, "beta")
   expect_identical(spec$family$link, "identity")
@@ -50,13 +50,13 @@ test_that("exponential / green-myerson / rachlin mu kernels match TMB", {
   sp_exp <- beezdiscounting:::.dd_brms_formula(equation = "exponential", family = "beta")
   expect_identical(
     squish(mu_formula(sp_exp)),
-    "y~1e-06+(1-2e-06)*(exp(-exp(logk)*x))"
+    "y~1/(10^6)+(1-2/(10^6))*(exp(-exp(logk)*x))"
   )
 
   sp_gm <- beezdiscounting:::.dd_brms_formula(equation = "green-myerson", family = "beta")
   expect_identical(
     squish(mu_formula(sp_gm)),
-    "y~1e-06+(1-2e-06)*((1+exp(logk)*x)^(-exp(logs)))"
+    "y~1/(10^6)+(1-2/(10^6))*((1+exp(logk)*x)^(-exp(logs)))"
   )
   expect_setequal(sp_gm$nlpars, c("logk", "logs"))
   expect_true(sp_gm$has_s)
@@ -65,7 +65,7 @@ test_that("exponential / green-myerson / rachlin mu kernels match TMB", {
   sp_ra <- beezdiscounting:::.dd_brms_formula(equation = "rachlin", family = "beta")
   expect_identical(
     squish(mu_formula(sp_ra)),
-    "y~1e-06+(1-2e-06)*(xzero+(1-xzero)/(1+exp(logk)*xsafe^exp(logs)))"
+    "y~1/(10^6)+(1-2/(10^6))*(xzero+(1-xzero)/(1+exp(logk)*xsafe^exp(logs)))"
   )
   expect_setequal(sp_ra$derived_cols, c("xzero", "xsafe"))
 })

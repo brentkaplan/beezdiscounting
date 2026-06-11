@@ -1,0 +1,37 @@
+# Generate the brmsfit fixture for the dd brms method tests ------------------
+# Run from the package root (outside renv if devtools is not in the project
+# library):  Rscript data-raw/make-dd-brms-fixtures.R
+
+devtools::load_all(".", quiet = TRUE)
+
+fixture_dir <- file.path("tests", "testthat", "fixtures", "brms")
+dir.create(fixture_dir, recursive = TRUE, showWarnings = FALSE)
+
+set.seed(31)
+delays <- c(1, 7, 30, 90, 180, 365)
+d <- expand.grid(id = factor(1:6), x = delays)
+k_i <- exp(log(0.02) + rnorm(6, 0, 0.4))
+mu <- 1 / (1 + k_i[d$id] * d$x)
+d$y <- pmin(pmax(mu + rnorm(nrow(d), 0, 0.05), 0), 1)
+
+message("Fitting mazur/beta fixture...")
+fit <- fit_dd_brms(
+  d,
+  equation = "mazur", family = "beta",
+  chains = 2, iter = 500, warmup = 250,
+  cores = 2, seed = 42,
+  loo = TRUE, verbose = 1
+)
+saveRDS(fit, file.path(fixture_dir, "fit-mazur-beta.rds"), compress = "xz")
+
+saveRDS(
+  list(
+    brms_version = as.character(packageVersion("brms")),
+    created = format(Sys.Date())
+  ),
+  file.path(fixture_dir, "fixture-meta.rds")
+)
+message(sprintf(
+  "fixture size: %.2f MB",
+  file.size(file.path(fixture_dir, "fit-mazur-beta.rds")) / 1e6
+))

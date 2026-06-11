@@ -51,7 +51,7 @@
           }
           for (n in 1:N) {
             // compute non-linear predictor values
-            mu[n] = (1e - 06 + (1 - 2e - 06) * (1 / (1 + exp(nlp_logk[n]) * C_1[n])));
+            mu[n] = (1 / (10 ^ 6) + (1 - 2 / (10 ^ 6)) * (1 / (1 + exp(nlp_logk[n]) * C_1[n])));
           }
           target += beta_lpdf(Y | mu * phi, (1 - mu) * phi);
         }

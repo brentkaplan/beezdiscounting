@@ -27,8 +27,13 @@
 #' `(1e-6, 1 - 1e-6)` -- the differentiable analog of the TMB sltb clamp --
 #' and brms's `Beta(link = "identity")` is used (mu is naturally in (0,1)
 #' for k > 0, so the identity link has no rejection region). For
-#' `family = "gaussian"` the raw mean function gives exact likelihood
-#' parity with `fit_dd_tmb(family = "gaussian")`. The Rachlin equation
+#' `family = "gaussian"` the raw mean function matches
+#' `fit_dd_tmb(family = "gaussian")` wherever the TMB template's mu clamp
+#' into `[1e-6, 1 - 1e-6]` does not bind -- i.e. everywhere except extreme
+#' decay underflow (`mu` below 1e-6, e.g. `k * delay > ~14` for the
+#' exponential equation); the brms mean is left unclamped because a hard
+#' clamp is not differentiably expressible in the shared R/Stan formula
+#' language. The Rachlin equation
 #' guards `pow(0, s)` (zero delays are allowed by `.dd_validate_ip()`)
 #' via precomputed `xzero`/`xsafe` data columns, mirroring the TMB
 #' CondExpGt guard.
@@ -92,13 +97,19 @@
     fam <- brms::brmsfamily("gaussian", link = "identity")
   }
 
+  # build_fixed_rhs() returns a formula here; deparse before string assembly
+  # (sub() on a formula coerces to a length-2 character and triggers the
+  # deprecated formula.character path downstream).
   rhs <- build_fixed_rhs(
     factors = factors,
     factor_interaction = factor_interaction,
     continuous_covariates = continuous_covariates,
     data = data
   )
-  rhs_core <- sub("^~\\s*", "", rhs)
+  rhs_core <- sub(
+    "^~\\s*", "",
+    paste(deparse(stats::as.formula(rhs), width.cutoff = 500), collapse = " ")
+  )
   pforms <- list(stats::as.formula(paste0("logk ~ ", rhs_core, " + (1 | id)")))
   if (has_s) {
     pforms <- c(pforms, list(stats::as.formula("logs ~ 1")))

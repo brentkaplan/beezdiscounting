@@ -100,8 +100,9 @@ transform \verb{y* = (y (N - 1) + 0.5) / N} to all responses (message reports
 the boundary count); \code{"zoib"} switches to \code{zero_one_inflated_beta}
 (statistically more honest but changes the estimand -- k then describes
 interior responses only); \code{"error"} refuses to fit.
-\code{family = "gaussian"} gives exact likelihood parity with
-\code{fit_dd_tmb(family = "gaussian")}.
+\code{family = "gaussian"} matches \code{fit_dd_tmb(family = "gaussian")}
+wherever the TMB template's mu clamp into \verb{[1e-6, 1 - 1e-6]} does not
+bind (everywhere except extreme decay underflow).
 }
 \seealso{
 \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}; \code{\link[=default_dd_priors]{default_dd_priors()}}.

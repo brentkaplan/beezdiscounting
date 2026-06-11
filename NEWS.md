@@ -6,7 +6,9 @@
   all four TMB equations (`"mazur"`, `"exponential"`, `"green-myerson"`,
   `"rachlin"`). `family = "beta"` (identity link with a differentiable
   squish) is the closest brms analog of the TMB SLT-beta;
-  `family = "gaussian"` is exact likelihood parity. Boundary responses are
+  `family = "gaussian"` matches the TMB gaussian likelihood wherever
+  the TMB mu clamp does not bind (everywhere except extreme decay
+  underflow). Boundary responses are
   handled via Smithson-Verkuilen squeezing (default), zero-one-inflated
   beta (`boundary = "zoib"`; changes the estimand), or refusal.
 * New `fit_dd_choice_brms()`: the structural trial-level choice model under

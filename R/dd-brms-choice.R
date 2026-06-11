@@ -76,13 +76,8 @@ fit_dd_choice_brms <- function(
     id_var = id_var, ss_var = ss_var, ll_var = ll_var,
     delay_var = delay_var, choice_var = choice_var
   )
-  d <- validated$data
-  d <- d[
-    stats::complete.cases(
-      d[, c("id", "ss_amount", "ll_amount", "delay", "choice")]
-    ), ,
-    drop = FALSE
-  ]
+  prepared <- .dd_choice_prepare_data(validated$data)
+  d <- prepared$data
   d$rel <- d$ll_amount / d$ss_amount
   d$id <- droplevels(as.factor(d$id))
 
@@ -277,13 +272,19 @@ fit_dd_choice_brms <- function(
 # --- methods -------------------------------------------------------------------------
 
 #' Coefficient table for the choice model (draws-based)
+#'
+#' Mirrors `tidy.beezdiscounting_choice()`: the log-k coefficient is the
+#' `"fixed"` row; `gamma` (choice sensitivity) and `beta0` (choice bias)
+#' are `"shape"` rows; `beta0` is on the identity (logit-intercept) scale
+#' and is NEVER transformed across report spaces.
 #' @noRd
 .dd_brms_choice_coef_table <- function(object, report_space = "natural") {
   report_space <- match.arg(report_space, c("natural", "log10", "internal", "log"))
   to <- if (report_space == "internal") "log" else report_space
   draws <- .dd_brms_draws_matrix(object)
 
-  row_for <- function(var, term, transform, scale_label, component) {
+  row_for <- function(var, term, transform, scale_label, component,
+                      display = NULL) {
     dj <- as.numeric(draws[, var])
     tdraws <- if (transform) .dd_brms_transform_draws(dj, to = to) else dj
     tibble::tibble(
@@ -294,20 +295,94 @@ fit_dd_choice_brms <- function(
       p.value = NA_real_,
       component = component,
       estimate_scale = if (transform) to else scale_label,
-      term_display = if (transform) .dd_term_display_space(term, to) else term
+      term_display = if (!is.null(display)) {
+        display
+      } else if (transform) {
+        .dd_term_display_space(term, to)
+      } else {
+        term
+      }
     )
   }
 
+  g_disp <- switch(to,
+    natural = "gamma",
+    log10 = "log10(gamma)",
+    log = "log(gamma)"
+  )
   rows <- list(
     row_for("b_logk_Intercept", "k:(Intercept)", TRUE, NULL, "fixed"),
-    row_for("b_loggamma_Intercept", "gamma", TRUE, NULL, "fixed")
+    row_for("b_loggamma_Intercept", "gamma", TRUE, NULL, "shape",
+      display = g_disp
+    )
   )
   if (isTRUE(object$param_info$intercept)) {
     rows <- c(rows, list(
-      row_for("b_b0_Intercept", "beta0", FALSE, "logit", "fixed")
+      row_for("b_b0_Intercept", "beta0", FALSE, "identity", "shape")
     ))
   }
   dplyr::bind_rows(rows)
+}
+
+#' Credible intervals for a beezdiscounting_choice_brms model
+#'
+#' Quantile credible intervals on the report-space-transformed draws;
+#' columns `term`, `estimate`, `conf.low`, `conf.high`, `level`. `beta0`
+#' stays on the identity scale across report spaces, matching
+#' `tidy.beezdiscounting_choice()`.
+#'
+#' @param object A `beezdiscounting_choice_brms` object.
+#' @param parm Optional terms: display names (`"k:(Intercept)"`, `"gamma"`,
+#'   `"beta0"`) or TMB coefficient names (`"beta_k"`, `"log_gamma"`).
+#' @param level Credible level (default 0.95).
+#' @param report_space Reporting scale.
+#' @param ... Unused.
+#' @return A tibble.
+#' @export
+confint.beezdiscounting_choice_brms <- function(
+  object,
+  parm = NULL,
+  level = 0.95,
+  report_space = c("natural", "log10", "internal", "log"),
+  ...
+) {
+  report_space <- match.arg(report_space)
+  to <- if (report_space == "internal") "log" else report_space
+  alpha2 <- (1 - level) / 2
+  draws <- .dd_brms_draws_matrix(object)
+
+  specs <- list(
+    list(var = "b_logk_Intercept", term = "k:(Intercept)",
+      tmb = "beta_k", transform = TRUE),
+    list(var = "b_loggamma_Intercept", term = "gamma",
+      tmb = "log_gamma", transform = TRUE)
+  )
+  if (isTRUE(object$param_info$intercept)) {
+    specs <- c(specs, list(
+      list(var = "b_b0_Intercept", term = "beta0",
+        tmb = "beta0", transform = FALSE)
+    ))
+  }
+
+  rows <- lapply(specs, function(s) {
+    dj <- as.numeric(draws[, s$var])
+    tdraws <- if (s$transform) .dd_brms_transform_draws(dj, to = to) else dj
+    tibble::tibble(
+      term = s$term,
+      estimate = stats::median(tdraws),
+      conf.low = unname(stats::quantile(tdraws, alpha2)),
+      conf.high = unname(stats::quantile(tdraws, 1 - alpha2)),
+      level = level
+    )
+  })
+  out <- dplyr::bind_rows(rows)
+
+  if (!is.null(parm)) {
+    tmb_names <- vapply(specs, function(s) s$tmb, character(1))
+    keep <- out$term %in% parm | tmb_names %in% parm
+    out <- out[keep, , drop = FALSE]
+  }
+  out
 }
 
 #' @export

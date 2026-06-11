@@ -32,6 +32,13 @@
 #' @param family `"beta"` or `"gaussian"`.
 #' @param data Optional data frame used for autoscaling.
 #' @param y_var,x_var Column names in `data` (canonical defaults).
+#' @param factors,factor_interaction,continuous_covariates Fixed-effect
+#'   design on `logk`, as passed to the fitter. When the design has
+#'   non-intercept coefficients (derived through `build_fixed_rhs()`, so
+#'   single-level dropped factors do not count), a fold-change
+#'   `normal(0, 1)` class-level coefficient prior is added; with an
+#'   intercept-only design it is omitted (it would be unused, and brms
+#'   warns).
 #' @param autoscale Logical; defaults to `TRUE` when `data` is supplied.
 #'
 #' @return A `brmsprior` data frame, with `attr(, "autoscale_info")` when
@@ -43,6 +50,9 @@ default_dd_priors <- function(
   data = NULL,
   y_var = "y",
   x_var = "x",
+  factors = NULL,
+  factor_interaction = FALSE,
+  continuous_covariates = NULL,
   autoscale = !is.null(data)
 ) {
   .dd_brms_check_installed()
@@ -50,6 +60,17 @@ default_dd_priors <- function(
   family <- match.arg(family)
   fmt <- .dd_brms_fmt_num
   has_s <- equation %in% c("green-myerson", "rachlin")
+
+  # build_fixed_rhs() returns a FORMULA in this package (beezdemand's port
+  # returns a string): count non-intercept terms rather than comparing
+  # representations.
+  rhs <- build_fixed_rhs(
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates,
+    data = data
+  )
+  has_coefs <- length(attr(stats::terms(stats::as.formula(rhs)), "term.labels")) > 0
 
   info <- NULL
   if (isTRUE(autoscale)) {
@@ -74,6 +95,11 @@ default_dd_priors <- function(
     brms::set_prior(p_logk, class = "b", coef = "Intercept", nlpar = "logk"),
     brms::set_prior("student_t(3, 0, 1)", class = "sd", nlpar = "logk")
   )
+  if (has_coefs) {
+    rows <- c(rows, list(
+      brms::set_prior("normal(0, 1)", class = "b", nlpar = "logk")
+    ))
+  }
   if (has_s) {
     rows <- c(rows, list(
       brms::set_prior("normal(0, 0.5)", class = "b", coef = "Intercept", nlpar = "logs")

@@ -24,6 +24,25 @@ fit <- fit_dd_brms(
 )
 saveRDS(fit, file.path(fixture_dir, "fit-mazur-beta.rds"), compress = "xz")
 
+message("Fitting mazur/beta + group factor fixture...")
+set.seed(33)
+d2 <- expand.grid(id = factor(1:8), x = delays)
+d2$group <- factor(ifelse(as.integer(d2$id) <= 4, "ctrl", "treat"))
+k_i2 <- exp(log(0.02) + 0.7 * (d2$group == "treat") + rnorm(8, 0, 0.3)[d2$id])
+mu2 <- 1 / (1 + k_i2 * d2$x)
+d2$y <- pmin(pmax(mu2 + rnorm(nrow(d2), 0, 0.05), 0.01), 0.99)
+
+fit_grp <- fit_dd_brms(
+  d2,
+  equation = "mazur", family = "beta",
+  factors = "group",
+  chains = 2, iter = 500, warmup = 250,
+  cores = 2, seed = 42,
+  loo = FALSE, verbose = 1
+)
+saveRDS(fit_grp, file.path(fixture_dir, "fit-mazur-beta-group.rds"),
+  compress = "xz")
+
 saveRDS(
   list(
     brms_version = as.character(packageVersion("brms")),

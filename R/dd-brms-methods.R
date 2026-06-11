@@ -355,6 +355,275 @@ residuals.beezdiscounting_brms <- function(
   res
 }
 
+# --- EMMs and comparisons (draws-based; TICKET-041) -------------------------------
+
+#' Draws-based EMMs of k for brms fits (delegated from get_dd_param_emms)
+#'
+#' Same reference grid as the TMB path (`.dd_build_emm_ref_grid()`); each
+#' cell's linear predictor is computed per posterior draw and summarized as
+#' the posterior median with equal-tailed quantile intervals (no delta
+#' method). Columns mirror the TMB output: `level`, `k`, `k_log`,
+#' `std.error` (log-scale posterior SD), `conf.low`, `conf.high`.
+#' @noRd
+.dd_brms_param_emms <- function(fit, factors_in_emm = NULL, at = NULL,
+                                ci_level = 0.95) {
+  .dd_validate_at(fit, at)
+  grid <- .dd_build_emm_ref_grid(
+    fit,
+    at = at, factors_in_emm = factors_in_emm, validate = FALSE
+  )
+  draws <- .dd_brms_draws_matrix(fit)
+  b <- as.matrix(
+    draws[, grep("^b_logk_", colnames(draws), value = TRUE), drop = FALSE]
+  )
+  alpha2 <- (1 - ci_level) / 2
+
+  summarize_lin <- function(lin, label) {
+    tibble::tibble(
+      level = label,
+      k = stats::median(exp(lin)),
+      k_log = stats::median(lin),
+      std.error = stats::sd(lin),
+      conf.low = unname(stats::quantile(exp(lin), alpha2)),
+      conf.high = unname(stats::quantile(exp(lin), 1 - alpha2))
+    )
+  }
+
+  if (isTRUE(grid$is_intercept_only)) {
+    return(summarize_lin(as.numeric(b[, 1]), "(Intercept)"))
+  }
+
+  ref_X <- grid$ref_X
+  if (ncol(ref_X) != ncol(b)) {
+    stop("Reference-grid design and posterior coefficient draws disagree.",
+      call. = FALSE
+    )
+  }
+  cell_lin <- b %*% t(ref_X)
+  dplyr::bind_rows(lapply(seq_len(nrow(ref_X)), function(i) {
+    summarize_lin(
+      as.numeric(cell_lin[, i]),
+      .dd_brms_grid_label(grid, i, grid$use_factors)
+    )
+  }))
+}
+
+#' Reference-grid cell label (TMB label vocabulary)
+#' @noRd
+.dd_brms_grid_label <- function(grid, i, fs) {
+  if (length(fs) > 0L) {
+    paste(vapply(fs, function(f) {
+      paste0(f, "=", grid$level_combos[[f]][i])
+    }, character(1)), collapse = ", ")
+  } else if (length(grid$cov_names) > 0L) {
+    paste(vapply(grid$cov_names, function(cv) {
+      paste0(cv, "=", grid$level_combos[[cv]][i])
+    }, character(1)), collapse = ", ")
+  } else {
+    "(Intercept)"
+  }
+}
+
+#' Draws-based k contrasts for brms fits (delegated from get_dd_comparisons)
+#'
+#' Per-draw differences of reference-grid linear predictors, summarized on
+#' the log10 scale and as natural-scale ratios with quantile credible
+#' intervals. No multiplicity adjustment (the joint posterior already
+#' encodes contrast dependence): `statistic`/`df`/`p.value` are `NA` and
+#' `post.prob` reports the posterior probability of direction. The return
+#' mirrors the TMB `beezdiscounting_comparison` structure (backend
+#' `"brms"`), so `print()`/`tidy()` work unchanged.
+#' @noRd
+.dd_brms_comparisons <- function(
+  fit,
+  compare_specs = NULL,
+  contrast_type = c("pairwise", "trt.vs.ctrl"),
+  contrast_by = NULL,
+  adjust = "none",
+  at = NULL,
+  ci_level = 0.95,
+  report_ratios = TRUE
+) {
+  contrast_type <- match.arg(contrast_type)
+  if (!identical(adjust, "none")) {
+    warning(
+      "Multiplicity adjustment ('", adjust, "') does not apply to posterior ",
+      "summaries; reporting unadjusted quantile intervals (see post.prob).",
+      call. = FALSE
+    )
+  }
+
+  fitted_factors <- fit$param_info$factors
+  fitted_factors <- fitted_factors[
+    !is.na(fitted_factors) & nzchar(fitted_factors)
+  ]
+  factors_in_emm <- NULL
+  if (!is.null(compare_specs)) {
+    if (!inherits(compare_specs, "formula")) {
+      stop("`compare_specs` must be a one-sided formula (e.g. ~ group).",
+        call. = FALSE
+      )
+    }
+    factors_in_emm <- all.vars(compare_specs)
+    bad <- setdiff(factors_in_emm, fitted_factors)
+    if (length(bad) > 0L) {
+      stop("`compare_specs` names factor(s) not in the fit: ",
+        paste(bad, collapse = ", "),
+        call. = FALSE
+      )
+    }
+  }
+  if (!is.null(contrast_by)) {
+    bad_by <- setdiff(contrast_by, fitted_factors)
+    if (length(bad_by) > 0L) {
+      stop("`contrast_by` names factor(s) not in the fit: ",
+        paste(bad_by, collapse = ", "),
+        call. = FALSE
+      )
+    }
+  }
+
+  .dd_validate_at(fit, at)
+  grid <- .dd_build_emm_ref_grid(
+    fit,
+    at = at, factors_in_emm = factors_in_emm, validate = FALSE
+  )
+  emm_block <- .dd_brms_param_emms(
+    fit,
+    factors_in_emm = factors_in_emm, at = at, ci_level = ci_level
+  )
+
+  alpha2 <- (1 - ci_level) / 2
+  ln10 <- log(10)
+  empty_log10 <- tibble::tibble(
+    contrast = character(), estimate = numeric(), std.error = numeric(),
+    statistic = numeric(), df = numeric(),
+    conf.low = numeric(), conf.high = numeric(), p.value = numeric(),
+    post.prob = numeric()
+  )
+  empty_ratio <- tibble::tibble(
+    contrast = character(), ratio = numeric(),
+    conf.low = numeric(), conf.high = numeric(), p.value = numeric(),
+    post.prob = numeric()
+  )
+
+  finish <- function(contrasts_log10, contrasts_ratio, by_applied) {
+    block <- list(emmeans = emm_block, contrasts_log10 = contrasts_log10)
+    if (report_ratios) block$contrasts_ratio <- contrasts_ratio
+    results_list <- list(k = block)
+    class(results_list) <- "beezdiscounting_comparison"
+    attr(results_list, "backend") <- "brms"
+    attr(results_list, "adjustment_method") <-
+      "none (posterior summaries; see post.prob)"
+    attr(results_list, "compare_specs_used") <- if (is.null(compare_specs)) {
+      "all fitted factors"
+    } else {
+      deparse(compare_specs)
+    }
+    attr(results_list, "contrast_type_used") <- contrast_type
+    attr(results_list, "contrast_by_used") <- if (is.null(contrast_by) ||
+      !by_applied) {
+      "NULL"
+    } else {
+      paste(contrast_by, collapse = ", ")
+    }
+    results_list
+  }
+
+  if (isTRUE(grid$is_intercept_only) || nrow(grid$ref_X) < 2L) {
+    return(finish(empty_log10, empty_ratio, FALSE))
+  }
+
+  draws <- .dd_brms_draws_matrix(fit)
+  b <- as.matrix(
+    draws[, grep("^b_logk_", colnames(draws), value = TRUE), drop = FALSE]
+  )
+  ref_X <- grid$ref_X
+  n <- nrow(ref_X)
+  cell_lin <- b %*% t(ref_X)
+  level_combos <- grid$level_combos
+  use_factors <- grid$use_factors
+
+  effective_by <- if (!is.null(contrast_by)) {
+    intersect(contrast_by, use_factors)
+  } else {
+    character(0)
+  }
+  comparison_factors <- setdiff(use_factors, effective_by)
+  label_f <- function(i, fs) .dd_brms_grid_label(grid, i, fs)
+
+  if (length(effective_by) > 0L) {
+    by_key <- do.call(paste, c(
+      lapply(effective_by, function(f) as.character(level_combos[[f]])),
+      list(sep = "\r")
+    ))
+    blocks <- lapply(unique(by_key), function(k) which(by_key == k))
+  } else {
+    blocks <- list(seq_len(n))
+  }
+
+  log10_parts <- list()
+  ratio_parts <- list()
+  for (rows in blocks) {
+    m <- length(rows)
+    if (m < 2L) next
+    if (contrast_type == "pairwise") {
+      cmb <- utils::combn(m, 2L)
+      lhs <- rows[cmb[1L, ]]
+      rhs <- rows[cmb[2L, ]]
+    } else {
+      lhs <- rows[seq.int(2L, m)]
+      rhs <- rep(rows[1L], m - 1L)
+    }
+    for (k in seq_along(lhs)) {
+      d <- as.numeric(cell_lin[, lhs[k]] - cell_lin[, rhs[k]])
+      d10 <- d / ln10
+      pd <- max(mean(d > 0), mean(d < 0))
+      lab <- paste(
+        label_f(lhs[k], comparison_factors), "-",
+        label_f(rhs[k], comparison_factors)
+      )
+      l_row <- tibble::tibble(
+        contrast = lab,
+        estimate = stats::median(d10),
+        std.error = stats::sd(d10),
+        statistic = NA_real_, df = NA_real_,
+        conf.low = unname(stats::quantile(d10, alpha2)),
+        conf.high = unname(stats::quantile(d10, 1 - alpha2)),
+        p.value = NA_real_, post.prob = pd
+      )
+      r_row <- tibble::tibble(
+        contrast = lab,
+        ratio = stats::median(exp(d)),
+        conf.low = unname(stats::quantile(exp(d), alpha2)),
+        conf.high = unname(stats::quantile(exp(d), 1 - alpha2)),
+        p.value = NA_real_, post.prob = pd
+      )
+      if (length(effective_by) > 0L) {
+        bc <- stats::setNames(
+          lapply(effective_by, function(f) {
+            as.character(level_combos[[f]][rows[1L]])
+          }),
+          effective_by
+        )
+        l_row <- dplyr::bind_cols(tibble::as_tibble(bc), l_row)
+        r_row <- dplyr::bind_cols(tibble::as_tibble(bc), r_row)
+      }
+      log10_parts[[length(log10_parts) + 1L]] <- l_row
+      ratio_parts[[length(ratio_parts) + 1L]] <- r_row
+    }
+  }
+
+  if (length(log10_parts) == 0L) {
+    return(finish(empty_log10, empty_ratio, FALSE))
+  }
+  finish(
+    dplyr::bind_rows(log10_parts),
+    dplyr::bind_rows(ratio_parts),
+    length(effective_by) > 0L
+  )
+}
+
 # --- print / summary ----------------------------------------------------------------
 
 #' @export

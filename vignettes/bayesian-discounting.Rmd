@@ -115,5 +115,6 @@ fit directly with `brms::brm()` if you want it Bayesian.
 ## v1 scope
 
 Random effects are intercept-only on k (`k ~ 1`); the TMB tier's
-`k + phi ~ 1` is planned via a distributional formula. Bayesian
-EMMs/comparisons for factor designs are deferred to a follow-up release.
+`k + phi ~ 1` is planned via a distributional formula.
+`get_dd_param_emms()` and `get_dd_comparisons()` accept Bayesian fits
+(quantile credible intervals; `post.prob` in place of adjusted p-values).

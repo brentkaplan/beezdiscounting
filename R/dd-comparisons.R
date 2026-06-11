@@ -330,6 +330,18 @@ get_dd_param_emms <- function(
   ci_level = 0.95,
   ...
 ) {
+  # Bayesian fits: draws-based EMMs over the same reference grid (TICKET-041)
+  if (inherits(fit, "beezdiscounting_brms")) {
+    return(.dd_brms_param_emms(
+      fit,
+      factors_in_emm = factors_in_emm, at = at, ci_level = ci_level
+    ))
+  }
+  if (inherits(fit, "beezdiscounting_choice_brms")) {
+    cli::cli_abort(
+      "EMMs are not available for brms choice fits in v1 (no factor design)."
+    )
+  }
   if (inherits(fit, "beezdiscounting_choice") &&
       identical(fit$param_info$mode, "descriptive")) {
     cli::cli_abort(c(
@@ -479,6 +491,27 @@ get_dd_comparisons <- function(
   report_ratios = TRUE,
   ...
 ) {
+  # Bayesian fits: draws-based contrasts; the TMB default adjust = "holm"
+  # does not apply to posterior summaries -- the brms path treats a missing/
+  # default adjust as "none" and warns on explicit non-"none" requests
+  # (TICKET-041).
+  if (inherits(fit, "beezdiscounting_brms")) {
+    return(.dd_brms_comparisons(
+      fit,
+      compare_specs = compare_specs,
+      contrast_type = contrast_type,
+      contrast_by = contrast_by,
+      adjust = if (missing(adjust)) "none" else adjust,
+      at = at,
+      ci_level = ci_level,
+      report_ratios = report_ratios
+    ))
+  }
+  if (inherits(fit, "beezdiscounting_choice_brms")) {
+    cli::cli_abort(
+      "Comparisons are not available for brms choice fits in v1 (no factor design)."
+    )
+  }
   if (inherits(fit, "beezdiscounting_choice") &&
       identical(fit$param_info$mode, "descriptive")) {
     cli::cli_abort(c(
@@ -833,6 +866,11 @@ tidy.beezdiscounting_comparison <- function(x, exponentiate = FALSE, ...) {
       conf.low = cl$conf.low, conf.high = cl$conf.high,
       p.value = cl$p.value
     )
+    # Bayesian fits carry post.prob (posterior probability of direction)
+    # alongside the NA p-values (TICKET-041).
+    if ("post.prob" %in% names(cl)) {
+      base$post.prob <- cl$post.prob
+    }
     if (by_active) {
       by_cols <- lapply(by_names, function(nm) {
         if (nm %in% names(cl)) as.character(cl[[nm]]) else rep(NA_character_, nrow(cl))

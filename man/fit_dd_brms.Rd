@@ -28,7 +28,7 @@ fit_dd_brms(
   seed = NA,
   backend = getOption("brms.backend", "rstan"),
   control = list(adapt_delta = 0.95),
-  init = c("prior_center", "random", "0"),
+  init = c("prior_center", "tmb", "random", "0"),
   sample_prior = "no",
   loo = TRUE,
   file = NULL,
@@ -64,8 +64,11 @@ design on \code{logk}, as in \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.}
 
 \item{chains, iter, warmup, thin, cores, seed, backend, control, sample_prior}{MCMC settings passed to \code{\link[brms:brm]{brms::brm()}}.}
 
-\item{init}{\code{"prior_center"} (default), \code{"random"}, or \code{"0"}; or a
-list/function passed through to \code{\link[brms:brm]{brms::brm()}}.}
+\item{init}{\code{"prior_center"} (default), \code{"tmb"} (a quiet
+\code{\link[=fit_dd_tmb]{fit_dd_tmb()}} pre-fit supplies the centers, with prior_center
+fallback on failure; the beta family maps to the TMB sltb pre-fit),
+\code{"random"}, or \code{"0"}; or a list/function passed through to
+\code{\link[brms:brm]{brms::brm()}}.}
 
 \item{loo}{Compute and store \code{\link[brms:loo.brmsfit]{brms::loo()}} at fit time.}
 

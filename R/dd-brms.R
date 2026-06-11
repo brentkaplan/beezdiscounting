@@ -115,8 +115,11 @@
 #'   [default_dd_priors()]).
 #' @param chains,iter,warmup,thin,cores,seed,backend,control,sample_prior
 #'   MCMC settings passed to [brms::brm()].
-#' @param init `"prior_center"` (default), `"random"`, or `"0"`; or a
-#'   list/function passed through to [brms::brm()].
+#' @param init `"prior_center"` (default), `"tmb"` (a quiet
+#'   [fit_dd_tmb()] pre-fit supplies the centers, with prior_center
+#'   fallback on failure; the beta family maps to the TMB sltb pre-fit),
+#'   `"random"`, or `"0"`; or a list/function passed through to
+#'   [brms::brm()].
 #' @param loo Compute and store [brms::loo()] at fit time.
 #' @param file,file_refit Passed to [brms::brm()] for fit caching.
 #' @param verbose 0 (silent), 1 (messages), 2 (full Stan output).
@@ -155,7 +158,7 @@ fit_dd_brms <- function(
   seed = NA,
   backend = getOption("brms.backend", "rstan"),
   control = list(adapt_delta = 0.95),
-  init = c("prior_center", "random", "0"),
+  init = c("prior_center", "tmb", "random", "0"),
   sample_prior = "no",
   loo = TRUE,
   file = NULL,
@@ -287,7 +290,8 @@ fit_dd_brms <- function(
     family = family,
     factors = factors,
     factor_interaction = factor_interaction,
-    continuous_covariates = continuous_covariates
+    continuous_covariates = continuous_covariates,
+    equation = equation
   )
 
   if (verbose >= 1) {
@@ -349,16 +353,16 @@ fit_dd_brms <- function(
   )
 }
 
-#' Per-chain inits at prior centers
+#' Per-chain inits at prior centers (or a quiet TMB pre-fit)
 #' @noRd
 .dd_brms_build_inits <- function(
   init, spec, data, chains, seed, autoscale_info, family,
-  factors, factor_interaction, continuous_covariates
+  factors, factor_interaction, continuous_covariates, equation
 ) {
   if (is.list(init) || is.function(init)) {
     return(init)
   }
-  init <- match.arg(init, c("prior_center", "random", "0"))
+  init <- match.arg(init, c("prior_center", "tmb", "random", "0"))
   if (identical(init, "random")) {
     return("random")
   }
@@ -371,6 +375,47 @@ fit_dd_brms <- function(
   } else {
     -4.5
   }
+  centers <- list(logk = logk_center, logs = 0, sd = 0.5, phi = 8, sigma = 0.1)
+
+  if (identical(init, "tmb")) {
+    tmb_centers <- tryCatch(
+      {
+        tmb_fit <- fit_dd_tmb(
+          data,
+          y_var = "y", x_var = "x", id_var = "id",
+          equation = equation,
+          family = if (identical(family, "beta")) "sltb" else "gaussian",
+          factors = factors,
+          factor_interaction = factor_interaction,
+          continuous_covariates = continuous_covariates,
+          verbose = 0
+        )
+        coefs <- tmb_fit$model$coefficients
+        out <- list(
+          logk = unname(coefs[names(coefs) == "beta_k"])[1],
+          sd = exp(unname(coefs[["log_sigma_u"]]))
+        )
+        if ("log_s" %in% names(coefs)) out$logs <- unname(coefs[["log_s"]])
+        if ("log_phi" %in% names(coefs)) out$phi <- exp(unname(coefs[["log_phi"]]))
+        if ("log_sigma_e" %in% names(coefs)) {
+          out$sigma <- exp(unname(coefs[["log_sigma_e"]]))
+        }
+        out
+      },
+      error = function(e) {
+        warning(
+          "TMB pre-fit for init = \"tmb\" failed (",
+          conditionMessage(e), "); falling back to init = \"prior_center\".",
+          call. = FALSE
+        )
+        NULL
+      }
+    )
+    if (!is.null(tmb_centers)) {
+      centers[names(tmb_centers)] <- tmb_centers
+    }
+  }
+  logk_center <- centers$logk
 
   rhs <- build_fixed_rhs(
     factors = factors,
@@ -385,16 +430,16 @@ fit_dd_brms <- function(
   one_chain <- function() {
     out <- list(
       b_logk = as.array(c(logk_center + jit(), rep(0, K - 1))),
-      sd_1 = as.array(abs(0.5 + jit())),
+      sd_1 = as.array(abs(centers$sd + jit())),
       z_1 = matrix(jit(n_id), nrow = 1)
     )
     if (spec$has_s) {
-      out$b_logs <- as.array(jit()) # s = 1 center
+      out$b_logs <- as.array(centers$logs + jit())
     }
     if (identical(family, "beta")) {
-      out$phi <- abs(8 + stats::rnorm(1, 0, 1)) # TMB start: log_aux = log(8)
+      out$phi <- abs(centers$phi + stats::rnorm(1, 0, 1)) # TMB start: log_aux = log(8)
     } else {
-      out$sigma <- abs(0.1 + jit())
+      out$sigma <- abs(centers$sigma + jit())
     }
     out
   }

@@ -49,7 +49,7 @@ fit_dd_choice_brms <- function(
   seed = NA,
   backend = getOption("brms.backend", "rstan"),
   control = list(adapt_delta = 0.95),
-  init = c("prior_center", "random", "0"),
+  init = c("prior_center", "tmb", "random", "0"),
   sample_prior = "no",
   loo = TRUE,
   file = NULL,
@@ -104,7 +104,9 @@ fit_dd_choice_brms <- function(
     seed = seed,
     autoscale_info = autoscale_info,
     intercept = intercept,
-    n_id = length(unique(d$id))
+    n_id = length(unique(d$id)),
+    data = d,
+    equation = equation
   )
 
   if (verbose >= 1) {
@@ -232,15 +234,16 @@ fit_dd_choice_brms <- function(
   obj
 }
 
-#' Per-chain inits for the choice model
+#' Per-chain inits for the choice model (prior centers or a TMB pre-fit)
 #' @noRd
 .dd_brms_build_choice_inits <- function(
-  init, chains, seed, autoscale_info, intercept, n_id
+  init, chains, seed, autoscale_info, intercept, n_id,
+  data = NULL, equation = "mazur"
 ) {
   if (is.list(init) || is.function(init)) {
     return(init)
   }
-  init <- match.arg(init, c("prior_center", "random", "0"))
+  init <- match.arg(init, c("prior_center", "tmb", "random", "0"))
   if (identical(init, "random")) {
     return("random")
   }
@@ -248,21 +251,60 @@ fit_dd_choice_brms <- function(
     return(0)
   }
 
-  logk_center <- if (!is.null(autoscale_info)) {
-    -log(autoscale_info$median_delay)
-  } else {
-    -4.5
+  centers <- list(
+    logk = if (!is.null(autoscale_info)) {
+      -log(autoscale_info$median_delay)
+    } else {
+      -4.5
+    },
+    loggamma = 1, # prior center: loggamma ~ normal(1, 1)
+    b0 = 0,
+    sd = 0.5
+  )
+
+  if (identical(init, "tmb") && !is.null(data)) {
+    tmb_centers <- tryCatch(
+      {
+        tmb_fit <- fit_dd_choice(
+          data,
+          mode = "structural",
+          equation = equation,
+          intercept = intercept,
+          verbose = 0
+        )
+        coefs <- tmb_fit$model$coefficients
+        out <- list(
+          logk = unname(coefs[names(coefs) == "beta_k"])[1],
+          loggamma = unname(coefs[["log_gamma"]]),
+          sd = exp(unname(coefs[["log_sigma_u"]]))
+        )
+        if ("beta0" %in% names(coefs)) out$b0 <- unname(coefs[["beta0"]])
+        out
+      },
+      error = function(e) {
+        warning(
+          "TMB pre-fit for init = \"tmb\" failed (",
+          conditionMessage(e), "); falling back to init = \"prior_center\".",
+          call. = FALSE
+        )
+        NULL
+      }
+    )
+    if (!is.null(tmb_centers)) {
+      centers[names(tmb_centers)] <- tmb_centers
+    }
   }
+
   jit <- function(n = 1) stats::rnorm(n, 0, 0.1)
   one_chain <- function() {
     out <- list(
-      b_logk = as.array(logk_center + jit()),
-      b_loggamma = as.array(1 + jit()), # prior center: loggamma ~ normal(1, 1)
-      sd_1 = as.array(abs(0.5 + jit())),
+      b_logk = as.array(centers$logk + jit()),
+      b_loggamma = as.array(centers$loggamma + jit()),
+      sd_1 = as.array(abs(centers$sd + jit())),
       z_1 = matrix(jit(n_id), nrow = 1)
     )
     if (isTRUE(intercept)) {
-      out$b_b0 <- as.array(jit())
+      out$b_b0 <- as.array(centers$b0 + jit())
     }
     out
   }

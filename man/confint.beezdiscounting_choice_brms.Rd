@@ -15,8 +15,10 @@
 \arguments{
 \item{object}{A \code{beezdiscounting_choice_brms} object.}
 
-\item{parm}{Optional terms: display names (\code{"k:(Intercept)"}, \code{"gamma"},
-\code{"beta0"}) or TMB coefficient names (\code{"beta_k"}, \code{"log_gamma"}).}
+\item{parm}{Optional terms: display names (\code{"k:(Intercept)"},
+\code{"k:<level>"}, \code{"gamma"}, \code{"beta0"}) or TMB coefficient names
+(\code{"beta_k"}, which selects every log-k design coefficient, or
+\code{"log_gamma"}).}
 
 \item{level}{Credible level (default 0.95).}
 

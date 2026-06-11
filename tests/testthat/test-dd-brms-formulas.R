@@ -152,6 +152,30 @@ test_that("choice formula generates valid Stan code", {
   expect_match(scode, "b_loggamma")
 })
 
+test_that("choice formula carries the factor design on logk (TICKET-048)", {
+  d <- choice_test_data()
+  d$group <- factor(ifelse(as.integer(d$id) <= 3, "ctrl", "treat"))
+
+  spec <- beezdiscounting:::.dd_brms_choice_formula(
+    equation = "mazur", factors = "group", data = d
+  )
+  expect_match(squish(spec$formula$pforms$logk), "group")
+  expect_match(squish(spec$formula$pforms$logk), "\\(1\\|id\\)")
+  # gamma (and b0) stay population-level: the design is on logk only
+  expect_false(grepl("\\|", squish(spec$formula$pforms$loggamma)))
+
+  sdat <- brms::make_standata(spec$formula, data = d)
+  expect_identical(as.integer(sdat$K_logk), 2L)
+
+  # continuous covariate route shares build_fixed_rhs()
+  d$age <- as.numeric(d$id) * 3 + 20
+  spec_cov <- beezdiscounting:::.dd_brms_choice_formula(
+    equation = "mazur", continuous_covariates = "age", data = d
+  )
+  sdat_cov <- brms::make_standata(spec_cov$formula, data = d)
+  expect_identical(as.integer(sdat_cov$K_logk), 2L)
+})
+
 # ------------------------------------------------------------------------------
 # Snapshot: pin the canonical generated code against brms upgrades
 # ------------------------------------------------------------------------------

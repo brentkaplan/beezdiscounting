@@ -23,11 +23,17 @@
 #'   [fit_dd_choice()].
 #' @param equation `"mazur"` or `"exponential"`.
 #' @param intercept Include the logit-scale bias term `b0`.
+#' @param factors,factor_interaction,continuous_covariates Between-subject
+#'   fixed-effect design on `log k` (same semantics as [fit_dd_choice()]);
+#'   `gamma` and `b0` stay population-level.
 #' @inheritParams fit_dd_brms
 #' @return An object of class `beezdiscounting_choice_brms`. Coefficients
 #'   are posterior medians on the estimation scale under the TMB names
-#'   (`beta_k`, `log_gamma`, and `beta0` when `intercept = TRUE`).
-#' @seealso [fit_dd_choice()]; [default_dd_choice_priors()].
+#'   (one `beta_k` per design column, `log_gamma`, and `beta0` when
+#'   `intercept = TRUE`).
+#' @seealso [fit_dd_choice()]; [default_dd_choice_priors()];
+#'   [get_dd_param_emms()] and [get_dd_comparisons()] for draws-based
+#'   marginal means and contrasts of `k`.
 #' @export
 fit_dd_choice_brms <- function(
   data,
@@ -39,6 +45,9 @@ fit_dd_choice_brms <- function(
   choice_var = "choice",
   equation = c("mazur", "exponential"),
   intercept = FALSE,
+  factors = NULL,
+  factor_interaction = FALSE,
+  continuous_covariates = NULL,
   prior = NULL,
   autoscale_priors = TRUE,
   chains = 4,
@@ -71,23 +80,60 @@ fit_dd_choice_brms <- function(
     )
   }
 
+  extra_cols <- unique(c(factors, continuous_covariates))
   validated <- .dd_validate_choice(
     data,
     id_var = id_var, ss_var = ss_var, ll_var = ll_var,
-    delay_var = delay_var, choice_var = choice_var
+    delay_var = delay_var, choice_var = choice_var,
+    extra_cols = extra_cols
   )
-  prepared <- .dd_choice_prepare_data(validated$data)
+  prepared <- .dd_choice_prepare_data(validated$data, extra_cols = extra_cols)
   d <- prepared$data
   d$rel <- d$ll_amount / d$ss_amount
   d$id <- droplevels(as.factor(d$id))
+  for (f in factors) {
+    if (f %in% names(d) && !is.factor(d[[f]])) {
+      d[[f]] <- as.factor(d[[f]])
+    }
+  }
+  for (cv in continuous_covariates) {
+    if (cv %in% names(d)) {
+      v <- d[[cv]]
+      if (!is.numeric(v) || any(!is.finite(v))) {
+        cli::cli_abort(
+          "Continuous covariate {.val {cv}} must be numeric and finite."
+        )
+      }
+    }
+  }
 
-  spec <- .dd_brms_choice_formula(equation = equation, intercept = intercept)
+  # The TMB design path carries the guards (rank-deficiency rejection) a bare
+  # brms formula would skip; X/rhs/contrasts feed subject_pars and the EMM
+  # reference grid (same route as fit_dd_choice()).
+  design <- .dd_tmb_build_design(
+    d,
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates
+  )
+
+  spec <- .dd_brms_choice_formula(
+    equation = equation,
+    intercept = intercept,
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates,
+    data = d
+  )
 
   defaults <- default_dd_choice_priors(
     equation,
     intercept = intercept,
     data = if (isTRUE(autoscale_priors)) d else NULL,
     delay_var = "delay",
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates,
     autoscale = isTRUE(autoscale_priors)
   )
   merged_priors <- .dd_brms_merge_priors(prior, defaults)
@@ -106,7 +152,11 @@ fit_dd_choice_brms <- function(
     intercept = intercept,
     n_id = length(unique(d$id)),
     data = d,
-    equation = equation
+    equation = equation,
+    design = design,
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates
   )
 
   if (verbose >= 1) {
@@ -160,10 +210,15 @@ fit_dd_choice_brms <- function(
         n_obs = nrow(d),
         n_subjects = length(unique(d$id)),
         n_random_effects = 1L,
-        subject_levels = sort(unique(as.character(d$id)))
+        subject_levels = sort(unique(as.character(d$id))),
+        factors = intersect(factors, all.vars(design$rhs)),
+        factor_interaction = factor_interaction,
+        continuous_covariates = continuous_covariates
       ),
       formula_details = list(
-        X = matrix(1, nrow(d), 1, dimnames = list(NULL, "(Intercept)")),
+        X = design$X,
+        rhs = design$rhs,
+        contrasts = design$contrasts,
         brmsformula = spec$formula,
         family = spec$family
       ),
@@ -175,8 +230,14 @@ fit_dd_choice_brms <- function(
   )
 
   draws <- .dd_brms_draws_matrix(obj)
-  vars <- c("b_logk_Intercept", "b_loggamma_Intercept")
-  names_out <- c("beta_k", "log_gamma")
+  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
+  if (length(k_vars) != ncol(design$X)) {
+    stop("Internal error: brms draw variables do not match the design matrix.",
+      call. = FALSE
+    )
+  }
+  vars <- c(k_vars, "b_loggamma_Intercept")
+  names_out <- c(rep("beta_k", length(k_vars)), "log_gamma")
   if (isTRUE(intercept)) {
     vars <- c(vars, "b_b0_Intercept")
     names_out <- c(names_out, "beta0")
@@ -238,7 +299,9 @@ fit_dd_choice_brms <- function(
 #' @noRd
 .dd_brms_build_choice_inits <- function(
   init, chains, seed, autoscale_info, intercept, n_id,
-  data = NULL, equation = "mazur"
+  data = NULL, equation = "mazur",
+  design = NULL,
+  factors = NULL, factor_interaction = FALSE, continuous_covariates = NULL
 ) {
   if (is.list(init) || is.function(init)) {
     return(init)
@@ -270,10 +333,17 @@ fit_dd_choice_brms <- function(
           mode = "structural",
           equation = equation,
           intercept = intercept,
+          factors = factors,
+          factor_interaction = factor_interaction,
+          continuous_covariates = continuous_covariates,
           verbose = 0
         )
         coefs <- tmb_fit$model$coefficients
         out <- list(
+          # full fixed-effect vector: factor/covariate designs get every
+          # coefficient centered at the TMB MLE, not just the intercept
+          # (Codex 041-R2)
+          beta_k_vec = unname(coefs[names(coefs) == "beta_k"]),
           logk = unname(coefs[names(coefs) == "beta_k"])[1],
           loggamma = unname(coefs[["log_gamma"]]),
           sd = exp(unname(coefs[["log_sigma_u"]]))
@@ -295,10 +365,18 @@ fit_dd_choice_brms <- function(
     }
   }
 
+  K <- if (!is.null(design)) ncol(design$X) else 1L
+  beta_k_center <- if (!is.null(centers$beta_k_vec) &&
+    length(centers$beta_k_vec) == K) {
+    centers$beta_k_vec
+  } else {
+    c(centers$logk, rep(0, K - 1))
+  }
+
   jit <- function(n = 1) stats::rnorm(n, 0, 0.1)
   one_chain <- function() {
     out <- list(
-      b_logk = as.array(centers$logk + jit()),
+      b_logk = as.array(beta_k_center + jit(K)),
       b_loggamma = as.array(centers$loggamma + jit()),
       sd_1 = as.array(abs(centers$sd + jit())),
       z_1 = matrix(jit(n_id), nrow = 1)
@@ -352,11 +430,15 @@ fit_dd_choice_brms <- function(
     log10 = "log10(gamma)",
     log = "log(gamma)"
   )
-  rows <- list(
-    row_for("b_logk_Intercept", "k:(Intercept)", TRUE, NULL, "fixed"),
-    row_for("b_loggamma_Intercept", "gamma", TRUE, NULL, "shape",
+  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
+  k_terms <- paste0("k:", colnames(object$formula_details$X))
+  rows <- c(
+    lapply(seq_along(k_vars), function(j) {
+      row_for(k_vars[j], k_terms[j], TRUE, NULL, "fixed")
+    }),
+    list(row_for("b_loggamma_Intercept", "gamma", TRUE, NULL, "shape",
       display = g_disp
-    )
+    ))
   )
   if (isTRUE(object$param_info$intercept)) {
     rows <- c(rows, list(
@@ -374,8 +456,10 @@ fit_dd_choice_brms <- function(
 #' `tidy.beezdiscounting_choice()`.
 #'
 #' @param object A `beezdiscounting_choice_brms` object.
-#' @param parm Optional terms: display names (`"k:(Intercept)"`, `"gamma"`,
-#'   `"beta0"`) or TMB coefficient names (`"beta_k"`, `"log_gamma"`).
+#' @param parm Optional terms: display names (`"k:(Intercept)"`,
+#'   `"k:<level>"`, `"gamma"`, `"beta0"`) or TMB coefficient names
+#'   (`"beta_k"`, which selects every log-k design coefficient, or
+#'   `"log_gamma"`).
 #' @param level Credible level (default 0.95).
 #' @param report_space Reporting scale.
 #' @param ... Unused.
@@ -393,11 +477,14 @@ confint.beezdiscounting_choice_brms <- function(
   alpha2 <- (1 - level) / 2
   draws <- .dd_brms_draws_matrix(object)
 
-  specs <- list(
-    list(var = "b_logk_Intercept", term = "k:(Intercept)",
-      tmb = "beta_k", transform = TRUE),
-    list(var = "b_loggamma_Intercept", term = "gamma",
-      tmb = "log_gamma", transform = TRUE)
+  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
+  k_terms <- paste0("k:", colnames(object$formula_details$X))
+  specs <- c(
+    lapply(seq_along(k_vars), function(j) {
+      list(var = k_vars[j], term = k_terms[j], tmb = "beta_k", transform = TRUE)
+    }),
+    list(list(var = "b_loggamma_Intercept", term = "gamma",
+      tmb = "log_gamma", transform = TRUE))
   )
   if (isTRUE(object$param_info$intercept)) {
     specs <- c(specs, list(

@@ -9,6 +9,9 @@ default_dd_choice_priors(
   intercept = FALSE,
   data = NULL,
   delay_var = "delay",
+  factors = NULL,
+  factor_interaction = FALSE,
+  continuous_covariates = NULL,
   autoscale = !is.null(data)
 )
 }
@@ -20,6 +23,13 @@ default_dd_choice_priors(
 \item{data}{Optional data frame used for \code{logk} autoscaling.}
 
 \item{delay_var}{Delay column name in \code{data}.}
+
+\item{factors, factor_interaction, continuous_covariates}{Fixed-effect
+design on \code{logk}, as passed to \code{\link[=fit_dd_choice_brms]{fit_dd_choice_brms()}}. When the design
+has non-intercept coefficients (derived through \code{build_fixed_rhs()}),
+a fold-change \code{normal(0, 1)} class-level coefficient prior is added;
+with an intercept-only design it is omitted (it would be unused, and
+brms warns).}
 
 \item{autoscale}{Logical; defaults to \code{TRUE} when \code{data} is supplied.}
 }

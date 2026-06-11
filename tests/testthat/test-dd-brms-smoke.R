@@ -145,6 +145,61 @@ test_that("fit_dd_choice_brms structural: object contract and recovery", {
   pr <- predict(fit)
   expect_true(all(pr$.fitted >= 0 & pr$.fitted <= 1))
   expect_identical(nrow(fit$subject_pars), 10L)
+
+  # intercept-only EMMs no longer abort (TICKET-048): population k row
+  em <- get_dd_param_emms(fit)
+  expect_identical(em$level, "(Intercept)")
+  expect_equal(em$k_log, fit$model$coefficients[["beta_k"]])
+})
+
+test_that("fit_dd_choice_brms recovers a between-subject k effect (TICKET-048)", {
+  skip_on_cran()
+  skip_if_not(
+    identical(Sys.getenv("BEEZ_RUN_BRMS_TESTS"), "true"),
+    "Set BEEZ_RUN_BRMS_TESTS=true to run brms sampling tests"
+  )
+
+  # two groups of 8 subjects; truth: log k_treat - log k_ctrl = log(4)
+  set.seed(43)
+  n_per_group <- 8
+  d <- expand.grid(
+    id = seq_len(2 * n_per_group),
+    delay = c(1, 7, 30, 90, 180),
+    rep = 1:4
+  )
+  d$group <- factor(ifelse(d$id <= n_per_group, "ctrl", "treat"))
+  d$ss_amount <- 50
+  d$ll_amount <- 100
+  logk_i <- log(0.01) + log(4) * (seq_len(2 * n_per_group) > n_per_group) +
+    rnorm(2 * n_per_group, 0, 0.3)
+  k_i <- exp(logk_i)
+  D <- 1 / (1 + k_i[d$id] * d$delay)
+  eta <- 3 * ((d$ll_amount / d$ss_amount) * D - 1)
+  d$choice <- rbinom(nrow(d), 1, plogis(eta))
+  d$id <- factor(d$id)
+  d$rep <- NULL
+
+  fit <- fit_dd_choice_brms(
+    d,
+    equation = "mazur", factors = "group",
+    chains = 2, iter = 600, warmup = 300,
+    cores = 2, seed = 123,
+    loo = FALSE, verbose = 0
+  )
+
+  coefs <- fit$model$coefficients
+  expect_identical(sum(names(coefs) == "beta_k"), 2L)
+  k_coefs <- unname(coefs[names(coefs) == "beta_k"])
+  # acceptance: recovered group effect near log(4) ~ 1.386
+  expect_lt(abs(k_coefs[2] - log(4)), 0.8)
+  expect_lt(abs(k_coefs[1] - log(0.01)), 1)
+
+  # EMM/contrast surface works end-to-end on a sampled factor fit
+  em <- get_dd_param_emms(fit)
+  expect_identical(nrow(em), 2L)
+  cmp <- get_dd_comparisons(fit)
+  expect_identical(nrow(cmp$k$contrasts_log10), 1L)
+  expect_true(cmp$k$contrasts_ratio$ratio != 1)
 })
 
 test_that("fit_dd_brms gaussian green-myerson fits with the s parameter", {

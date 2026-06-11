@@ -22,7 +22,11 @@ A tibble with columns \code{param}, \code{contrast},
 \code{conf.low}, \code{conf.high}, \code{p.value} (with leading by-column(s)
 inserted before \code{param} when \code{contrast_by} is active). Estimates
 and CIs are on the log10 scale (or ratios when \code{exponentiate = TRUE}).
-\code{statistic} is an asymptotic \emph{z} (\code{df = Inf}).
+\code{statistic} is an asymptotic \emph{z} (\code{df = Inf}). On the
+brms backend, \code{statistic}/\code{df}/\code{p.value} are \code{NA}
+(posterior summaries), the intervals are quantile credible intervals,
+and an additional \code{post.prob} column reports the posterior
+probability of direction.
 }
 \description{
 \code{\link[generics:tidy]{generics::tidy()}} method for \code{beezdiscounting_comparison} objects

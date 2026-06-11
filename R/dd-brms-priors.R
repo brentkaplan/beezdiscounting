@@ -129,6 +129,12 @@ default_dd_priors <- function(
 #' @param intercept Include the `b0` prior.
 #' @param data Optional data frame used for `logk` autoscaling.
 #' @param delay_var Delay column name in `data`.
+#' @param factors,factor_interaction,continuous_covariates Fixed-effect
+#'   design on `logk`, as passed to [fit_dd_choice_brms()]. When the design
+#'   has non-intercept coefficients (derived through `build_fixed_rhs()`),
+#'   a fold-change `normal(0, 1)` class-level coefficient prior is added;
+#'   with an intercept-only design it is omitted (it would be unused, and
+#'   brms warns).
 #' @param autoscale Logical; defaults to `TRUE` when `data` is supplied.
 #' @return A `brmsprior` data frame.
 #' @export
@@ -137,11 +143,25 @@ default_dd_choice_priors <- function(
   intercept = FALSE,
   data = NULL,
   delay_var = "delay",
+  factors = NULL,
+  factor_interaction = FALSE,
+  continuous_covariates = NULL,
   autoscale = !is.null(data)
 ) {
   .dd_brms_check_installed()
   equation <- match.arg(equation)
   fmt <- .dd_brms_fmt_num
+
+  # Count non-intercept terms through the same build_fixed_rhs() route as the
+  # formula builder (single-level dropped factors do not count).
+  fe_rhs <- build_fixed_rhs(
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates,
+    data = data
+  )
+  has_coefs <-
+    length(attr(stats::terms(stats::as.formula(fe_rhs)), "term.labels")) > 0
 
   info <- NULL
   if (isTRUE(autoscale)) {
@@ -167,6 +187,11 @@ default_dd_choice_priors <- function(
     brms::set_prior("student_t(3, 0, 1)", class = "sd", nlpar = "logk"),
     brms::set_prior("normal(1, 1)", class = "b", coef = "Intercept", nlpar = "loggamma")
   )
+  if (has_coefs) {
+    rows <- c(rows, list(
+      brms::set_prior("normal(0, 1)", class = "b", nlpar = "logk")
+    ))
+  }
   if (isTRUE(intercept)) {
     rows <- c(rows, list(
       brms::set_prior("normal(0, 1.5)", class = "b", coef = "Intercept", nlpar = "b0")

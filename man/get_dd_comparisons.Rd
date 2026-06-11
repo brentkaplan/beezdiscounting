@@ -17,7 +17,9 @@ get_dd_comparisons(
 )
 }
 \arguments{
-\item{fit}{A \code{beezdiscounting_tmb} object.}
+\item{fit}{A \code{beezdiscounting_tmb}, structural
+\code{beezdiscounting_choice}, \code{beezdiscounting_brms}, or
+\code{beezdiscounting_choice_brms} object.}
 
 \item{compare_specs}{Optional one-sided formula naming the factor subset to
 contrast (e.g. \code{~ condition}). Omitted fitted factors are marginalized
@@ -66,7 +68,8 @@ before \code{contrast}. Attributes \code{backend}, \code{adjustment_method},
 }
 \description{
 Computes factor-level contrasts of the discount rate \code{k} from a fitted
-\code{beezdiscounting_tmb} model. \code{k} is linear in the fixed-effect
+\code{beezdiscounting_tmb} model (or a structural
+\code{beezdiscounting_choice} fit). \code{k} is linear in the fixed-effect
 coefficients on the natural-log scale (\code{log k = X beta_k}), so each
 contrast is a linear combination of \code{beta_k} with a Wald standard error
 from the \code{beta_k} block of \code{TMB::sdreport()}'s fixed-effect
@@ -74,6 +77,11 @@ covariance. Contrasts are \strong{reported on the \code{log10} scale} and,
 optionally, as multiplicative ratios (\code{ratio = exp(est_log)}). The
 returned container mirrors the beezdemand \code{beezdemand_comparison} shape,
 so \code{\link[=tidy.beezdiscounting_comparison]{tidy.beezdiscounting_comparison()}} gives a flat, cross-backend frame.
+Bayesian fits (\code{beezdiscounting_brms},
+\code{beezdiscounting_choice_brms}) compute per-draw contrasts over the
+same reference grid: posterior medians with quantile credible intervals
+and \code{post.prob} in place of adjusted p-values (no multiplicity
+adjustment; the joint posterior already encodes contrast dependence).
 }
 \examples{
 \donttest{

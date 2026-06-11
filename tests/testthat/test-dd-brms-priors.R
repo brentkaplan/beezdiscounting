@@ -130,3 +130,32 @@ test_that("choice priors validate against the choice model", {
     brms::validate_prior(pri, formula = spec$formula, data = d, family = spec$family)
   ))
 })
+
+test_that("choice factor designs add the coefficient prior in the ACCESSOR (TICKET-048)", {
+  pri <- default_dd_choice_priors("mazur", factors = "group")
+  row <- pri[pri$class == "b" & pri$coef == "" & pri$nlpar == "logk", ]
+  expect_identical(nrow(row), 1L)
+  expect_identical(row$prior, "normal(0, 1)")
+
+  # intercept-only design: no class-level coefficient row (brms warns-as-unused)
+  pri0 <- default_dd_choice_priors("mazur")
+  expect_identical(
+    nrow(pri0[pri0$class == "b" & pri0$coef == "" & pri0$nlpar == "logk", ]), 0L
+  )
+})
+
+test_that("choice factor priors validate against the factor formula (TICKET-048)", {
+  set.seed(7)
+  d <- data.frame(
+    id = rep(1:6, each = 4), delay = rep(c(1, 7, 30, 90), 6),
+    rel = 2, choice = rbinom(24, 1, 0.5),
+    group = factor(rep(c("ctrl", "treat"), each = 12))
+  )
+  spec <- beezdiscounting:::.dd_brms_choice_formula(
+    equation = "mazur", factors = "group", data = d
+  )
+  pri <- default_dd_choice_priors("mazur", data = d, factors = "group")
+  expect_no_warning(expect_no_error(
+    brms::validate_prior(pri, formula = spec$formula, data = d, family = spec$family)
+  ))
+})

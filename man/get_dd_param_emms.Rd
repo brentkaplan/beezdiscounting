@@ -7,7 +7,9 @@
 get_dd_param_emms(fit, factors_in_emm = NULL, at = NULL, ci_level = 0.95, ...)
 }
 \arguments{
-\item{fit}{A \code{beezdiscounting_tmb} object.}
+\item{fit}{A \code{beezdiscounting_tmb}, structural
+\code{beezdiscounting_choice}, \code{beezdiscounting_brms}, or
+\code{beezdiscounting_choice_brms} object.}
 
 \item{factors_in_emm}{Character vector of factors to retain in the EMM
 reference grid. A strict subset marginalizes the omitted factors with equal
@@ -33,12 +35,17 @@ marginal mean on the \code{log k} scale; \code{k = exp(k_log)};
 }
 \description{
 Computes estimated marginal means (EMMs) of the discount rate \code{k} from a
-fitted \code{beezdiscounting_tmb} model. EMMs are computed on the
+fitted \code{beezdiscounting_tmb} model (or a structural
+\code{beezdiscounting_choice} fit, which shares the \code{log k} design).
+EMMs are computed on the
 \code{log k} scale (linear in the fixed-effect coefficients) using the
 averaging-matrix reference grid, then back-transformed with \code{exp()} so
 that \code{k = exp(k_log)}. Standard errors use the \code{beta_k} block of
 \code{TMB::sdreport()}'s fixed-effect covariance; intervals are Wald on the
-log scale and exponentiated.
+log scale and exponentiated. Bayesian fits (\code{beezdiscounting_brms},
+\code{beezdiscounting_choice_brms}) use the same reference grid with
+draws-based summaries: posterior medians and equal-tailed quantile
+intervals, no delta method.
 }
 \examples{
 \donttest{

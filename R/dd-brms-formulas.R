@@ -142,12 +142,20 @@
 #'
 #' @param equation "mazur" or "exponential".
 #' @param intercept Include the optional bias term `b0`.
+#' @param factors,factor_interaction,continuous_covariates Fixed-effect
+#'   design on `logk` (as in [fit_dd_choice()]); `loggamma` (and `b0`)
+#'   stay population-level.
+#' @param data Optional data frame for single-level-factor dropping.
 #' @return list(formula, family, nlpars, response_var, derived_cols,
 #'   equation, intercept).
 #' @noRd
 .dd_brms_choice_formula <- function(
   equation = c("mazur", "exponential"),
-  intercept = FALSE
+  intercept = FALSE,
+  factors = NULL,
+  factor_interaction = FALSE,
+  continuous_covariates = NULL,
+  data = NULL
 ) {
   .dd_brms_check_installed()
   equation <- match.arg(equation)
@@ -161,8 +169,22 @@
     rhs <- paste0("b0 + ", rhs)
   }
 
+  # build_fixed_rhs() returns a formula here; deparse before string assembly
+  # (same route as .dd_brms_formula(), so the logk design matches the
+  # .dd_tmb_build_design() matrix the fitter stores for subject_pars/EMMs).
+  fe_rhs <- build_fixed_rhs(
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates,
+    data = data
+  )
+  rhs_core <- sub(
+    "^~\\s*", "",
+    paste(deparse(stats::as.formula(fe_rhs), width.cutoff = 500), collapse = " ")
+  )
+
   pforms <- list(
-    stats::as.formula("logk ~ 1 + (1 | id)"),
+    stats::as.formula(paste0("logk ~ ", rhs_core, " + (1 | id)")),
     stats::as.formula("loggamma ~ 1")
   )
   if (isTRUE(intercept)) {

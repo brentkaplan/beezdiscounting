@@ -12,7 +12,11 @@
   handled via Smithson-Verkuilen squeezing (default), zero-one-inflated
   beta (`boundary = "zoib"`; changes the estimand), or refusal.
 * New `fit_dd_choice_brms()`: the structural trial-level choice model under
-  `bernoulli("logit")`, matching `fit_dd_choice(mode = "structural")`.
+  `bernoulli("logit")`, matching `fit_dd_choice(mode = "structural")`,
+  including between-subject designs on `log k` via
+  `factors`/`factor_interaction`/`continuous_covariates` (rank-deficient
+  designs are rejected before sampling; `gamma` and `b0` stay
+  population-level).
 * New `default_dd_priors()` / `default_dd_choice_priors()`: inspectable
   defaults with delay-unit-aware `logk` anchoring (centers
   `k * median(delay) = 1`).
@@ -23,11 +27,10 @@
   intervals, `predict()`, `ranef()` with per-subject `k` posterior
   summaries for indifference-point fits, `print()`/`summary()`.
 * `get_dd_param_emms()` and `get_dd_comparisons()` accept brms
-  indifference-point fits (the choice brms fitter is intercept-only in
-  this release, so choice EMMs/comparisons error with guidance):
-  draws-based marginal means and contrasts over the same reference grid as
-  the TMB path, with quantile credible intervals and `post.prob` (posterior
-  probability of direction) in place of adjusted p-values.
+  indifference-point and structural choice fits: draws-based marginal
+  means and contrasts over the same reference grid as the TMB path, with
+  quantile credible intervals and `post.prob` (posterior probability of
+  direction) in place of adjusted p-values.
 * `init = "tmb"` is available in both Bayesian fitters (a quiet TMB
   pre-fit supplies the chain starting values, with prior-center fallback).
 * brms, posterior, and loo are Suggests-only.

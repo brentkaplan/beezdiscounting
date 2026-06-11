@@ -14,6 +14,9 @@ fit_dd_choice_brms(
   choice_var = "choice",
   equation = c("mazur", "exponential"),
   intercept = FALSE,
+  factors = NULL,
+  factor_interaction = FALSE,
+  continuous_covariates = NULL,
   prior = NULL,
   autoscale_priors = TRUE,
   chains = 4,
@@ -45,6 +48,10 @@ fit_dd_choice_brms(
 
 \item{intercept}{Include the logit-scale bias term \code{b0}.}
 
+\item{factors, factor_interaction, continuous_covariates}{Between-subject
+fixed-effect design on \verb{log k} (same semantics as \code{\link[=fit_dd_choice]{fit_dd_choice()}});
+\code{gamma} and \code{b0} stay population-level.}
+
 \item{prior}{Optional \code{brmsprior}; user rows override the defaults.}
 
 \item{autoscale_priors}{Anchor the \code{logk} prior to the median delay (see
@@ -69,7 +76,8 @@ fallback on failure; the beta family maps to the TMB sltb pre-fit),
 \value{
 An object of class \code{beezdiscounting_choice_brms}. Coefficients
 are posterior medians on the estimation scale under the TMB names
-(\code{beta_k}, \code{log_gamma}, and \code{beta0} when \code{intercept = TRUE}).
+(one \code{beta_k} per design column, \code{log_gamma}, and \code{beta0} when
+\code{intercept = TRUE}).
 }
 \description{
 The TMB structural likelihood of \code{\link[=fit_dd_choice]{fit_dd_choice()}}:
@@ -84,5 +92,7 @@ model is a plain logistic GLMM expressible directly with
 \code{brms::brm()}.
 }
 \seealso{
-\code{\link[=fit_dd_choice]{fit_dd_choice()}}; \code{\link[=default_dd_choice_priors]{default_dd_choice_priors()}}.
+\code{\link[=fit_dd_choice]{fit_dd_choice()}}; \code{\link[=default_dd_choice_priors]{default_dd_choice_priors()}};
+\code{\link[=get_dd_param_emms]{get_dd_param_emms()}} and \code{\link[=get_dd_comparisons]{get_dd_comparisons()}} for draws-based
+marginal means and contrasts of \code{k}.
 }

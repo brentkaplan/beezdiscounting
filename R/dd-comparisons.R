@@ -287,14 +287,21 @@
 #'
 #' @description
 #' Computes estimated marginal means (EMMs) of the discount rate \code{k} from a
-#' fitted \code{beezdiscounting_tmb} model. EMMs are computed on the
+#' fitted \code{beezdiscounting_tmb} model (or a structural
+#' \code{beezdiscounting_choice} fit, which shares the \code{log k} design).
+#' EMMs are computed on the
 #' \code{log k} scale (linear in the fixed-effect coefficients) using the
 #' averaging-matrix reference grid, then back-transformed with \code{exp()} so
 #' that \code{k = exp(k_log)}. Standard errors use the \code{beta_k} block of
 #' \code{TMB::sdreport()}'s fixed-effect covariance; intervals are Wald on the
-#' log scale and exponentiated.
+#' log scale and exponentiated. Bayesian fits (\code{beezdiscounting_brms},
+#' \code{beezdiscounting_choice_brms}) use the same reference grid with
+#' draws-based summaries: posterior medians and equal-tailed quantile
+#' intervals, no delta method.
 #'
-#' @param fit A \code{beezdiscounting_tmb} object.
+#' @param fit A \code{beezdiscounting_tmb}, structural
+#'   \code{beezdiscounting_choice}, \code{beezdiscounting_brms}, or
+#'   \code{beezdiscounting_choice_brms} object.
 #' @param factors_in_emm Character vector of factors to retain in the EMM
 #'   reference grid. A strict subset marginalizes the omitted factors with equal
 #'   weights across the full crossing of their levels (emmeans' default
@@ -330,17 +337,14 @@ get_dd_param_emms <- function(
   ci_level = 0.95,
   ...
 ) {
-  # Bayesian fits: draws-based EMMs over the same reference grid (TICKET-041)
-  if (inherits(fit, "beezdiscounting_brms")) {
+  # Bayesian fits: draws-based EMMs over the same reference grid
+  # (TICKET-041; choice fits routed here since TICKET-048 -- the draws
+  # machinery is design-agnostic over b_logk_*)
+  if (inherits(fit, c("beezdiscounting_brms", "beezdiscounting_choice_brms"))) {
     return(.dd_brms_param_emms(
       fit,
       factors_in_emm = factors_in_emm, at = at, ci_level = ci_level
     ))
-  }
-  if (inherits(fit, "beezdiscounting_choice_brms")) {
-    cli::cli_abort(
-      "EMMs are not available for brms choice fits in v1 (no factor design)."
-    )
   }
   if (inherits(fit, "beezdiscounting_choice") &&
       identical(fit$param_info$mode, "descriptive")) {
@@ -421,7 +425,8 @@ get_dd_param_emms <- function(
 #'
 #' @description
 #' Computes factor-level contrasts of the discount rate \code{k} from a fitted
-#' \code{beezdiscounting_tmb} model. \code{k} is linear in the fixed-effect
+#' \code{beezdiscounting_tmb} model (or a structural
+#' \code{beezdiscounting_choice} fit). \code{k} is linear in the fixed-effect
 #' coefficients on the natural-log scale (\code{log k = X beta_k}), so each
 #' contrast is a linear combination of \code{beta_k} with a Wald standard error
 #' from the \code{beta_k} block of \code{TMB::sdreport()}'s fixed-effect
@@ -429,8 +434,15 @@ get_dd_param_emms <- function(
 #' optionally, as multiplicative ratios (\code{ratio = exp(est_log)}). The
 #' returned container mirrors the beezdemand \code{beezdemand_comparison} shape,
 #' so [tidy.beezdiscounting_comparison()] gives a flat, cross-backend frame.
+#' Bayesian fits (\code{beezdiscounting_brms},
+#' \code{beezdiscounting_choice_brms}) compute per-draw contrasts over the
+#' same reference grid: posterior medians with quantile credible intervals
+#' and \code{post.prob} in place of adjusted p-values (no multiplicity
+#' adjustment; the joint posterior already encodes contrast dependence).
 #'
-#' @param fit A \code{beezdiscounting_tmb} object.
+#' @param fit A \code{beezdiscounting_tmb}, structural
+#'   \code{beezdiscounting_choice}, \code{beezdiscounting_brms}, or
+#'   \code{beezdiscounting_choice_brms} object.
 #' @param compare_specs Optional one-sided formula naming the factor subset to
 #'   contrast (e.g. \code{~ condition}). Omitted fitted factors are marginalized
 #'   over with equal weights across the full crossing of their levels. If
@@ -495,7 +507,7 @@ get_dd_comparisons <- function(
   # does not apply to posterior summaries -- the brms path treats a missing/
   # default adjust as "none" and warns on explicit non-"none" requests
   # (TICKET-041).
-  if (inherits(fit, "beezdiscounting_brms")) {
+  if (inherits(fit, c("beezdiscounting_brms", "beezdiscounting_choice_brms"))) {
     return(.dd_brms_comparisons(
       fit,
       compare_specs = compare_specs,
@@ -506,11 +518,6 @@ get_dd_comparisons <- function(
       ci_level = ci_level,
       report_ratios = report_ratios
     ))
-  }
-  if (inherits(fit, "beezdiscounting_choice_brms")) {
-    cli::cli_abort(
-      "Comparisons are not available for brms choice fits in v1 (no factor design)."
-    )
   }
   if (inherits(fit, "beezdiscounting_choice") &&
       identical(fit$param_info$mode, "descriptive")) {

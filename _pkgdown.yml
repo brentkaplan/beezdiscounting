@@ -63,9 +63,11 @@ reference:
 
   - title: Bayesian discounting (brms)
     desc: >
-      Default priors for the Bayesian (brms/Stan) tier of the discounting
-      models; the fitters land with the remainder of the tier.
+      Bayesian mixed-effects discounting via brms/Stan: the
+      indifference-point fitter and its default priors. The choice fitter
+      lands with the remainder of the tier.
     contents:
+      - fit_dd_brms
       - default_dd_priors
       - default_dd_choice_priors
 

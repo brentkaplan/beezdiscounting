@@ -40,13 +40,20 @@
 #' @param boundary "squeeze" (default; Smithson-Verkuilen, applied by the
 #'   fitter) or "zoib" (swaps in `zero_one_inflated_beta`, which changes
 #'   the estimand: k then describes interior responses only).
+#' @param factors,factor_interaction,continuous_covariates Fixed-effect
+#'   design on `logk` (as in `fit_dd_tmb()`); `logs` stays population-level.
+#' @param data Optional data frame for single-level-factor dropping.
 #' @return list(formula, family, nlpars, has_s, response_var, derived_cols,
 #'   equation, boundary).
 #' @noRd
 .dd_brms_formula <- function(
   equation = c("mazur", "exponential", "green-myerson", "rachlin"),
   family = c("beta", "gaussian"),
-  boundary = c("squeeze", "zoib", "error")
+  boundary = c("squeeze", "zoib", "error"),
+  factors = NULL,
+  factor_interaction = FALSE,
+  continuous_covariates = NULL,
+  data = NULL
 ) {
   .dd_brms_check_installed()
   equation <- match.arg(equation)
@@ -72,7 +79,10 @@
   if (family == "beta") {
     # Linear squish into (1e-6, 1 - 1e-6): the differentiable analog of the
     # TMB sltb mu clamp; also makes x = 0 rows (mu = 1) non-fatal.
-    mu_str <- paste0("1e-6 + (1 - 2e-6) * (", mu_str, ")")
+    # Written as 1/(10^6) NOT 1e-6: brms's Stan-code printer inserts spaces
+    # around '-' inside scientific literals ("1e - 06"), a stanc syntax
+    # error that make_stancode() does not catch (it never parses).
+    mu_str <- paste0("1/(10^6) + (1 - 2/(10^6)) * (", mu_str, ")")
     fam <- if (boundary == "zoib") {
       brms::zero_one_inflated_beta(link = "identity")
     } else {
@@ -82,7 +92,14 @@
     fam <- brms::brmsfamily("gaussian", link = "identity")
   }
 
-  pforms <- list(stats::as.formula("logk ~ 1 + (1 | id)"))
+  rhs <- build_fixed_rhs(
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates,
+    data = data
+  )
+  rhs_core <- sub("^~\\s*", "", rhs)
+  pforms <- list(stats::as.formula(paste0("logk ~ ", rhs_core, " + (1 | id)")))
   if (has_s) {
     pforms <- c(pforms, list(stats::as.formula("logs ~ 1")))
   }

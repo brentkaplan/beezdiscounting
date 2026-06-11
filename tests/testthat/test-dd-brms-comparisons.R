@@ -68,6 +68,54 @@ test_that("intercept-only brms fits return empty contrasts", {
   expect_identical(em$level, "(Intercept)")
 })
 
+test_that("redundant contrast_by is ignored with global contrasts (Codex 041-B1)", {
+  fit <- dd_grp_fixture()
+  expect_message(
+    res <- get_dd_comparisons(fit, contrast_by = "group"),
+    "redundant"
+  )
+  cl <- res$k$contrasts_log10
+  expect_identical(nrow(cl), 1L) # global group contrast, not empty
+  expect_false("group" %in% names(cl))
+  expect_identical(attr(res, "contrast_by_used"), "NULL")
+})
+
+test_that("post.prob is tie-aware (Codex 041-R1)", {
+  pp <- beezdiscounting:::.dd_brms_post_prob
+  expect_identical(pp(rep(0, 8)), 0.5)
+  expect_identical(pp(c(1, 1, 1, -1)), 0.75)
+  expect_identical(pp(c(1, 1, 0, 0)), 0.75)
+})
+
+test_that("init = 'tmb' uses the FULL beta_k vector for factor designs (Codex 041-R2)", {
+  fit <- dd_grp_fixture()
+  d <- fit$data
+
+  spec <- beezdiscounting:::.dd_brms_formula(
+    "mazur", "beta",
+    factors = "group", data = d
+  )
+  inits <- beezdiscounting:::.dd_brms_build_inits(
+    init = "tmb", spec = spec, data = d, chains = 1, seed = 1,
+    autoscale_info = NULL, family = "beta",
+    factors = "group", factor_interaction = FALSE,
+    continuous_covariates = NULL, equation = "mazur"
+  )
+  expect_length(inits[[1]]$b_logk, 2L)
+
+  tmb <- fit_dd_tmb(
+    d,
+    equation = "mazur", family = "sltb", factors = "group", verbose = 0
+  )
+  beta_k <- unname(tmb$model$coefficients[
+    names(tmb$model$coefficients) == "beta_k"
+  ])
+  # BOTH coefficients centered at the TMB MLE (jitter sd 0.1), not just
+  # the intercept with zeros
+  expect_lt(max(abs(as.numeric(inits[[1]]$b_logk) - beta_k)), 0.5)
+  expect_gt(abs(beta_k[2]), 0.5) # the group effect is genuinely nonzero
+})
+
 test_that("init = 'tmb' centers the inits at a TMB pre-fit (no sampling)", {
   set.seed(31)
   delays <- c(1, 7, 30, 90, 180, 365)

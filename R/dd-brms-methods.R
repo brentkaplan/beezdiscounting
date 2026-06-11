@@ -424,6 +424,12 @@ residuals.beezdiscounting_brms <- function(
   }
 }
 
+#' Posterior probability of direction, tie-aware (Codex 041-R1)
+#' @noRd
+.dd_brms_post_prob <- function(d) {
+  max(mean(d > 0), mean(d < 0)) + 0.5 * mean(d == 0)
+}
+
 #' Draws-based k contrasts for brms fits (delegated from get_dd_comparisons)
 #'
 #' Per-draw differences of reference-grid linear predictors, summarized on
@@ -544,10 +550,30 @@ residuals.beezdiscounting_brms <- function(
   level_combos <- grid$level_combos
   use_factors <- grid$use_factors
 
-  effective_by <- if (!is.null(contrast_by)) {
-    intersect(contrast_by, use_factors)
-  } else {
-    character(0)
+  # contrast_by resolution mirroring the TMB path (Codex 041-B1): resolve
+  # against the fitted factor set, abort loudly when a resolved by-var was
+  # excluded by compare_specs, and ignore a redundant sole-factor by.
+  effective_by <- character(0)
+  if (!is.null(contrast_by)) {
+    effective_by <- intersect(contrast_by, fitted_factors)
+    if (length(effective_by) > 0L && !all(effective_by %in% use_factors)) {
+      not_in <- setdiff(effective_by, use_factors)
+      stop(
+        "`contrast_by` factor(s) ", paste(not_in, collapse = ", "),
+        " are not in `compare_specs`. Name the by-variable(s) in ",
+        "`compare_specs` to condition contrasts on them.",
+        call. = FALSE
+      )
+    }
+    if (length(effective_by) > 0L && length(use_factors) == 1L &&
+      identical(sort(use_factors), sort(effective_by))) {
+      message(
+        "  `contrast_by` (", paste(effective_by, collapse = ", "),
+        ") is redundant with `compare_specs` for simple contrasts. ",
+        "Ignoring `contrast_by`."
+      )
+      effective_by <- character(0)
+    }
   }
   comparison_factors <- setdiff(use_factors, effective_by)
   label_f <- function(i, fs) .dd_brms_grid_label(grid, i, fs)
@@ -578,7 +604,7 @@ residuals.beezdiscounting_brms <- function(
     for (k in seq_along(lhs)) {
       d <- as.numeric(cell_lin[, lhs[k]] - cell_lin[, rhs[k]])
       d10 <- d / ln10
-      pd <- max(mean(d > 0), mean(d < 0))
+      pd <- .dd_brms_post_prob(d)
       lab <- paste(
         label_f(lhs[k], comparison_factors), "-",
         label_f(rhs[k], comparison_factors)

@@ -196,26 +196,36 @@ glance.beezdiscounting_brms <- function(x, ...) {
 
 #' @export
 augment.beezdiscounting_brms <- function(x, ...) {
-  fv <- fitted(x)
+  # one epred pass shared by the fitted values and the dispersion scale
+  # (Codex whole-branch review R1/R4)
+  ep <- brms::posterior_epred(x$brmsfit, re_formula = NULL)
+  fv <- apply(ep, 2, stats::median)
   out <- tibble::as_tibble(x$data)
   out$.fitted <- fv
   out$.resid <- x$data$y - fv
-  disp <- .dd_brms_dispersion_sd(x)
-  out$.std_resid <- out$.resid / disp
+  out$.std_resid <- out$.resid / .dd_brms_dispersion_sd(x, epred_draws = ep)
   out
 }
 
 #' Posterior-median residual scale: sigma (gaussian) or the beta-implied SD
-#' at the fitted mean
+#'
+#' Draws-first throughout (Codex whole-branch review R1): for the beta
+#' family the per-observation SD draws sqrt(mu_d (1 - mu_d) / (1 + phi_d))
+#' are computed per draw and THEN summarized -- never sqrt() of summarized
+#' mu/phi (the transform is nonlinear, so the order matters).
 #' @noRd
-.dd_brms_dispersion_sd <- function(object) {
+.dd_brms_dispersion_sd <- function(object, epred_draws = NULL) {
   draws <- .dd_brms_draws_matrix(object)
   if (object$param_info$family == "gaussian") {
     stats::median(as.numeric(draws[, "sigma"]))
   } else {
-    phi <- stats::median(as.numeric(draws[, "phi"]))
-    mu <- fitted(object)
-    sqrt(mu * (1 - mu) / (1 + phi))
+    if (is.null(epred_draws)) {
+      epred_draws <- brms::posterior_epred(object$brmsfit, re_formula = NULL)
+    }
+    phi_draws <- as.numeric(draws[, "phi"])
+    # phi recycles down the columns (draw-aligned: column length == n_draws)
+    sd_draws <- sqrt(epred_draws * (1 - epred_draws) / (1 + phi_draws))
+    apply(sd_draws, 2, stats::median)
   }
 }
 
@@ -348,9 +358,10 @@ residuals.beezdiscounting_brms <- function(
   ...
 ) {
   type <- match.arg(type)
-  res <- object$data$y - fitted(object)
+  ep <- brms::posterior_epred(object$brmsfit, re_formula = NULL)
+  res <- object$data$y - apply(ep, 2, stats::median)
   if (type == "pearson") {
-    res <- res / .dd_brms_dispersion_sd(object)
+    res <- res / .dd_brms_dispersion_sd(object, epred_draws = ep)
   }
   res
 }

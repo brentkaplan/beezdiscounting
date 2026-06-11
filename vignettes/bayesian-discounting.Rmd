@@ -8,7 +8,8 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
+                      eval = FALSE, purl = FALSE)
 ```
 
 The Bayesian tier fits the same discounting models as `fit_dd_tmb()` and
@@ -19,7 +20,7 @@ session. brms, posterior, and loo are suggested packages.
 
 ## Indifference points
 
-```{r fit}
+```{r fit, eval = FALSE}
 library(beezdiscounting)
 data(dd_ip)
 
@@ -63,7 +64,7 @@ so the default `logk` prior anchors to the data: it centers
 half. The anchor is printed at fit time, stored in `fit$autoscale_info`,
 and the whole table is inspectable and overridable:
 
-```{r priors}
+```{r priors, eval = FALSE}
 default_dd_priors("mazur", family = "beta", data = dd_ip)
 
 fit2 <- fit_dd_brms(
@@ -81,7 +82,7 @@ guards the `0^s` case exactly as the TMB template does).
 
 ## Trial-level choice
 
-```{r choice}
+```{r choice, eval = FALSE}
 fitc <- fit_dd_choice_brms(
   choice_data,
   equation = "mazur",
@@ -116,4 +117,3 @@ fit directly with `brms::brm()` if you want it Bayesian.
 Random effects are intercept-only on k (`k ~ 1`); the TMB tier's
 `k + phi ~ 1` is planned via a distributional formula. Bayesian
 EMMs/comparisons for factor designs are deferred to a follow-up release.
-```

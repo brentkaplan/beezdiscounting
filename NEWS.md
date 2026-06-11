@@ -22,6 +22,12 @@
   MCMC diagnostics in place of `AIC`/`BIC`, `confint()` quantile credible
   intervals, `predict()`, `ranef()` with per-subject `k` posterior
   summaries, `print()`/`summary()`.
+* `get_dd_param_emms()` and `get_dd_comparisons()` accept brms fits:
+  draws-based marginal means and contrasts over the same reference grid as
+  the TMB path, with quantile credible intervals and `post.prob` (posterior
+  probability of direction) in place of adjusted p-values.
+* `init = "tmb"` is available in both Bayesian fitters (a quiet TMB
+  pre-fit supplies the chain starting values, with prior-center fallback).
 * brms, posterior, and loo are Suggests-only.
 
 # beezdiscounting 0.4.0

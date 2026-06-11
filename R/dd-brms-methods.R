@@ -12,7 +12,7 @@
   to <- if (report_space == "internal") "log" else report_space
 
   draws <- .dd_brms_draws_matrix(object)
-  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
+  k_vars <- .dd_brms_logk_draw_vars(object, colnames(draws))
   terms <- paste0("k:", colnames(object$formula_details$X))
 
   rows <- lapply(seq_along(k_vars), function(j) {
@@ -224,6 +224,13 @@ augment.beezdiscounting_brms <- function(x, ...) {
     }
     phi_draws <- as.numeric(draws[, "phi"])
     # phi recycles down the columns (draw-aligned: column length == n_draws)
+    if (nrow(epred_draws) != length(phi_draws)) {
+      stop(
+        "Internal error: epred draw count (", nrow(epred_draws),
+        ") does not match phi draw count (", length(phi_draws), ").",
+        call. = FALSE
+      )
+    }
     sd_draws <- sqrt(epred_draws * (1 - epred_draws) / (1 + phi_draws))
     apply(sd_draws, 2, stats::median)
   }
@@ -257,7 +264,7 @@ confint.beezdiscounting_brms <- function(
   alpha2 <- (1 - level) / 2
 
   draws <- .dd_brms_draws_matrix(object)
-  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
+  k_vars <- .dd_brms_logk_draw_vars(object, colnames(draws))
   terms <- paste0("k:", colnames(object$formula_details$X))
   tmb_names <- rep("beta_k", length(k_vars))
   vars <- k_vars
@@ -385,7 +392,7 @@ residuals.beezdiscounting_brms <- function(
   )
   draws <- .dd_brms_draws_matrix(fit)
   b <- as.matrix(
-    draws[, grep("^b_logk_", colnames(draws), value = TRUE), drop = FALSE]
+    draws[, .dd_brms_logk_draw_vars(fit, colnames(draws)), drop = FALSE]
   )
   alpha2 <- (1 - ci_level) / 2
 
@@ -553,7 +560,7 @@ residuals.beezdiscounting_brms <- function(
 
   draws <- .dd_brms_draws_matrix(fit)
   b <- as.matrix(
-    draws[, grep("^b_logk_", colnames(draws), value = TRUE), drop = FALSE]
+    draws[, .dd_brms_logk_draw_vars(fit, colnames(draws)), drop = FALSE]
   )
   ref_X <- grid$ref_X
   n <- nrow(ref_X)

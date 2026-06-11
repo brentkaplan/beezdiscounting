@@ -107,6 +107,11 @@ fit_dd_choice_brms <- function(
     }
   }
 
+  # Warn (pre-sampling) on within-subject-varying predictors, matching the
+  # TMB choice fitter; .dd_brms_subject_pars() additionally skips
+  # subject-level k for such designs (Codex 048-R1).
+  .dd_check_between_subject(d, extra_cols)
+
   # The TMB design path carries the guards (rank-deficiency rejection) a bare
   # brms formula would skip; X/rhs/contrasts feed subject_pars and the EMM
   # reference grid (same route as fit_dd_choice()).
@@ -229,13 +234,12 @@ fit_dd_choice_brms <- function(
     class = c("beezdiscounting_choice_brms", "list")
   )
 
+  # Authoritative draw-name map captured at fit time + ordered, validated
+  # alignment of every b_logk_* draw with the design columns (Codex 048-B1).
+  obj$formula_details$logk_draw_vars <-
+    .dd_brms_logk_standata_map(brmsfit, design$X)
   draws <- .dd_brms_draws_matrix(obj)
-  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
-  if (length(k_vars) != ncol(design$X)) {
-    stop("Internal error: brms draw variables do not match the design matrix.",
-      call. = FALSE
-    )
-  }
+  k_vars <- .dd_brms_logk_draw_vars(obj, colnames(draws))
   vars <- c(k_vars, "b_loggamma_Intercept")
   names_out <- c(rep("beta_k", length(k_vars)), "log_gamma")
   if (isTRUE(intercept)) {
@@ -430,7 +434,7 @@ fit_dd_choice_brms <- function(
     log10 = "log10(gamma)",
     log = "log(gamma)"
   )
-  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
+  k_vars <- .dd_brms_logk_draw_vars(object, colnames(draws))
   k_terms <- paste0("k:", colnames(object$formula_details$X))
   rows <- c(
     lapply(seq_along(k_vars), function(j) {
@@ -477,7 +481,7 @@ confint.beezdiscounting_choice_brms <- function(
   alpha2 <- (1 - level) / 2
   draws <- .dd_brms_draws_matrix(object)
 
-  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
+  k_vars <- .dd_brms_logk_draw_vars(object, colnames(draws))
   k_terms <- paste0("k:", colnames(object$formula_details$X))
   specs <- c(
     lapply(seq_along(k_vars), function(j) {

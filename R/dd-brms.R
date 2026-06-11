@@ -11,6 +11,76 @@
   posterior::as_draws_matrix(object$brmsfit)
 }
 
+#' Canonicalize design column names the way brms sanitizes draw names
+#'
+#' brms strips parentheses/spaces (and other specials) from design column
+#' names when naming draws: "(Intercept)" -> "b_logk_Intercept". Colons in
+#' interaction columns are KEPT. Both sides of any X-vs-draws comparison go
+#' through this.
+#' @noRd
+.dd_brms_canon_coefname <- function(x) {
+  gsub("[^[:alnum:].:_]", "", x)
+}
+
+#' Ordered b_logk draw variables, validated against the fitted design
+#'
+#' THE single alignment point between posterior draw names and the stored
+#' TMB-style design matrix (Codex 048-B1: a raw grep() is positional and a
+#' length check cannot catch reordering or name mangling). Resolution order:
+#' the fit-time map `formula_details$logk_draw_vars` (captured from the brms
+#' standata design, see `.dd_brms_logk_standata_map()`), else the canonical
+#' name reconstruction from `colnames(formula_details$X)` for objects fit
+#' before the map existed. Either way the result is validated for set
+#' equality against the draw columns actually present and returned in
+#' FITTED-DESIGN ORDER, so `draws[, vars]` is column-aligned with
+#' `formula_details$X` by NAME, never by position.
+#' @noRd
+.dd_brms_logk_draw_vars <- function(object, draws_cols) {
+  fitted_cols <- colnames(object$formula_details$X)
+  expected <- object$formula_details$logk_draw_vars
+  if (is.null(expected)) {
+    expected <- paste0("b_logk_", .dd_brms_canon_coefname(fitted_cols))
+  }
+  found <- grep("^b_logk_", draws_cols, value = TRUE)
+  if (length(expected) != length(fitted_cols) ||
+    anyDuplicated(expected) > 0 ||
+    !setequal(expected, found)) {
+    stop(
+      "Internal error: cannot align b_logk_* posterior draws with the ",
+      "fitted log-k design columns.\n  Design: ",
+      paste(fitted_cols, collapse = ", "), "\n  Draws:  ",
+      paste(found, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  expected
+}
+
+#' Capture the authoritative b_logk draw-name map from the brms standata
+#'
+#' The Stan coefficient vector `b_logk` is ordered by the columns of the
+#' standata design `X_logk`; brms names the draws
+#' `paste0("b_logk_", colnames(X_logk))`. Cross-checks that order
+#' elementwise (canonicalized) against the stored TMB-style design so any
+#' brms-side reordering aborts AT FIT TIME instead of silently relabeling
+#' coefficients downstream.
+#' @noRd
+.dd_brms_logk_standata_map <- function(brmsfit, X) {
+  sdata_cols <- colnames(brms::standata(brmsfit)$X_logk)
+  if (!identical(
+    .dd_brms_canon_coefname(colnames(X)),
+    .dd_brms_canon_coefname(sdata_cols)
+  )) {
+    stop(
+      "Internal error: the brms design for log k does not match the fitted ",
+      "design matrix.\n  Fitted: ", paste(colnames(X), collapse = ", "),
+      "\n  brms:   ", paste(sdata_cols, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  paste0("b_logk_", sdata_cols)
+}
+
 #' Evaluate code under a temporary RNG seed, restoring the caller's stream
 #' @noRd
 .dd_brms_with_seed <- function(seed, code) {
@@ -510,13 +580,11 @@ fit_dd_brms <- function(
     class = c("beezdiscounting_brms", "list")
   )
 
+  # Authoritative draw-name map captured at fit time + ordered, validated
+  # alignment of every b_logk_* draw with the design columns (Codex 048-B1).
+  obj$formula_details$logk_draw_vars <- .dd_brms_logk_standata_map(brmsfit, X)
   draws <- .dd_brms_draws_matrix(obj)
-  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
-  if (length(k_vars) != ncol(X)) {
-    stop("Internal error: brms draw variables do not match the design matrix.",
-      call. = FALSE
-    )
-  }
+  k_vars <- .dd_brms_logk_draw_vars(obj, colnames(draws))
   vars <- k_vars
   names_out <- rep("beta_k", length(k_vars))
   if (spec$has_s) {
@@ -620,7 +688,7 @@ fit_dd_brms <- function(
     }
   }
 
-  k_vars <- grep("^b_logk_", colnames(draws), value = TRUE)
+  k_vars <- .dd_brms_logk_draw_vars(object, colnames(draws))
   b <- as.matrix(draws[, k_vars, drop = FALSE])
   r_vars <- paste0("r_id__logk[", ids, ",Intercept]")
   missing <- setdiff(r_vars, colnames(draws))

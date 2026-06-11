@@ -1,0 +1,201 @@
+---
+title: "Comparing discounting rates between groups"
+author: "Brent Kaplan"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Comparing discounting rates between groups}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+set.seed(1)
+has_tmb <- requireNamespace("TMB", quietly = TRUE)
+```
+
+A common discounting question is not "what is k?" but "does k differ
+between groups?" -- treatment vs. control, clinical vs. community,
+commodity A vs. commodity B. Both modeling tiers in beezdiscounting answer
+it the same way: the discount rate is estimated on the natural-log scale,
+so a between-subject design enters as a linear model on log k
+(`log k = X beta`), and every marginal mean or contrast is a linear
+combination of coefficients. `get_dd_param_emms()` and
+`get_dd_comparisons()` work on top of that shared backbone for:
+
+- `fit_dd_tmb()` -- mixed-effects indifference-point models (Wald
+  inference),
+- `fit_dd_choice()` -- the structural trial-level choice model (Wald
+  inference),
+- `fit_dd_brms()` and `fit_dd_choice_brms()` -- their Bayesian
+  counterparts (posterior draws; see the last section).
+
+The TMB examples below run at build time; the Bayesian section shows code
+without running it (Stan sampling takes minutes -- copy the chunks into
+your session).
+
+## Simulate a two-group study
+
+`simulate_dd_ip()` generates indifference points with a known
+between-condition shift in log k. Here condition `C2`'s k is three times
+`C1`'s (`delta_k = log(3)`). To have a second factor for the grouped
+contrasts shown later, we also assign each subject a (null) `site`.
+
+```{r simulate, eval = has_tmb}
+library(beezdiscounting)
+
+sim <- simulate_dd_ip(
+  n_subjects = 24, n_conditions = 2, delta_k = c(0, log(3)), seed = 42
+)
+# conditions alternate across subjects, so assign site in blocks of two to
+# get the full condition x site crossing
+subjects <- unique(sim$id)
+sim$site <- factor(ifelse(
+  ((match(sim$id, subjects) - 1) %/% 2) %% 2 == 0, "siteA", "siteB"
+))
+with(unique(sim[, c("id", "condition", "site")]), table(condition, site))
+head(sim)
+```
+
+## Fit with a factor design on log k
+
+`factors` puts the design on log k; every other parameter stays
+population-level. (`multi_start = FALSE` keeps the vignette quick; leave
+the default on for real analyses.)
+
+```{r fit-tmb, eval = has_tmb}
+fit <- fit_dd_tmb(
+  sim,
+  factors = c("condition", "site"),
+  multi_start = FALSE, verbose = 0
+)
+tidy(fit)
+```
+
+## Estimated marginal means of k
+
+`get_dd_param_emms()` averages the fitted design over the factor levels
+you are not looking at (equal weights, the emmeans convention) and
+back-transforms: `k = exp(k_log)`, with the standard error and the Wald
+interval formed on the log scale.
+
+```{r emms, eval = has_tmb}
+get_dd_param_emms(fit)
+```
+
+Marginalize over `site` to get per-condition means, or condition on a
+level with `at`:
+
+```{r emms-marginal, eval = has_tmb}
+get_dd_param_emms(fit, factors_in_emm = "condition")
+
+get_dd_param_emms(fit, at = list(site = "siteA"))
+```
+
+## Contrasts
+
+`get_dd_comparisons()` turns the same reference grid into factor-level
+contrasts. Estimates are reported on the log10 scale (the customary
+discounting metric) and, because differences in log k are log ratios,
+also as multiplicative ratios: a ratio of 3 means one group discounts
+three times as steeply. P-values are adjusted with `stats::p.adjust()`
+(`"holm"` by default).
+
+```{r contrasts, eval = has_tmb}
+cmp <- get_dd_comparisons(fit, compare_specs = ~condition)
+cmp$k$contrasts_log10
+cmp$k$contrasts_ratio
+```
+
+The simulated truth was `k(C2) = 3 k(C1)`, so the displayed `C1 - C2`
+ratio should land near 1/3 -- and it does. With more than one factor,
+`contrast_by` conditions the contrasts on another factor's levels
+(adjustment is applied per by-cell; with no interaction in the model the
+per-site contrasts coincide, as here):
+
+```{r contrast-by, eval = has_tmb}
+cmp_by <- get_dd_comparisons(
+  fit,
+  compare_specs = ~ condition + site, contrast_by = "site"
+)
+cmp_by$k$contrasts_log10
+```
+
+`tidy()` flattens any comparison object into one cross-backend frame:
+
+```{r tidy-cmp, eval = has_tmb}
+tidy(cmp)
+```
+
+## Trial-level choice models
+
+The structural choice model estimates the same log-k design from binary
+smaller-sooner vs. larger-later choices, so the comparison surface is
+identical. (The simulator has no built-in group effect; stack two
+simulated groups.)
+
+```{r choice, eval = has_tmb}
+ctrl <- simulate_dd_choice(n_subjects = 12, log_k_pop = log(0.01), seed = 7)
+trt <- simulate_dd_choice(n_subjects = 12, log_k_pop = log(0.04), seed = 8)
+trt$id <- paste0("t", trt$id)
+ctrl$group <- "ctrl"
+trt$group <- "treat"
+choice_data <- rbind(ctrl, trt)
+
+fit_choice <- fit_dd_choice(
+  choice_data,
+  mode = "structural", factors = "group", verbose = 0
+)
+get_dd_param_emms(fit_choice)
+get_dd_comparisons(fit_choice)$k$contrasts_ratio
+```
+
+## The Bayesian analogs
+
+`fit_dd_brms()` and `fit_dd_choice_brms()` take the same
+`factors`/`factor_interaction`/`continuous_covariates` arguments, and
+`get_dd_param_emms()`/`get_dd_comparisons()` accept the fits directly:
+
+```{r brms, eval = FALSE}
+fit_b <- fit_dd_brms(
+  sim,
+  equation = "mazur", factors = c("condition", "site"),
+  chains = 4, cores = 4, seed = 1
+)
+get_dd_param_emms(fit_b, factors_in_emm = "condition")
+get_dd_comparisons(fit_b, compare_specs = ~condition)
+
+fit_cb <- fit_dd_choice_brms(
+  choice_data,
+  equation = "mazur", factors = "group",
+  chains = 4, cores = 4, seed = 1
+)
+get_dd_comparisons(fit_cb)
+```
+
+The tables have the same shape, with draws-based summaries in place of
+Wald machinery:
+
+- Estimates are posterior medians; intervals are equal-tailed quantiles
+  of the (transformed) draws -- the marginal means and contrasts are
+  computed per posterior draw over the same reference grid, then
+  summarized, so back-transformation is exact (no delta method).
+- `statistic`, `df`, and `p.value` are `NA`. In their place `post.prob`
+  reports the posterior probability of direction: the probability that
+  the contrast is positive (or negative, whichever is larger). A
+  `post.prob` near 1 plays the practical role of a small p-value.
+- There is no multiplicity adjustment, by design: the contrasts are
+  deterministic functions of one joint posterior, which already encodes
+  their dependence. Asking for `adjust` produces a warning rather than an
+  adjusted column.
+
+## Which backend when
+
+Use the TMB fitters for fast iteration and conventional Wald tests with
+familiar adjusted p-values. Reach for the brms fitters when you want
+full posterior uncertainty for derived quantities (the EMM and ratio
+intervals above need no asymptotics), prior information about plausible
+discounting rates, or small-sample inference you can defend without
+appealing to asymptotic normality. The vignette
+`vignette("bayesian-discounting")` covers the Bayesian tier itself --
+priors, families, convergence -- in more depth.

@@ -42,6 +42,8 @@ navbar:
           href: articles/sltb-discounting.html
         - text: Bayesian discounting models (brms)
           href: articles/bayesian-discounting.html
+        - text: Comparing discounting rates between groups
+          href: articles/dd-group-comparisons.html
 
 reference:
   - title: Mixed-effects discounting (TMB)

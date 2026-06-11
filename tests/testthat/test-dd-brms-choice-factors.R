@@ -163,3 +163,121 @@ test_that("explicit adjust requests warn on the choice brms path", {
   fit <- dd_choice_grp_fixture()
   expect_warning(get_dd_comparisons(fit, adjust = "holm"), "posterior")
 })
+
+# --- b_logk draw/design alignment (Codex 048-B1) ------------------------------------
+
+test_that("brms standata design order matches .dd_tmb_build_design for hard designs", {
+  set.seed(11)
+  d <- expand.grid(id = factor(1:8), delay = c(1, 7, 30, 90))
+  d$group <- factor(ifelse(as.integer(d$id) <= 4, "a", "b"))
+  d$site <- factor(ifelse(as.integer(d$id) %% 2 == 0, "x", "y"))
+  d$age <- as.numeric(d$id) + 20
+  d$rel <- 2
+  d$choice <- rbinom(nrow(d), 1, 0.5)
+
+  design_specs <- list(
+    interaction = list(factors = c("group", "site"), factor_interaction = TRUE),
+    covariate = list(factors = "group", continuous_covariates = "age")
+  )
+  for (nm in names(design_specs)) {
+    args <- design_specs[[nm]]
+    design <- do.call(
+      beezdiscounting:::.dd_tmb_build_design, c(list(d), args)
+    )
+    spec <- do.call(
+      beezdiscounting:::.dd_brms_choice_formula,
+      c(list(equation = "mazur", data = d), args)
+    )
+    sdata <- brms::make_standata(spec$formula, data = d)
+    expect_identical(
+      beezdiscounting:::.dd_brms_canon_coefname(colnames(design$X)),
+      beezdiscounting:::.dd_brms_canon_coefname(colnames(sdata$X_logk)),
+      info = nm
+    )
+  }
+})
+
+test_that("the b_logk draw resolver is order-independent and validated", {
+  fit <- dd_choice_grp_fixture()
+  draws <- posterior::as_draws_matrix(fit$brmsfit)
+  vars <- beezdiscounting:::.dd_brms_logk_draw_vars(fit, colnames(draws))
+  expect_identical(vars, c("b_logk_Intercept", "b_logk_grouptreat"))
+
+  # the fit-time map captured from the brms standata is stored on the object
+  expect_identical(fit$formula_details$logk_draw_vars, vars)
+
+  # permuted draw columns resolve identically: alignment is by NAME
+  expect_identical(
+    beezdiscounting:::.dd_brms_logk_draw_vars(fit, rev(colnames(draws))),
+    vars
+  )
+
+  # a missing/renamed draw column aborts instead of silently misaligning
+  expect_error(
+    beezdiscounting:::.dd_brms_logk_draw_vars(
+      fit, setdiff(colnames(draws), "b_logk_grouptreat")
+    ),
+    "align b_logk"
+  )
+})
+
+test_that("resolver falls back to canonical names for fits predating the stored map", {
+  path <- testthat::test_path("fixtures", "brms", "fit-mazur-beta-group.rds")
+  skip_if_not(file.exists(path), "fixture missing: fit-mazur-beta-group")
+  fit <- readRDS(path)
+  skip_if_not(
+    is.null(fit$formula_details$logk_draw_vars),
+    "IP group fixture has been regenerated with the stored map"
+  )
+  draws <- posterior::as_draws_matrix(fit$brmsfit)
+  expect_identical(
+    beezdiscounting:::.dd_brms_logk_draw_vars(fit, colnames(draws)),
+    c("b_logk_Intercept", "b_logk_grouptreat")
+  )
+})
+
+test_that("choice EMMs handle continuous covariates and at with permuted draws", {
+  set.seed(13)
+  n_draws <- 400
+  b0 <- rnorm(n_draws, -4, 0.3)
+  b_age <- rnorm(n_draws, 0.05, 0.01)
+  # physically permuted column order: by-name alignment must not care
+  draws_perm <- cbind(b_logk_age = b_age, b_logk_Intercept = b0)
+
+  d <- data.frame(
+    id = rep(1:6, each = 4),
+    age = rep(c(20, 25, 30, 35, 40, 45), each = 4)
+  )
+  X <- stats::model.matrix(~age, data = d)
+  colnames(X) <- c("(Intercept)", "age")
+  fake <- structure(
+    list(
+      data = d,
+      param_info = list(
+        factors = character(0),
+        factor_interaction = FALSE,
+        continuous_covariates = "age"
+      ),
+      formula_details = list(
+        X = X, rhs = ~age, contrasts = NULL,
+        logk_draw_vars = c("b_logk_Intercept", "b_logk_age")
+      )
+    ),
+    class = c("beezdiscounting_choice_brms", "list")
+  )
+  testthat::local_mocked_bindings(
+    .dd_brms_draws_matrix = function(object) draws_perm,
+    .package = "beezdiscounting"
+  )
+
+  em <- get_dd_param_emms(fake)
+  lin <- b0 + mean(d$age) * b_age
+  expect_identical(em$level, paste0("age=", mean(d$age)))
+  expect_equal(em$k_log, stats::median(lin))
+  expect_equal(em$k, stats::median(exp(lin)))
+  expect_equal(em$std.error, stats::sd(lin))
+
+  em_at <- get_dd_param_emms(fake, at = list(age = 30))
+  lin30 <- b0 + 30 * b_age
+  expect_equal(em_at$k_log, stats::median(lin30))
+})

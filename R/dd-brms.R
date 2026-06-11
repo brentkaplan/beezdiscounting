@@ -392,6 +392,10 @@ fit_dd_brms <- function(
         )
         coefs <- tmb_fit$model$coefficients
         out <- list(
+          # full fixed-effect vector: factor/covariate designs get every
+          # coefficient centered at the TMB MLE, not just the intercept
+          # (Codex 041-R2)
+          beta_k_vec = unname(coefs[names(coefs) == "beta_k"]),
           logk = unname(coefs[names(coefs) == "beta_k"])[1],
           sd = exp(unname(coefs[["log_sigma_u"]]))
         )
@@ -426,10 +430,17 @@ fit_dd_brms <- function(
   K <- ncol(stats::model.matrix(stats::as.formula(rhs), data = data))
   n_id <- length(unique(data$id))
 
+  beta_k_center <- if (!is.null(centers$beta_k_vec) &&
+    length(centers$beta_k_vec) == K) {
+    centers$beta_k_vec
+  } else {
+    c(logk_center, rep(0, K - 1))
+  }
+
   jit <- function(n = 1) stats::rnorm(n, 0, 0.1)
   one_chain <- function() {
     out <- list(
-      b_logk = as.array(c(logk_center + jit(), rep(0, K - 1))),
+      b_logk = as.array(beta_k_center + jit(K)),
       sd_1 = as.array(abs(centers$sd + jit())),
       z_1 = matrix(jit(n_id), nrow = 1)
     )

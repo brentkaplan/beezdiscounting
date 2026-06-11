@@ -116,5 +116,8 @@ fit directly with `brms::brm()` if you want it Bayesian.
 
 Random effects are intercept-only on k (`k ~ 1`); the TMB tier's
 `k + phi ~ 1` is planned via a distributional formula.
-`get_dd_param_emms()` and `get_dd_comparisons()` accept Bayesian fits
-(quantile credible intervals; `post.prob` in place of adjusted p-values).
+`get_dd_param_emms()` and `get_dd_comparisons()` accept Bayesian
+indifference-point fits (quantile credible intervals; `post.prob` in
+place of adjusted p-values). The choice fitter is intercept-only in this
+release: factor designs on the choice model's k (and their
+EMMs/comparisons) are planned.

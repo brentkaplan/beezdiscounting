@@ -21,8 +21,10 @@
   report-space-transformed draws), `glance()` with `elpd_loo`/`looic` and
   MCMC diagnostics in place of `AIC`/`BIC`, `confint()` quantile credible
   intervals, `predict()`, `ranef()` with per-subject `k` posterior
-  summaries, `print()`/`summary()`.
-* `get_dd_param_emms()` and `get_dd_comparisons()` accept brms fits:
+  summaries for indifference-point fits, `print()`/`summary()`.
+* `get_dd_param_emms()` and `get_dd_comparisons()` accept brms
+  indifference-point fits (the choice brms fitter is intercept-only in
+  this release, so choice EMMs/comparisons error with guidance):
   draws-based marginal means and contrasts over the same reference grid as
   the TMB path, with quantile credible intervals and `post.prob` (posterior
   probability of direction) in place of adjusted p-values.

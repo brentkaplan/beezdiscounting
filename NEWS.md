@@ -34,6 +34,11 @@
 * `init = "tmb"` is available in both Bayesian fitters (a quiet TMB
   pre-fit supplies the chain starting values, with prior-center fallback).
 * brms, posterior, and loo are Suggests-only.
+* New vignette "Comparing discounting rates between groups"
+  (`vignette("dd-group-comparisons")`): factor designs on log k, estimated
+  marginal means, and contrasts across both backends -- TMB (Wald + holm)
+  and brms (posterior draws + `post.prob`) -- for indifference-point and
+  trial-level choice models alike.
 
 # beezdiscounting 0.4.0
 

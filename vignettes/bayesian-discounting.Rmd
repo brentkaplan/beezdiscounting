@@ -1,0 +1,118 @@
+---
+title: "Bayesian discounting models with brms"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Bayesian discounting models with brms}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+The Bayesian tier fits the same discounting models as `fit_dd_tmb()` and
+`fit_dd_choice(mode = "structural")` using brms and Stan, with the discount
+rate estimated on the same natural-log scale. Nothing in this vignette runs
+at build time (Stan sampling takes minutes); copy the chunks into your
+session. brms, posterior, and loo are suggested packages.
+
+## Indifference points
+
+```{r fit}
+library(beezdiscounting)
+data(dd_ip)
+
+fit <- fit_dd_brms(
+  dd_ip,
+  equation = "mazur",
+  family = "beta",
+  chains = 4, cores = 4, seed = 1
+)
+
+summary(fit)
+tidy(fit)        # k on the natural scale (posterior medians of exp draws)
+confint(fit)     # equal-tailed credible intervals
+ranef(fit)       # per-subject k posterior summaries
+```
+
+### Families and boundaries
+
+The TMB tier's SLT-beta family has no brms equivalent. Two options cover
+the same ground:
+
+- `family = "beta"` (default): brms's beta likelihood with an identity
+  link; the mean function is squished into (1e-6, 1 - 1e-6), the
+  differentiable analog of the TMB clamp. Boundary responses (`y` exactly
+  0 or 1) are handled by `boundary`: the default `"squeeze"` applies the
+  Smithson-Verkuilen transform `(y(N-1) + 0.5)/N` to all responses and
+  reports the boundary count; `"zoib"` switches to a zero-one-inflated
+  beta -- statistically more explicit about boundary responding, but it
+  **changes the estimand**: k then describes the interior responses only;
+  `"error"` refuses to fit.
+- `family = "gaussian"`: exact likelihood parity with
+  `fit_dd_tmb(family = "gaussian")`. In our validation harness the
+  posterior median of log k lands within hundredths of the TMB MLE.
+
+### Priors
+
+k is delay-unit dependent (per-day vs per-week k differ by a factor of 7),
+so the default `logk` prior anchors to the data: it centers
+`k * median(delay) = 1`, the delay at which the Mazur curve crosses one
+half. The anchor is printed at fit time, stored in `fit$autoscale_info`,
+and the whole table is inspectable and overridable:
+
+```{r priors}
+default_dd_priors("mazur", family = "beta", data = dd_ip)
+
+fit2 <- fit_dd_brms(
+  dd_ip,
+  equation = "mazur",
+  prior = brms::set_prior("normal(-3, 1)", class = "b",
+                          coef = "Intercept", nlpar = "logk")
+)
+```
+
+The two-parameter equations (`"green-myerson"`, `"rachlin"`) add a
+population-level shape exponent with prior `normal(0, 0.5)` on log s
+(s near 1 a priori); zero delays are valid for Rachlin (the implementation
+guards the `0^s` case exactly as the TMB template does).
+
+## Trial-level choice
+
+```{r choice}
+fitc <- fit_dd_choice_brms(
+  choice_data,
+  equation = "mazur",
+  chains = 4, cores = 4, seed = 1
+)
+
+tidy(fitc)              # k and gamma (choice sensitivity), natural scale
+predict(fitc)           # P(choosing the larger-later), with intervals
+```
+
+The structural likelihood is identical to
+`fit_dd_choice(mode = "structural")`:
+`logit P(LL) = [b0] + gamma ((ll/ss) D(k, delay) - 1)`. The descriptive
+(Young 2018) mode is not wrapped -- it is a plain logistic GLMM you can
+fit directly with `brms::brm()` if you want it Bayesian.
+
+## Reading Bayesian output
+
+- `tidy()` keeps the package's exact eight-column contract, with
+  `statistic`/`p.value` set to `NA`: estimates are posterior medians of the
+  report-space-transformed draws (no delta method), and intervals live in
+  `confint()`.
+- `glance()` reports `elpd_loo`/`looic` plus R-hat/ESS/divergence
+  diagnostics; `logLik`/`AIC`/`BIC` are `NA` by design. Compare Bayesian
+  fits with `brms::loo_compare(fit$brmsfit, fit2$brmsfit)`.
+- `fit$converged` requires R-hat < 1.01, zero divergences, and bulk
+  ESS >= 400; components are in `fit$mcmc_info`, and the full brms
+  toolbox is available on `fit$brmsfit`.
+
+## v1 scope
+
+Random effects are intercept-only on k (`k ~ 1`); the TMB tier's
+`k + phi ~ 1` is planned via a distributional formula. Bayesian
+EMMs/comparisons for factor designs are deferred to a follow-up release.
+```

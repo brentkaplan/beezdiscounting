@@ -1,3 +1,27 @@
+# beezdiscounting (development version)
+
+### Bayesian (brms) modeling tier
+
+* New `fit_dd_brms()`: Bayesian mixed-effects discounting via brms/Stan for
+  all four TMB equations (`"mazur"`, `"exponential"`, `"green-myerson"`,
+  `"rachlin"`). `family = "beta"` (identity link with a differentiable
+  squish) is the closest brms analog of the TMB SLT-beta;
+  `family = "gaussian"` is exact likelihood parity. Boundary responses are
+  handled via Smithson-Verkuilen squeezing (default), zero-one-inflated
+  beta (`boundary = "zoib"`; changes the estimand), or refusal.
+* New `fit_dd_choice_brms()`: the structural trial-level choice model under
+  `bernoulli("logit")`, matching `fit_dd_choice(mode = "structural")`.
+* New `default_dd_priors()` / `default_dd_choice_priors()`: inspectable
+  defaults with delay-unit-aware `logk` anchoring (centers
+  `k * median(delay) = 1`).
+* S3 methods mirror the TMB tier's contracts: the exact 8-column `tidy()`
+  table (with `NA` `statistic`/`p.value`; estimates are posterior medians of
+  report-space-transformed draws), `glance()` with `elpd_loo`/`looic` and
+  MCMC diagnostics in place of `AIC`/`BIC`, `confint()` quantile credible
+  intervals, `predict()`, `ranef()` with per-subject `k` posterior
+  summaries, `print()`/`summary()`.
+* brms, posterior, and loo are Suggests-only.
+
 # beezdiscounting 0.4.0
 
 ### New Features

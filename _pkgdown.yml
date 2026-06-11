@@ -40,6 +40,8 @@ navbar:
       menu:
         - text: Modeling indifference points with bounded error distributions
           href: articles/sltb-discounting.html
+        - text: Bayesian discounting models (brms)
+          href: articles/bayesian-discounting.html
 
 reference:
   - title: Mixed-effects discounting (TMB)

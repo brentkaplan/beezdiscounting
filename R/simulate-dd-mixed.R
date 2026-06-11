@@ -33,6 +33,7 @@
 #' @param delta_k Numeric vector of length `n_conditions`; per-condition shift on
 #'   `log k` (the first element is typically `0` for the reference level).
 #'   Required (non-`NULL`) when `n_conditions > 1`.
+#' @param seed Optional integer seed.
 #' @param sigma_phi Numeric; SD of the subject random intercept on `log phi`
 #'   (SLT-beta precision). Default `0` (no subject-random phi, `family = "sltb"`
 #'   only). When `> 0`, the `(log k, log phi)` pair is drawn jointly from
@@ -44,7 +45,6 @@
 #'   observation's subject-specific precision is appended to the returned
 #'   tibble. When `sigma_phi = 0` the column equals the constant `phi` for
 #'   every observation. Default `FALSE`.
-#' @param seed Optional integer seed.
 #'
 #' @return A [tibble][tibble::tibble] with columns `id` (factor),
 #'   `condition` (factor; only when `n_conditions > 1`), `x` (delay), and
@@ -72,15 +72,15 @@ simulate_dd_ip <- function(
   sigma_u = 0.6,
   phi = 10,
   sigma_e = 0.1,
-  sigma_phi = 0,
-  rho_kphi = 0,
-  attach_truth = FALSE,
   family = c("sltb", "gaussian"),
   equation = c("mazur", "exponential", "green-myerson", "rachlin"),
   s = 1,
   n_conditions = 1,
   delta_k = NULL,
-  seed = NULL
+  seed = NULL,
+  sigma_phi = 0,
+  rho_kphi = 0,
+  attach_truth = FALSE
 ) {
   family <- match.arg(family)
   equation <- match.arg(equation)

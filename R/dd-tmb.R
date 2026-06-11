@@ -908,15 +908,21 @@ NULL
     variance_components <- tryCatch(summary(sdr, "report"), error = function(e) NULL)
   }
 
-  # For a 2-RE fit, rebuild the fitted RE covariance from the reported sd_re/rho.
-  # Reuse the already-computed variance_components (the report summary) rather
-  # than calling summary(sdr, "report") a second time.
+  # For a 2-RE fit, rebuild the fitted RE covariance from the fitted
+  # COEFFICIENTS (log_sd_re / cor_re), not the sdreport "report" block. The
+  # coefficients are always available on a converged fit, so Sigma is non-NULL
+  # even if sdreport fails -- matching the kernel's Sigma = diag(sd) R diag(sd).
   Sigma <- NULL
-  if (n_re == 2L && !is.null(variance_components)) {
-    sd_re <- variance_components[rownames(variance_components) == "sd_re", "Estimate"]
-    rho   <- variance_components[rownames(variance_components) == "rho", "Estimate"][1]
-    Sigma <- matrix(c(sd_re[1]^2, rho * sd_re[1] * sd_re[2],
-                      rho * sd_re[1] * sd_re[2], sd_re[2]^2), 2L,
+  if (n_re == 2L) {
+    sd_re_hat <- exp(unname(coefficients[names(coefficients) == "log_sd_re"]))
+    cor_hat   <- if ("cor_re" %in% names(coefficients)) {
+      unname(coefficients[["cor_re"]])
+    } else {
+      0
+    }
+    rho_hat <- tanh(cor_hat)            # pdDiag: cor_re mapped out -> rho = 0
+    Sigma <- matrix(c(sd_re_hat[1]^2, rho_hat * sd_re_hat[1] * sd_re_hat[2],
+                      rho_hat * sd_re_hat[1] * sd_re_hat[2], sd_re_hat[2]^2), 2L,
                     dimnames = list(c("k", "phi"), c("k", "phi")))
   }
 
@@ -1000,6 +1006,7 @@ NULL
   }
 
   if (n_re == 2L) {
+    if (is.null(Sigma)) stop("internal: 2-RE Sigma unavailable", call. = FALSE)
     b_hat <- u_hat                       # n_subjects x 2 standardized deviates
     L <- t(chol(Sigma))                  # lower-triangular Cholesky of fitted Sigma
     re <- t(L %*% t(b_hat))              # natural-scale (re_k, re_phi)
@@ -1089,9 +1096,6 @@ NULL
 #' @param random_effects RE formula: `k ~ 1` (single random intercept on
 #'   `log k`) or `k + phi ~ 1` (a joint 2-D random intercept on
 #'   `(log k, log phi)`, SLT-beta only).
-#' @param covariance_structure Covariance for a 2-D random effect
-#'   (`k + phi ~ 1`): `"pdSymm"` (default; correlated `(log k, log phi)`) or
-#'   `"pdDiag"` (independent, correlation fixed at 0). Ignored for `k ~ 1`.
 #' @param factors Character vector of between-subject factor names.
 #' @param factor_interaction Logical; include a pairwise factor interaction.
 #' @param continuous_covariates Character vector of covariate names.
@@ -1102,6 +1106,9 @@ NULL
 #' @param multi_start Logical; if `TRUE` (default), run the 3-set guarded
 #'   multi-start.
 #' @param verbose Integer verbosity (0 silent, 1 progress, 2 debug).
+#' @param covariance_structure Covariance for a 2-D random effect
+#'   (`k + phi ~ 1`): `"pdSymm"` (default; correlated `(log k, log phi)`) or
+#'   `"pdDiag"` (independent, correlation fixed at 0). Ignored for `k ~ 1`.
 #' @param ... Reserved.
 #' @return An object of class `beezdiscounting_tmb` with components:
 #'   \describe{
@@ -1114,7 +1121,9 @@ NULL
 #'     \item{param_info}{Model metadata (equation, family, dimensions, factor
 #'       spec, parsed random effects).}
 #'     \item{formula_details}{Fixed-effect design (`X`, `rhs`, `contrasts`).}
-#'     \item{subject_pars}{Data frame of subject-level `id`, `u_i`, `k`.}
+#'     \item{subject_pars}{Data frame of subject-level parameters. For a 1-RE fit
+#'       (`k ~ 1`) the columns are `id, u_i, k`; for a 2-RE fit (`k + phi ~ 1`)
+#'       they are `id, re_k, re_phi, k, phi`.}
 #'     \item{loglik, AIC, BIC}{Fit statistics.}
 #'     \item{converged, se_available}{Convergence / SE-availability flags.}
 #'     \item{opt_warnings}{Character vector of optimizer warnings.}
@@ -1142,7 +1151,6 @@ fit_dd_tmb <- function(data,
                                     "green-myerson", "rachlin"),
                        family = c("sltb", "gaussian"),
                        random_effects = k ~ 1,
-                       covariance_structure = c("pdSymm", "pdDiag"),
                        factors = NULL,
                        factor_interaction = FALSE,
                        continuous_covariates = NULL,
@@ -1152,6 +1160,7 @@ fit_dd_tmb <- function(data,
                        tmb_control = list(iter_max = 1000, eval_max = 2000),
                        multi_start = TRUE,
                        verbose = 1,
+                       covariance_structure = c("pdSymm", "pdDiag"),
                        ...) {
   cl <- match.call()
   equation <- match.arg(equation)

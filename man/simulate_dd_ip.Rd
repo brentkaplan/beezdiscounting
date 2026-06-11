@@ -11,15 +11,15 @@ simulate_dd_ip(
   sigma_u = 0.6,
   phi = 10,
   sigma_e = 0.1,
-  sigma_phi = 0,
-  rho_kphi = 0,
-  attach_truth = FALSE,
   family = c("sltb", "gaussian"),
   equation = c("mazur", "exponential", "green-myerson", "rachlin"),
   s = 1,
   n_conditions = 1,
   delta_k = NULL,
-  seed = NULL
+  seed = NULL,
+  sigma_phi = 0,
+  rho_kphi = 0,
+  attach_truth = FALSE
 )
 }
 \arguments{
@@ -34,20 +34,6 @@ simulate_dd_ip(
 \item{phi}{Numeric; SLT-beta precision (\code{family = "sltb"}).}
 
 \item{sigma_e}{Numeric; residual SD on \code{y} (\code{family = "gaussian"}).}
-
-\item{sigma_phi}{Numeric; SD of the subject random intercept on \verb{log phi}
-(SLT-beta precision). Default \code{0} (no subject-random phi, \code{family = "sltb"}
-only). When \verb{> 0}, the \verb{(log k, log phi)} pair is drawn jointly from
-\code{N(0, Sigma)} where \code{Sigma} is parameterized by \code{sigma_u}, \code{sigma_phi}, and
-\code{rho_kphi}. Requires \code{family = "sltb"}.}
-
-\item{rho_kphi}{Numeric in \verb{[-1, 1]}; correlation between subject random
-intercepts on \verb{log k} and \verb{log phi}. Ignored when \code{sigma_phi = 0}.}
-
-\item{attach_truth}{Logical; when \code{TRUE}, a \code{phi} column containing each
-observation's subject-specific precision is appended to the returned
-tibble. When \code{sigma_phi = 0} the column equals the constant \code{phi} for
-every observation. Default \code{FALSE}.}
 
 \item{family}{One of \code{"sltb"} (default) or \code{"gaussian"}.}
 
@@ -66,6 +52,20 @@ nonlinearity exponent \code{s} and reduce to \code{"mazur"} at \code{s = 1}.}
 Required (non-\code{NULL}) when \code{n_conditions > 1}.}
 
 \item{seed}{Optional integer seed.}
+
+\item{sigma_phi}{Numeric; SD of the subject random intercept on \verb{log phi}
+(SLT-beta precision). Default \code{0} (no subject-random phi, \code{family = "sltb"}
+only). When \verb{> 0}, the \verb{(log k, log phi)} pair is drawn jointly from
+\code{N(0, Sigma)} where \code{Sigma} is parameterized by \code{sigma_u}, \code{sigma_phi}, and
+\code{rho_kphi}. Requires \code{family = "sltb"}.}
+
+\item{rho_kphi}{Numeric in \verb{[-1, 1]}; correlation between subject random
+intercepts on \verb{log k} and \verb{log phi}. Ignored when \code{sigma_phi = 0}.}
+
+\item{attach_truth}{Logical; when \code{TRUE}, a \code{phi} column containing each
+observation's subject-specific precision is appended to the returned
+tibble. When \code{sigma_phi = 0} the column equals the constant \code{phi} for
+every observation. Default \code{FALSE}.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with columns \code{id} (factor),

@@ -4,6 +4,16 @@ describe("simulate_dd_ip()", {
     expect_true(is.function(simulate_dd_ip))
   })
 
+  it("preserves positional arg compatibility for pre-existing formals", {
+    # 7th positional must still bind to `family`, not the new sigma_phi
+    a <- simulate_dd_ip(8, c(7, 30, 180), log(0.01), 0.6, 10, 0.1, "gaussian",
+                        seed = 1)
+    b <- simulate_dd_ip(n_subjects = 8, delays = c(7, 30, 180), log_k_pop = log(0.01),
+                        sigma_u = 0.6, phi = 10, sigma_e = 0.1, family = "gaussian",
+                        seed = 1)
+    expect_identical(a, b)
+  })
+
   it("returns the long-format column contract (id, x, y) with no condition by default", {
     sim <- simulate_dd_ip(n_subjects = 20, seed = 1)
     expect_s3_class(sim, "tbl_df")

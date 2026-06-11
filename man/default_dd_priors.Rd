@@ -10,6 +10,9 @@ default_dd_priors(
   data = NULL,
   y_var = "y",
   x_var = "x",
+  factors = NULL,
+  factor_interaction = FALSE,
+  continuous_covariates = NULL,
   autoscale = !is.null(data)
 )
 }
@@ -21,6 +24,14 @@ default_dd_priors(
 \item{data}{Optional data frame used for autoscaling.}
 
 \item{y_var, x_var}{Column names in \code{data} (canonical defaults).}
+
+\item{factors, factor_interaction, continuous_covariates}{Fixed-effect
+design on \code{logk}, as passed to the fitter. When the design has
+non-intercept coefficients (derived through \code{build_fixed_rhs()}, so
+single-level dropped factors do not count), a fold-change
+\code{normal(0, 1)} class-level coefficient prior is added; with an
+intercept-only design it is omitted (it would be unused, and brms
+warns).}
 
 \item{autoscale}{Logical; defaults to \code{TRUE} when \code{data} is supplied.}
 }

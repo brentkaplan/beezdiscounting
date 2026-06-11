@@ -77,6 +77,18 @@ test_that("choice priors carry loggamma and optional b0", {
   )
 })
 
+test_that("factor designs add the fold-change coefficient prior in the ACCESSOR (Codex 039-R2)", {
+  pri <- default_dd_priors("mazur", family = "beta", factors = "group")
+  row <- pri[pri$class == "b" & pri$coef == "" & pri$nlpar == "logk", ]
+  expect_identical(nrow(row), 1L)
+  expect_identical(row$prior, "normal(0, 1)")
+
+  pri0 <- default_dd_priors("mazur", family = "beta")
+  expect_identical(
+    nrow(pri0[pri0$class == "b" & pri0$coef == "" & pri0$nlpar == "logk", ]), 0L
+  )
+})
+
 test_that("user priors override defaults on the full key", {
   defaults <- default_dd_priors("mazur", family = "beta")
   user <- brms::set_prior("normal(-3, 1)", class = "b", coef = "Intercept", nlpar = "logk")

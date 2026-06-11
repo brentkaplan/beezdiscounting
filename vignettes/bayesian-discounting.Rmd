@@ -50,8 +50,9 @@ the same ground:
   beta -- statistically more explicit about boundary responding, but it
   **changes the estimand**: k then describes the interior responses only;
   `"error"` refuses to fit.
-- `family = "gaussian"`: exact likelihood parity with
-  `fit_dd_tmb(family = "gaussian")`. In our validation harness the
+- `family = "gaussian"`: matches `fit_dd_tmb(family = "gaussian")`
+  wherever the TMB mean clamp (into `[1e-6, 1 - 1e-6]`) does not bind --
+  everywhere except extreme decay underflow. In our validation harness the
   posterior median of log k lands within hundredths of the TMB MLE.
 
 ### Priors

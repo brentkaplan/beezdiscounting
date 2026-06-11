@@ -95,8 +95,9 @@
 #' the boundary count); `"zoib"` switches to `zero_one_inflated_beta`
 #' (statistically more honest but changes the estimand -- k then describes
 #' interior responses only); `"error"` refuses to fit.
-#' `family = "gaussian"` gives exact likelihood parity with
-#' `fit_dd_tmb(family = "gaussian")`.
+#' `family = "gaussian"` matches `fit_dd_tmb(family = "gaussian")`
+#' wherever the TMB template's mu clamp into `[1e-6, 1 - 1e-6]` does not
+#' bind (everywhere except extreme decay underflow).
 #'
 #' @param data Long-format data frame (one row per subject-delay).
 #' @param y_var,x_var,id_var Column names (canonical defaults), as in
@@ -202,6 +203,15 @@ fit_dd_brms <- function(
     d[[f]] <- as.factor(d[[f]])
   }
 
+  # The TMB design path carries the guards (rank-deficiency rejection,
+  # covariate checks) the bare model.matrix() call would skip (Codex 039-R1).
+  design <- .dd_tmb_build_design(
+    d,
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates
+  )
+
   spec <- .dd_brms_formula(
     equation = equation,
     family = family,
@@ -227,8 +237,8 @@ fit_dd_brms <- function(
       d$y <- (d$y * (n_y - 1) + 0.5) / n_y
       if (n_boundary > 0 && verbose >= 1) {
         message(
-          "Smithson-Verkuilen squeeze applied (", n_boundary,
-          " boundary response(s) of ", n_y, ")."
+          "Smithson-Verkuilen squeeze applied to all ", n_y,
+          " responses (", n_boundary, " were exactly 0 or 1)."
         )
       }
     }
@@ -245,14 +255,11 @@ fit_dd_brms <- function(
     data = if (isTRUE(autoscale_priors)) d else NULL,
     y_var = "y",
     x_var = "x",
+    factors = factors,
+    factor_interaction = factor_interaction,
+    continuous_covariates = continuous_covariates,
     autoscale = isTRUE(autoscale_priors)
   )
-  if (length(factors) > 0 || length(continuous_covariates) > 0) {
-    defaults <- c(
-      defaults,
-      brms::set_prior("normal(0, 1)", class = "b", nlpar = "logk")
-    )
-  }
   merged_priors <- .dd_brms_merge_priors(prior, defaults)
   autoscale_info <- attr(defaults, "autoscale_info")
 
@@ -320,6 +327,7 @@ fit_dd_brms <- function(
     brmsfit = brmsfit,
     spec = spec,
     data = d,
+    design = design,
     coercion_info = validated$coercion_info,
     merged_priors = merged_priors,
     autoscale_info = autoscale_info,
@@ -396,17 +404,11 @@ fit_dd_brms <- function(
 #' Assemble the beezdiscounting_brms object
 #' @noRd
 .dd_brms_assemble_fit <- function(
-  brmsfit, spec, data, coercion_info, merged_priors, autoscale_info, call,
-  mcmc_settings, factors, factor_interaction, continuous_covariates,
+  brmsfit, spec, data, design, coercion_info, merged_priors, autoscale_info,
+  call, mcmc_settings, factors, factor_interaction, continuous_covariates,
   family, boundary, response_scale, n_boundary, compute_loo, verbose
 ) {
-  rhs <- build_fixed_rhs(
-    factors = factors,
-    factor_interaction = factor_interaction,
-    continuous_covariates = continuous_covariates,
-    data = data
-  )
-  X <- stats::model.matrix(stats::as.formula(rhs), data = data)
+  X <- design$X
 
   obj <- structure(
     list(
@@ -440,7 +442,8 @@ fit_dd_brms <- function(
       ),
       formula_details = list(
         X = X,
-        rhs = stats::as.formula(rhs),
+        rhs = design$rhs,
+        contrasts = design$contrasts,
         brmsformula = spec$formula,
         family = spec$family
       ),

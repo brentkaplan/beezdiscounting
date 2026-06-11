@@ -77,6 +77,66 @@ test_that("fit_dd_brms mazur/beta: object contract and recovery", {
   expect_identical(fit$AIC, NA_real_)
 })
 
+choice_smoke_data <- function(n_id = 10) {
+  set.seed(41)
+  d <- expand.grid(
+    id = factor(seq_len(n_id)),
+    delay = c(1, 7, 30, 90, 180),
+    rep = 1:4
+  )
+  d$ss_amount <- 50
+  d$ll_amount <- 100
+  k_i <- exp(log(0.02) + rnorm(n_id, 0, 0.4))
+  D <- 1 / (1 + k_i[d$id] * d$delay)
+  eta <- 3 * ((d$ll_amount / d$ss_amount) * D - 1)
+  d$choice <- rbinom(nrow(d), 1, plogis(eta))
+  d$rep <- NULL
+  d
+}
+
+test_that("fit_dd_choice_brms rejects descriptive mode with guidance", {
+  d <- choice_smoke_data()
+  expect_error(
+    fit_dd_choice_brms(d, mode = "descriptive"),
+    "descriptive"
+  )
+})
+
+test_that("fit_dd_choice_brms structural: object contract and recovery", {
+  skip_on_cran()
+  skip_if_not(
+    identical(Sys.getenv("BEEZ_RUN_BRMS_TESTS"), "true"),
+    "Set BEEZ_RUN_BRMS_TESTS=true to run brms sampling tests"
+  )
+
+  d <- choice_smoke_data()
+  fit <- fit_dd_choice_brms(
+    d,
+    equation = "mazur",
+    chains = 2, iter = 600, warmup = 300,
+    cores = 2, seed = 123,
+    loo = FALSE, verbose = 0
+  )
+
+  expect_s3_class(fit, "beezdiscounting_choice_brms")
+  expect_identical(names(fit$model$coefficients), c("beta_k", "log_gamma"))
+  # truth: log k = log(0.02), gamma = 3
+  expect_lt(abs(fit$model$coefficients[["beta_k"]] - log(0.02)), 1)
+  expect_lt(abs(exp(fit$model$coefficients[["log_gamma"]]) - 3), 2.5)
+
+  t <- tidy(fit)
+  expect_identical(
+    names(t),
+    c("term", "estimate", "std.error", "statistic", "p.value",
+      "component", "estimate_scale", "term_display")
+  )
+  expect_true(all(c("k:(Intercept)", "gamma") %in% t$term))
+
+  pr <- predict(fit)
+  expect_true(all(pr$.fitted >= 0 & pr$.fitted <= 1))
+  expect_identical(nrow(fit$subject_pars), 10L)
+})
+
 test_that("fit_dd_brms gaussian green-myerson fits with the s parameter", {
   skip_on_cran()
   skip_if_not(

@@ -1166,4 +1166,18 @@ describe("fit_dd_tmb k + s ~ 1 (subject-random s)", {
     expect_true(all(is.finite(sp$k)))
     expect_equal(dimnames(fit$Sigma)[[1]], c("k", "s"))
   })
+
+  it("rejects covariance_structure typo and phi + s ~ 1 (error paths)", {
+    sim <- simulate_dd_ip(n_subjects = 8, equation = "green-myerson", s = 1.2,
+                          seed = 2)
+    expect_error(
+      fit_dd_tmb(sim, equation = "green-myerson",
+                 random_effects = k + s ~ 1,
+                 covariance_structure = "pdNope", verbose = 0))
+    # phi + s has no k -> the parser's missing-k guard fires (surfaced through fit).
+    expect_error(
+      fit_dd_tmb(sim, equation = "green-myerson",
+                 random_effects = phi + s ~ 1, verbose = 0),
+      "must include `k`")
+  })
 })

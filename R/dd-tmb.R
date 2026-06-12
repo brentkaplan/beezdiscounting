@@ -153,7 +153,7 @@ NULL
 #'   `n_subjects`, `n_re`.
 #' @keywords internal
 .dd_tmb_build_tmb_data <- function(prepared, design, equation, family,
-                                   n_re = 1L) {
+                                   n_re = 1L, re2_target = 0L) {
   eqn_type <- switch(equation,
     mazur = 0L,
     exponential = 1L,
@@ -177,7 +177,8 @@ NULL
     family = fam_type,
     n_obs = as.integer(prepared$n_obs),
     n_subjects = as.integer(prepared$n_subjects),
-    n_re = as.integer(n_re)
+    n_re = as.integer(n_re),
+    re2_target = as.integer(re2_target)
   )
 }
 

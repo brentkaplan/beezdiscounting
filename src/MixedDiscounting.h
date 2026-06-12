@@ -53,7 +53,8 @@ Type MixedDiscounting(objective_function<Type>* obj) {
   DATA_INTEGER(family);         // 0 = sltb, 1 = gaussian
   DATA_INTEGER(n_obs);
   DATA_INTEGER(n_subjects);
-  DATA_INTEGER(n_re);           // 1 = single intercept on log k; 2 = (log k, log phi)
+  DATA_INTEGER(n_re);           // 1 = single intercept on log k; 2 = joint (log k, second-target)
+  DATA_INTEGER(re2_target);     // 0 = phi (existing); 1 = s. Only used when n_re == 2.
 
   // =========================================================================
   // PARAMETERS
@@ -64,7 +65,7 @@ Type MixedDiscounting(objective_function<Type>* obj) {
   PARAMETER(log_s);             // log nonlinearity exponent (GM/Rachlin);
                                 // map-fixed at 0 (s = 1) for mazur/exponential
   PARAMETER_MATRIX(u);          // n_subjects x 1 standardized random intercepts
-  PARAMETER_VECTOR(log_sd_re);  // length 2: log SDs of (k-RE, phi-RE)  [n_re == 2]
+  PARAMETER_VECTOR(log_sd_re);  // length 2: log SDs of (k-RE, second-target-RE)  [n_re == 2]
   PARAMETER_VECTOR(cor_re);     // length 1: unconstrained; rho = tanh(cor_re(0))
   PARAMETER_MATRIX(b);          // n_subjects x 2 standardized RE          [n_re == 2]
 
@@ -90,12 +91,13 @@ Type MixedDiscounting(objective_function<Type>* obj) {
   // =========================================================================
   Type nll = Type(0.0);
 
-  // Per-subject random offsets on log k (rek) and log phi (rephi). The prior on
+  // Per-subject random offsets on log k (rek) and on the generic second target
+  // (re2: log phi when re2_target == 0, log s when re2_target == 1). The prior on
   // the standardized deviates is accumulated here; the offsets feed the shared
   // observation loop below. n_re is a DATA_INTEGER (plain int) so a C++ branch
   // on it is fine.
   vector<Type> rek(n_subjects);
-  vector<Type> rephi(n_subjects);
+  vector<Type> re2(n_subjects);
 
   // Report scalars/blocks hoisted so the n_re == 1 ADREPORT order at the tail
   // stays EXACTLY (beta_k, sigma_u, aux, s) — identical to the pre-2RE template.
@@ -110,10 +112,10 @@ Type MixedDiscounting(objective_function<Type>* obj) {
     for (int j = 0; j < n_subjects; j++) {
       nll -= dnorm(u(j, 0), Type(0.0), Type(1.0), true);
       rek(j) = sigma_u * u(j, 0);
-      rephi(j) = Type(0.0);
+      re2(j) = Type(0.0);
     }
   } else {
-    // --- joint 2-RE (k, phi) via a 2x2 Cholesky (ChoiceDiscounting mode 1) ---
+    // --- joint 2-RE (k, second-target) via a 2x2 Cholesky (ChoiceDiscounting mode 1) ---
     sd_re = exp(log_sd_re);
     rho = tanh(cor_re(0));
     Sigma(0, 0) = sd_re(0) * sd_re(0);
@@ -125,21 +127,33 @@ Type MixedDiscounting(objective_function<Type>* obj) {
       vector<Type> b_j = b.row(j);
       vector<Type> re_j = L * b_j;
       rek(j) = re_j(0);
-      rephi(j) = re_j(1);
+      re2(j) = re_j(1);
       nll -= dnorm(b(j, 0), Type(0.0), Type(1.0), true);
       nll -= dnorm(b(j, 1), Type(0.0), Type(1.0), true);
     }
   }
 
-  // Shared data likelihood. log_k_i picks up the per-subject k-RE offset; phi
-  // (sltb) picks up the per-subject phi-RE offset (0 when n_re == 1, so phi is
-  // the population precision exp(log_aux) exactly).
+  // Shared data likelihood. log_k_i picks up the per-subject k-RE offset; the
+  // second-target RE offset (re2) is 0 when n_re == 1. When n_re == 2:
+  // re2_target == 0 feeds phi (per-subject precision); re2_target == 1 feeds
+  // log_s (per-subject nonlinearity exponent).
   for (int i = 0; i < n_obs; i++) {
     int subj = subject_id(i);
 
     vector<Type> x_i = X.row(i);
     Type log_k_i = (x_i * beta_k).sum() + rek(subj);
     Type k_i = exp(log_k_i);
+
+    // Effective discounting exponent. Population s = exp(log_s) for n_re==1, the
+    // phi-target 2-RE, and the 1-parameter equations. For the s-target 2-RE
+    // (n_re==2 && re2_target==1) it is per-subject and clamped to [0.05, 20]
+    // (mirrors the population .dd_apply_s_bounds; both s->0 and s->inf degenerate).
+    Type s_eff = s;
+    if (n_re == 2 && re2_target == 1) {
+      Type s_raw = exp(log_s + re2(subj));
+      s_eff = CppAD::CondExpLt(s_raw, Type(0.05), Type(0.05),
+                CppAD::CondExpGt(s_raw, Type(20.0), Type(20.0), s_raw));
+    }
 
     // Mean via the discounting function (identity link). eqn_type is a
     // DATA_INTEGER, so a plain C++ switch on it is allowed (only Type-valued
@@ -153,7 +167,7 @@ Type MixedDiscounting(objective_function<Type>* obj) {
       mu_raw = exp(-k_i * x(i));
     } else if (eqn_type == 2) {
       // Green-Myerson hyperboloid: mu = (1 + k*x)^(-s).
-      mu_raw = pow(Type(1.0) + k_i * x(i), -s);
+      mu_raw = pow(Type(1.0) + k_i * x(i), -s_eff);
     } else {
       // Rachlin hyperboloid: mu = 1 / (1 + k*x^s). Guard x = 0: pow(0,s) is 0
       // but its derivative w.r.t. s involves log(0); compute pow on a
@@ -161,7 +175,7 @@ Type MixedDiscounting(objective_function<Type>* obj) {
       // x_safe = 1 when x = 0: pow(1, s) is finitely differentiable in s
       // (d/ds = log(1)*1^s = 0), whereas pow(0, s) would tape log(0).
       Type x_safe  = CppAD::CondExpGt(x(i), Type(0.0), x(i), Type(1.0));
-      Type rachlin = Type(1.0) / (Type(1.0) + k_i * pow(x_safe, s));
+      Type rachlin = Type(1.0) / (Type(1.0) + k_i * pow(x_safe, s_eff));
       mu_raw       = CppAD::CondExpGt(x(i), Type(0.0), rachlin, Type(1.0));
     }
 
@@ -178,12 +192,14 @@ Type MixedDiscounting(objective_function<Type>* obj) {
       // user-overridable .dd_apply_phi_floor() escape hatch (a 1-RE user may set
       // tmb_control$lower$log_aux below log(0.1); test-fit_dd_tmb.R:857). The
       // per-subject floor (CondExp clamp at 0.1, matching .dd_phi_min) is applied
-      // ONLY for n_re == 2, where it stops a boundary subject's phi_i from
-      // collapsing to 0 via re_phi. n_re is a DATA_INTEGER, so this C++ branch is
-      // allowed.
+      // ONLY for the phi-target 2-RE (n_re == 2 && re2_target == 0), where it
+      // stops a boundary subject's phi_i from collapsing to 0 via re2. For the
+      // s-target 2-RE (re2_target == 1) phi stays population (re2 carries log s),
+      // so phi = aux there. n_re/re2_target are DATA_INTEGERs, so this C++ branch
+      // is allowed.
       Type phi;
-      if (n_re == 2) {
-        Type phi_raw = exp(log_aux + rephi(subj));
+      if (n_re == 2 && re2_target == 0) {
+        Type phi_raw = exp(log_aux + re2(subj));
         phi = CppAD::CondExpLt(phi_raw, Type(0.1), Type(0.1), phi_raw);
       } else {
         phi = aux;

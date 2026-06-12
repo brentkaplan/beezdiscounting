@@ -56,8 +56,39 @@ describe(".dd_normalize_re", {
     expect_error(.dd_normalize_re(phi ~ 1), regexp = "must include.*k|include the .*k")
   })
 
-  it("rejects a third LHS parameter (k + phi + s ~ 1)", {
-    expect_error(.dd_normalize_re(k + phi + s ~ 1), regexp = "may only be|only.*k.*and/or.*phi")
+  it("rejects pairing both phi and s (k + phi + s ~ 1; q = 2 only)", {
+    expect_error(.dd_normalize_re(k + phi + s ~ 1), regexp = "not both|q = 2")
+  })
+
+  it("parses k + s ~ 1 into a 2-D (k, s) block", {
+    out <- .dd_normalize_re(k + s ~ 1, covariance_structure = "pdSymm")
+    blk <- out$blocks[[1]]
+    expect_equal(blk$param, c("k", "s"))
+    expect_equal(blk$dim, 2L)
+    expect_equal(blk$pdmat_class, "pdSymm")
+    expect_equal(deparse1(blk$formula), "k + s ~ 1")
+  })
+
+  it("keeps k first regardless of LHS order (s + k ~ 1)", {
+    out <- .dd_normalize_re(s + k ~ 1, covariance_structure = "pdDiag")
+    expect_equal(out$blocks[[1]]$param, c("k", "s"))
+    expect_equal(out$blocks[[1]]$pdmat_class, "pdDiag")
+    expect_equal(deparse1(out$blocks[[1]]$formula), "k + s ~ 1")
+  })
+
+  it("rejects phi + s ~ 1 (no k -> the missing-k guard fires first)", {
+    # phi + s has no `k`; bad-symbol set is empty, so the missing-k guard fires
+    # BEFORE the phi-AND-s guard -> error is "must include k".
+    expect_error(.dd_normalize_re(phi + s ~ 1), "must include `k`")
+  })
+
+  it("rejects s ~ 1 alone (LHS must include k)", {
+    expect_error(.dd_normalize_re(s ~ 1), "must include `k`")
+  })
+
+  it("still rejects a genuinely unknown LHS symbol (k + gamma ~ 1)", {
+    # Keeps coverage of the bad-symbol branch under the new (k, phi, s) allow-set.
+    expect_error(.dd_normalize_re(k + gamma ~ 1), regexp = "may only be")
   })
 
   it("rejects a duplicated LHS parameter (k + k ~ 1)", {

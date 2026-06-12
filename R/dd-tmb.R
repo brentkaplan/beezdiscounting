@@ -1198,7 +1198,7 @@ fit_dd_tmb <- function(data,
   long <- validated$data            # canonical id/x/y + retained extras
   coercion_info <- validated$coercion_info
 
-  # 2. Random-effects normalization: `k ~ 1` (1-RE) or `k + phi ~ 1` (2-RE).
+  # 2. Random-effects normalization: `k ~ 1` (1-RE), or `k + phi ~ 1` / `k + s ~ 1` (2-RE).
   re_norm <- .dd_normalize_re(random_effects, covariance_structure, data = long)
   n_random_effects <- re_norm$blocks[[1]]$dim
   re_has_phi <- "phi" %in% re_norm$blocks[[1]]$param
@@ -1210,6 +1210,16 @@ fit_dd_tmb <- function(data,
              effect on."
     ))
   }
+  re_has_s <- "s" %in% re_norm$blocks[[1]]$param
+  if (re_has_s && !has_s) {
+    cli::cli_abort(c(
+      "A subject-random {.field s} ({.code k + s ~ 1}) requires \\
+       {.code equation = \"green-myerson\"} or {.code \"rachlin\"}.",
+      "i" = "The Mazur and exponential equations have no {.field s} curvature \\
+             parameter to put a random effect on."
+    ))
+  }
+  re2_target <- if (re_has_s) 1L else 0L
   re_cov <- re_norm$blocks[[1]]$pdmat_class      # "pdDiag" or "pdSymm"
 
   # 3. Prepare data: ONE complete-case pass over id/x/y + extra_cols, building
@@ -1258,7 +1268,8 @@ fit_dd_tmb <- function(data,
 
   # 5. TMB data + default starts.
   tmb_data <- .dd_tmb_build_tmb_data(prepared, design, equation, family,
-                                     n_re = n_random_effects)
+                                     n_re = n_random_effects,
+                                     re2_target = re2_target)
   default_starts <- .dd_tmb_default_starts(prepared, design, family, equation)
   if (!is.null(start_values)) {
     # Public alias: users pass `s` (natural); convert to the optimizer's log_s.
@@ -1395,6 +1406,8 @@ fit_dd_tmb <- function(data,
         n_subjects = prepared$n_subjects,
         n_random_effects = n_random_effects,
         covariance_structure = re_cov,
+        re2_target = re2_target,
+        re_aux_param = if (re_has_s) "s" else if (re_has_phi) "phi" else NA_character_,
         subject_levels = prepared$subject_levels,
         # B1: store the CANONICAL column names. The validator renames the data to
         # id/x/y, and fit$data (the default newdata for predict/fitted/residuals/

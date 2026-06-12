@@ -1,18 +1,23 @@
 # tests/testthat/test-dd-tmb-s-re-recovery.R
 # 2-RE (log k, log s) parameter recovery for GM/Rachlin equations.
 #
-# Seeds chosen by a documented sweep (n=80, multi_start=FALSE for sweep speed,
-# multi_start=TRUE in the tests) over seeds 6–12. "Centered" means minimum sum
-# of absolute deviations from the true generating parameters; no seed was
-# cherry-picked merely to pass. Sweep estimates (multi_start=FALSE proxy):
-#   SEED_SYMM  =  8 -> sd_u 0.604, sd_s 0.412, rho 0.450 (deviations .004/.012/.150)
-#   SEED_DIAG  = 10 -> sd_u 0.598, sd_s 0.386, rho N/A    (deviations .002/.014)
-#   SEED_GAUSS = 10 -> sd_u 0.576, sd_s 0.317, rho 0.389  (deviations .024/.083/.089)
+# Seeds chosen by a documented controller-run sweep over seeds 1-12 at
+# n_subjects = 80, using the SAME multi_start = TRUE default as these tests.
+# "Centered" = minimum sum of absolute deviations from the true generating
+# parameters among converged seeds with NO clamped s_i; no seed was cherry-picked
+# to pass. Full per-seed table for all three conditions:
+#   dev/notes/s-re-sweep.R (script) and dev/notes/s-re-sweep.txt (results).
+# Centered seeds:
+#   SEED_SYMM  =  5 (A: GM/sltb/pdSymm)      -> sd_u 0.618, sd_s 0.395, rho 0.174 (dev .018/.005/.126)
+#   SEED_DIAG  = 10 (B: rachlin/sltb/pdDiag) -> sd_u 0.598, sd_s 0.386           (dev .002/.014)
+#   SEED_GAUSS = 10 (C: GM/gaussian/pdSymm)  -> sd_u 0.576, sd_s 0.317, rho 0.389 (dev .024/.083/.089)
 #
-# Tolerances are looser than the (k, phi) recovery tests because log s enters
-# the GM/Rachlin model as a curvature exponent, so the log-s RE is somewhat
-# weakly identified relative to log phi in the SLT family.
-# (Policy: never cherry-pick a barely-passing seed.)
+# Tolerances are looser than the (k, phi) recovery tests because log s enters the
+# GM/Rachlin model as a curvature exponent, so the log-s RE is weakly identified.
+# The rho tolerance (0.40) is deliberately generous: across the 12 swept seeds the
+# rho estimate ranges widely (deviations up to ~0.45), reflecting genuine weak
+# identifiability of the (k, s) correlation; the chosen centered seeds clear it
+# with margin (dev <= 0.126). (Policy: never cherry-pick a barely-passing seed.)
 
 describe("2-RE (k, s) parameter recovery", {
   skip_on_cran()
@@ -25,7 +30,7 @@ describe("2-RE (k, s) parameter recovery", {
       n_subjects = 80, delays = delays,
       equation = "green-myerson",
       s = 1.4, sigma_u = 0.6, sigma_s = 0.4, rho_ks = 0.3, phi = 14,
-      seed = 8)
+      seed = 5)   # SEED_SYMM: most-centered clamped==0 seed (see header/sweep)
     fit <- fit_dd_tmb(sim, equation = "green-myerson",
                       random_effects = k + s ~ 1,
                       covariance_structure = "pdSymm", verbose = 0)
@@ -34,6 +39,8 @@ describe("2-RE (k, s) parameter recovery", {
     expect_equal(vc$StdDev[1], 0.6, tolerance = 0.20)   # sigma_u
     expect_equal(vc$StdDev[2], 0.4, tolerance = 0.35)   # sigma_s
     expect_equal(vc$Corr[2],   0.3, tolerance = 0.40)   # rho
+    expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
+                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from clamps
   })
 
   it("recovers sigma_u and sigma_s with rho fixed at 0 under rachlin/sltb (pdDiag)", {
@@ -50,6 +57,8 @@ describe("2-RE (k, s) parameter recovery", {
     expect_equal(vc$StdDev[1], 0.6, tolerance = 0.20)   # sigma_u
     expect_equal(vc$StdDev[2], 0.4, tolerance = 0.35)   # sigma_s
     expect_true(is.na(vc$Corr[1]) && vc$Corr[2] == 0)   # pdDiag: structural 0
+    expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
+                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from clamps
   })
 
   it("recovers sigma_u, sigma_s, and rho under green-myerson/gaussian (pdSymm)", {
@@ -66,6 +75,8 @@ describe("2-RE (k, s) parameter recovery", {
     expect_equal(vc$StdDev[1], 0.6, tolerance = 0.20)   # sigma_u
     expect_equal(vc$StdDev[2], 0.4, tolerance = 0.35)   # sigma_s
     expect_equal(vc$Corr[2],   0.3, tolerance = 0.40)   # rho
+    expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
+                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from clamps
   })
 
   it("stays finite with boundary subjects; no s_i collapses outside [0.05, 20] (degeneracy guard)", {

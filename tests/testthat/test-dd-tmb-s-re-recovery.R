@@ -1,9 +1,10 @@
 # tests/testthat/test-dd-tmb-s-re-recovery.R
 # 2-RE (log k, log s) parameter recovery for GM/Rachlin equations.
 #
-# Seeds chosen by a documented sweep (n=80, multi_start=FALSE) over seeds 6–12.
-# "Centered" means minimum sum of absolute deviations from the true generating
-# parameters; no seed was cherry-picked merely to pass. Seeds and estimates:
+# Seeds chosen by a documented sweep (n=80, multi_start=FALSE for sweep speed,
+# multi_start=TRUE in the tests) over seeds 6–12. "Centered" means minimum sum
+# of absolute deviations from the true generating parameters; no seed was
+# cherry-picked merely to pass. Sweep estimates (multi_start=FALSE proxy):
 #   SEED_SYMM  =  8 -> sd_u 0.604, sd_s 0.412, rho 0.450 (deviations .004/.012/.150)
 #   SEED_DIAG  = 10 -> sd_u 0.598, sd_s 0.386, rho N/A    (deviations .002/.014)
 #   SEED_GAUSS = 10 -> sd_u 0.576, sd_s 0.317, rho 0.389  (deviations .024/.083/.089)

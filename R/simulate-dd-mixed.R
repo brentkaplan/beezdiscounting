@@ -41,16 +41,26 @@
 #'   `rho_kphi`. Requires `family = "sltb"`.
 #' @param rho_kphi Numeric in `[-1, 1]`; correlation between subject random
 #'   intercepts on `log k` and `log phi`. Ignored when `sigma_phi = 0`.
-#' @param attach_truth Logical; when `TRUE`, a `phi` column containing each
-#'   observation's subject-specific precision is appended to the returned
-#'   tibble. When `sigma_phi = 0` the column equals the constant `phi` for
-#'   every observation. Default `FALSE`.
+#' @param attach_truth Logical; when `TRUE`, a `phi` column is always appended
+#'   (equal to the constant `phi` when `sigma_phi = 0`, or subject-specific when
+#'   `sigma_phi > 0`); when `sigma_s > 0`, an `s` column is also appended with
+#'   the subject-specific curvature exponent. Default `FALSE`.
+#' @param sigma_s Numeric; SD of the subject random intercept on `log s`
+#'   (GM/Rachlin curvature exponent). Default `0` (no subject-random s).
+#'   When `> 0`, the `(log k, log s)` pair is drawn jointly from
+#'   `N(0, Sigma)` where `Sigma` is parameterized by `sigma_u`, `sigma_s`, and
+#'   `rho_ks`. Requires `equation = "green-myerson"` or `"rachlin"`. Mutually
+#'   exclusive with `sigma_phi > 0` (q = 2 only).
+#' @param rho_ks Numeric in `[-1, 1]`; correlation between subject random
+#'   intercepts on `log k` and `log s`. Ignored when `sigma_s = 0`.
 #'
 #' @return A [tibble][tibble::tibble] with columns `id` (factor),
 #'   `condition` (factor; only when `n_conditions > 1`), `x` (delay), and
 #'   `y` (indifference proportion in `[0, 1]`). When `attach_truth = TRUE`, an
 #'   additional `phi` column is appended with the subject-specific SLT-beta
-#'   precision (equal to the constant `phi` when `sigma_phi = 0`).
+#'   precision (equal to the constant `phi` when `sigma_phi = 0`). When
+#'   `attach_truth = TRUE` and `sigma_s > 0`, an additional `s` column is
+#'   appended with the subject-specific curvature exponent.
 #'
 #' @examples
 #' # A small SLT-beta mixed-effects discounting dataset (id, x, y)
@@ -80,7 +90,9 @@ simulate_dd_ip <- function(
   seed = NULL,
   sigma_phi = 0,
   rho_kphi = 0,
-  attach_truth = FALSE
+  attach_truth = FALSE,
+  sigma_s = 0,
+  rho_ks = 0
 ) {
   family <- match.arg(family)
   equation <- match.arg(equation)
@@ -118,6 +130,27 @@ simulate_dd_ip <- function(
     stop("With `sigma_phi > 0`, `sigma_u` must be > 0 and |`rho_kphi`| < 1 ",
          "so the (log k, log phi) covariance is positive definite.", call. = FALSE)
   }
+  if (!is.numeric(sigma_s) || length(sigma_s) != 1L ||
+      !is.finite(sigma_s) || sigma_s < 0) {
+    stop("`sigma_s` must be a single finite non-negative number.", call. = FALSE)
+  }
+  if (!is.numeric(rho_ks) || length(rho_ks) != 1L ||
+      !is.finite(rho_ks) || rho_ks < -1 || rho_ks > 1) {
+    stop("`rho_ks` must be a single finite number in [-1, 1].", call. = FALSE)
+  }
+  if (sigma_s > 0 && sigma_phi > 0) {
+    stop("Supply a random effect on `s` OR `phi`, not both (q = 2 only).",
+         call. = FALSE)
+  }
+  if (sigma_s > 0 && !(equation %in% c("green-myerson", "rachlin"))) {
+    stop("Subject-random s (`sigma_s > 0`) requires `equation = \"green-myerson\"` ",
+         "or `\"rachlin\"` (Mazur/exponential have no s).", call. = FALSE)
+  }
+  if (sigma_s > 0 && (sigma_u <= 0 || abs(rho_ks) >= 1)) {
+    stop("With `sigma_s > 0`, `sigma_u` must be > 0 and |`rho_ks`| < 1 ",
+         "so the (log k, log s) covariance is positive definite.", call. = FALSE)
+  }
+  s_i <- rep(s, n_subjects)
   if (sigma_phi > 0) {
     # Joint (log k, log phi) random intercepts ~ N(0, Sigma).
     Sigma <- matrix(c(sigma_u^2, rho_kphi * sigma_u * sigma_phi,
@@ -125,6 +158,14 @@ simulate_dd_ip <- function(
     re <- matrix(stats::rnorm(2 * n_subjects), ncol = 2L) %*% chol(Sigma)
     u <- re[, 1L]
     phi_i <- exp(log(phi) + re[, 2L])
+  } else if (sigma_s > 0) {
+    # Joint (log k, log s) random intercepts ~ N(0, Sigma).
+    Sigma <- matrix(c(sigma_u^2, rho_ks * sigma_u * sigma_s,
+                      rho_ks * sigma_u * sigma_s, sigma_s^2), 2L)
+    re <- matrix(stats::rnorm(2 * n_subjects), ncol = 2L) %*% chol(Sigma)
+    u <- re[, 1L]
+    s_i <- exp(log(s) + re[, 2L])
+    phi_i <- rep(phi, n_subjects)
   } else {
     u <- stats::rnorm(n_subjects, 0, sigma_u)
     phi_i <- rep(phi, n_subjects)
@@ -137,11 +178,12 @@ simulate_dd_ip <- function(
   x <- rep(delays, times = n_subjects)
   k_long <- rep(k, each = n_delays)
 
+  s_long <- rep(s_i, each = n_delays)
   mu <- switch(equation,
     mazur = 1 / (1 + k_long * x),
     exponential = exp(-k_long * x),
-    `green-myerson` = (1 + k_long * x)^(-s),
-    rachlin = ifelse(x > 0, 1 / (1 + k_long * x^s), 1)
+    `green-myerson` = (1 + k_long * x)^(-s_long),
+    rachlin = ifelse(x > 0, 1 / (1 + k_long * x^s_long), 1)
   )
   mu <- pmin(pmax(mu, 1e-6), 1 - 1e-6)
 
@@ -165,5 +207,6 @@ simulate_dd_ip <- function(
     tibble::tibble(id = id, x = x, y = y)
   }
   if (isTRUE(attach_truth)) out$phi <- rep(phi_i, each = n_delays)
+  if (isTRUE(attach_truth) && sigma_s > 0) out$s <- rep(s_i, each = n_delays)
   out
 }

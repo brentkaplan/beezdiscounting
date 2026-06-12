@@ -134,6 +134,63 @@ describe("simulate_dd_ip subject-random phi", {
   })
 })
 
+describe("simulate_dd_ip subject-random s", {
+  it("draws a per-subject s when sigma_s > 0 (attach_truth)", {
+    sim <- simulate_dd_ip(n_subjects = 40, equation = "green-myerson", s = 1.3,
+                          sigma_u = 0.5, sigma_s = 0.3, rho_ks = 0.2,
+                          attach_truth = TRUE, seed = 21)
+    expect_true("s" %in% names(sim))
+    per_subj <- tapply(sim$s, sim$id, function(v) length(unique(round(v, 8))))
+    expect_true(all(per_subj == 1))           # constant within subject
+    expect_gt(length(unique(round(sim$s, 6))), 1)   # varies across subjects
+  })
+
+  it("rejects sigma_s > 0 for a 1-parameter equation", {
+    expect_error(
+      simulate_dd_ip(n_subjects = 10, equation = "mazur", sigma_s = 0.3, seed = 1),
+      "green-myerson|rachlin")
+  })
+
+  it("rejects sigma_s and sigma_phi both > 0 (q = 2 only)", {
+    expect_error(
+      simulate_dd_ip(n_subjects = 10, equation = "green-myerson",
+                     sigma_s = 0.3, sigma_phi = 0.3, seed = 1),
+      "both")
+  })
+
+  it("appends sigma_s/rho_ks after attach_truth (positional API stability)", {
+    # New args MUST be appended at the end so every pre-existing positional slot
+    # (incl. attach_truth) keeps its index. Assert the formals order directly --
+    # robust, unlike a brittle 15-positional call.
+    fa <- names(formals(simulate_dd_ip))
+    expect_lt(which(fa == "attach_truth"), which(fa == "sigma_s"))
+    expect_lt(which(fa == "attach_truth"), which(fa == "rho_ks"))
+    expect_equal(tail(fa, 2), c("sigma_s", "rho_ks"))
+  })
+
+  it("does not attach s when attach_truth = FALSE even if sigma_s > 0", {
+    sim <- simulate_dd_ip(n_subjects = 6, equation = "green-myerson",
+                          sigma_s = 0.4, seed = 3)
+    expect_false("s" %in% names(sim))
+  })
+
+  it("errors on non-positive-definite Sigma when sigma_s > 0", {
+    expect_error(simulate_dd_ip(n_subjects = 6, equation = "green-myerson",
+                                sigma_u = 0, sigma_s = 0.4), "positive definite")
+    expect_error(simulate_dd_ip(n_subjects = 6, equation = "green-myerson",
+                                rho_ks = 1, sigma_s = 0.4), "positive definite")
+  })
+
+  it("draws a per-subject s under rachlin too", {
+    sim <- simulate_dd_ip(n_subjects = 30, equation = "rachlin", s = 1.3,
+                          sigma_u = 0.5, sigma_s = 0.3, attach_truth = TRUE, seed = 5)
+    expect_true("s" %in% names(sim))
+    per_subj <- tapply(sim$s, sim$id, function(v) length(unique(round(v, 8))))
+    expect_true(all(per_subj == 1))
+    expect_gt(length(unique(round(sim$s, 6))), 1)
+  })
+})
+
 describe("simulate_dd_ip() recovery through fit_dd_tmb()", {
   it("recovers population k within 0.15 relative (sltb, mazur)", {
     skip_on_cran()

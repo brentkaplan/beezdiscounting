@@ -1,5 +1,18 @@
 # beezdiscounting (development version)
 
+### Subject-random `s` (GM/Rachlin curvature)
+
+* `fit_dd_tmb(..., random_effects = k + s ~ 1)` now fits a per-subject random
+  intercept on the Green-Myerson / Rachlin curvature `s`, jointly with `log k`,
+  with `covariance_structure = "pdSymm"` (correlated) or `"pdDiag"`
+  (independent), for both `family = "sltb"` and `"gaussian"`. Per-subject `s_i`
+  is clamped to `[0.05, 20]`. `VarCorr()`/`ranef()`/`summary()` surface the
+  `(k, s)` covariance and per-subject `s`. `predict()` at
+  `level = "subject"` uses each subject's estimated `s_i`; response-SD
+  standardization uses the population precision `phi`. `simulate_dd_ip()` gains
+  `sigma_s`/`rho_ks` to generate `(log k, log s)` bivariate-normal data for
+  recovery testing.
+
 ### Bayesian (brms) modeling tier
 
 * New `fit_dd_brms()`: Bayesian mixed-effects discounting via brms/Stan for

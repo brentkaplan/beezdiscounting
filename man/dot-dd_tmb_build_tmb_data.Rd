@@ -4,7 +4,14 @@
 \alias{.dd_tmb_build_tmb_data}
 \title{Build the TMB data list for MixedDiscounting}
 \usage{
-.dd_tmb_build_tmb_data(prepared, design, equation, family, n_re = 1L)
+.dd_tmb_build_tmb_data(
+  prepared,
+  design,
+  equation,
+  family,
+  n_re = 1L,
+  re2_target = 0L
+)
 }
 \arguments{
 \item{prepared}{Output from \code{\link[=.dd_tmb_prepare_data]{.dd_tmb_prepare_data()}}.}

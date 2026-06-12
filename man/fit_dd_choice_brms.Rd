@@ -65,7 +65,7 @@ fallback on failure; the beta family maps to the TMB sltb pre-fit),
 \code{"random"}, or \code{"0"}; or a list/function passed through to
 \code{\link[brms:brm]{brms::brm()}}.}
 
-\item{loo}{Compute and store \code{\link[brms:loo.brmsfit]{brms::loo()}} at fit time.}
+\item{loo}{Compute and store \code{\link[brms:loo]{brms::loo()}} at fit time.}
 
 \item{file, file_refit}{Passed to \code{\link[brms:brm]{brms::brm()}} for fit caching.}
 

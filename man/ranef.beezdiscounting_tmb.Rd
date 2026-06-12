@@ -13,9 +13,11 @@
 }
 \value{
 Data frame keyed by \code{id}. For a 1-RE fit (\code{k ~ 1}): the standardized
-random-intercept deviate \code{u_i} (such that \verb{log k_i = X beta + sigma_u * u_i}) and the resolved per-subject discount rate \code{k} (no \code{phi} column - phi
-is population-level). For a 2-RE fit (\code{k + phi ~ 1}): the natural-scale
-\verb{(re_k, re_phi)} offsets plus the resolved per-subject \code{k} and \code{phi}.
+random-intercept deviate \code{u_i} (such that \verb{log k_i = X beta + sigma_u * u_i}) and the resolved per-subject discount rate \code{k} (no \code{phi} or \code{s}
+column - both are population-level). For a φ-target 2-RE fit
+(\code{k + phi ~ 1}): \verb{(re_k, re_phi)} offsets plus per-subject \code{k} and \code{phi}.
+For an s-target 2-RE fit (\code{k + s ~ 1}, GM/Rachlin only): \verb{(re_k, re_s)}
+offsets plus per-subject \code{k} and \code{s} (clamped to \verb{[0.05, 20]}).
 }
 \description{
 Extract subject-level random effects from a TMB discounting model

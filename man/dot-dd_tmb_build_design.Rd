@@ -24,7 +24,7 @@ interaction (uses \code{*}); otherwise main effects (\code{+}).}
 }
 \value{
 A list with \code{X} (the model matrix for log-k FE), \code{rhs} (the one-sided
-RHS \strong{formula} from \code{\link[beezdemand:build_fixed_rhs]{beezdemand::build_fixed_rhs()}}), and \code{contrasts}
+RHS \strong{formula} from \code{\link[beezdemand:build_fixed_rhs]{build_fixed_rhs()}}), and \code{contrasts}
 (\code{attr(X, "contrasts")}, the per-factor contrast scheme). The \code{rhs} and
 \code{contrasts} are stored so \code{.dd_build_emm_ref_grid()} can rebuild a
 column-aligned design via the same route.

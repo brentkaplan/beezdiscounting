@@ -821,3 +821,109 @@ describe("2-RE (k + phi) S3 surface", {
     expect_length(td, 8L)
   })
 })
+
+describe("predict/response on a k + s ~ 1 fit", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+
+  fit_s <- local({
+    sim <- simulate_dd_ip(n_subjects = 30, equation = "green-myerson", s = 1.4,
+                          sigma_u = 0.5, sigma_s = 0.35, rho_ks = 0.2, phi = 12,
+                          seed = 14)
+    fit_dd_tmb(sim, equation = "green-myerson", random_effects = k + s ~ 1,
+               verbose = 0)
+  })
+
+  it("subject-level predict uses each subject's s_i (not population s)", {
+    p <- predict(fit_s, type = "response", level = "subject")
+    expect_true(all(is.finite(p$.fitted)))
+    # Two subjects with different s_i but the same k would give different mu at
+    # the same delay; assert the fitted curve is not produced by a single
+    # population s by checking predict matches a manual per-subject recompute.
+    sp  <- fit_s$subject_pars
+    nd  <- fit_s$data
+    s_by_id <- stats::setNames(sp$s, as.character(sp$id))
+    k_by_id <- stats::setNames(sp$k, as.character(sp$id))
+    mu_manual <- (1 + k_by_id[as.character(nd$id)] * nd$x)^(-s_by_id[as.character(nd$id)])
+    mu_manual <- pmin(pmax(mu_manual, 1e-6), 1 - 1e-6)
+    expect_equal(unname(p$.fitted), unname(mu_manual), tolerance = 1e-6)
+  })
+
+  it("population-level predict uses the population s_hat, NOT s_i", {
+    nd <- data.frame(x = c(7, 30, 180, 365))
+    p  <- predict(fit_s, newdata = nd, level = "population")
+    s_hat <- exp(unname(fit_s$model$coefficients[["log_s"]]))
+    k_pop <- exp(unname(fit_s$model$coefficients[
+      names(fit_s$model$coefficients) == "beta_k"])[1])
+    mu_pop <- pmin(pmax((1 + k_pop * nd$x)^(-s_hat), 1e-6), 1 - 1e-6)
+    expect_equal(unname(p$predict.fixed), unname(mu_pop), tolerance = 1e-6)
+  })
+
+  it("standardized residual SD uses POPULATION phi (no per-subject phi for s-RE)", {
+    # For an s-target SLT fit there is no per-subject phi; the SLT response SD
+    # must use the population exp(log_phi), NOT subject_pars$s or a (nonexistent)
+    # subject_pars$phi. augment()'s .std_resid encodes this.
+    au   <- augment(fit_s)
+    phi  <- exp(unname(fit_s$model$coefficients[["log_phi"]]))
+    mu   <- au$.fitted
+    sd_expected <- sqrt(mu * (1 - mu) / (phi + 1))            # s_slt = 1
+    # Multiplicative form avoids 0/0 when a residual is exactly 0:
+    # .std_resid == .resid / sd_expected  <=>  .std_resid * sd_expected == .resid
+    expect_equal(unname(au$.std_resid * sd_expected), unname(au$.resid),
+                 tolerance = 1e-6)
+  })
+
+  it("residuals/fitted/augment return finite output (smoke)", {
+    expect_true(all(is.finite(fitted(fit_s))))
+    expect_true(all(is.finite(residuals(fit_s))))
+    expect_true(all(is.finite(augment(fit_s)$.fitted)))
+  })
+})
+
+describe("S3 surfacing for k + s ~ 1", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+
+  fit_s <- local({
+    sim <- simulate_dd_ip(n_subjects = 30, equation = "green-myerson", s = 1.4,
+                          sigma_u = 0.5, sigma_s = 0.35, rho_ks = 0.3, phi = 12,
+                          seed = 15)
+    fit_dd_tmb(sim, equation = "green-myerson", random_effects = k + s ~ 1,
+               verbose = 0)
+  })
+
+  it("ranef carries re_s and s", {
+    rf <- ranef(fit_s)
+    expect_true(all(c("re_s", "s") %in% names(rf)))
+  })
+
+  it("VarCorr terms are (k, s)", {
+    vc <- VarCorr(fit_s)
+    expect_equal(vc$Term, c("k", "s"))
+  })
+
+  it("variance_components labels the second RE-SD row s", {
+    vcomp <- .dd_tmb_variance_components(fit_s)
+    expect_true(any(grepl("sd_re\\[s\\]", vcomp$Component)))
+    expect_true(any(grepl("rho \\(k,s\\)", vcomp$Component)))
+  })
+
+  it("print shows (k + s ~ 1, ...)", {
+    out <- paste(utils::capture.output(print(fit_s)), collapse = "\n")
+    expect_match(out, "k \\+ s ~ 1")
+  })
+
+  it("tidy/summary/confint/glance/coef/fixef/augment work on an s-RE fit", {
+    td <- tidy(fit_s, effects = c("fixed", "ran_pars"))
+    expect_true("s" %in% td$term)                       # population shape row
+    expect_true(any(td$component == "shape"))
+    sm <- summary(fit_s)
+    expect_true(is.data.frame(sm$variance_components))
+    ci_all <- confint(fit_s)                            # must not error
+    ci_s   <- confint(fit_s, parm = "s")               # log_s maps to "s"
+    expect_equal(ci_s$term, "s")                       # 1-row tibble, term == "s"
+    expect_true(is.data.frame(glance(fit_s)) || tibble::is_tibble(glance(fit_s)))
+    expect_length(coef(fit_s), length(fixef(fit_s)))
+    expect_true(all(is.finite(augment(fit_s)$.std_resid)))
+  })
+})

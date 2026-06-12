@@ -163,7 +163,12 @@ fixef.beezdiscounting_tmb <- function(object, ...) {
 ranef.beezdiscounting_tmb <- function(object, ...) {
   sp <- object$subject_pars
   keep <- if (object$param_info$n_random_effects == 2L) {
-    intersect(c("id", "re_k", "re_phi", "k", "phi"), names(sp))
+    re2 <- if (identical(as.integer(object$param_info$re2_target %||% 0L), 1L)) {
+      c("re_s", "s")
+    } else {
+      c("re_phi", "phi")
+    }
+    intersect(c("id", "re_k", re2), names(sp))
   } else {
     intersect(c("id", "u_i", "k"), names(sp))
   }
@@ -199,7 +204,7 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
     rho <- Sigma[1, 2] / prod(sds)
     return(data.frame(
       Group = c("subject", "subject"),
-      Term = c("k", "phi"),
+      Term = rownames(Sigma),
       Variance = diag(Sigma), StdDev = sds,
       Corr = c(NA_real_, rho), stringsAsFactors = FALSE))
   }
@@ -419,6 +424,23 @@ predict.beezdiscounting_tmb <- function(object,
   } else {
     1
   }
+
+  # For an s-target 2-RE fit the curvature is per-subject; resolve s by id for
+  # the subject level (population level always keeps the scalar s_hat).
+  is_s_re <- isTRUE(object$param_info$n_random_effects == 2L) &&
+             identical(as.integer(object$param_info$re2_target %||% 0L), 1L)
+  s_sub_by_id <- if (is_s_re) {
+    stats::setNames(object$subject_pars$s, as.character(object$subject_pars$id))
+  } else NULL
+
+  resolve_s_sub <- function(nd) {
+    if (!is_s_re) return(s_hat)
+    id_var_local <- object$param_info$id_var
+    sv <- unname(s_sub_by_id[as.character(nd[[id_var_local]])])
+    sv[is.na(sv)] <- s_hat   # ids absent from the fit fall back to population s
+    sv
+  }
+
   if (is.null(newdata)) newdata <- object$data
   out <- tibble::as_tibble(newdata)
   x   <- newdata[[x_var]]
@@ -437,18 +459,18 @@ predict.beezdiscounting_tmb <- function(object,
   # Single "subject" level: historical .fitted column name for backward compat.
   if (identical(level, "subject")) {
     k_row       <- .dd_tmb_predict_k(object, newdata, level = "subject")
-    out$.fitted <- .dd_discount_mu(k_row, x, equation, s = s_hat)
+    out$.fitted <- .dd_discount_mu(k_row, x, equation, s = resolve_s_sub(newdata))
     return(out)
   }
 
   # "population" and/or both: use nlme-style column names.
   if ("population" %in% level) {
-    k_pop            <- .dd_tmb_predict_k(object, newdata, level = "population")
+    k_pop             <- .dd_tmb_predict_k(object, newdata, level = "population")
     out$predict.fixed <- .dd_discount_mu(k_pop, x, equation, s = s_hat)
   }
   if ("subject" %in% level) {
     k_sub          <- .dd_tmb_predict_k(object, newdata, level = "subject")
-    out$predict.id <- .dd_discount_mu(k_sub, x, equation, s = s_hat)
+    out$predict.id <- .dd_discount_mu(k_sub, x, equation, s = resolve_s_sub(newdata))
   }
   out
 }
@@ -480,7 +502,11 @@ predict.beezdiscounting_tmb <- function(object,
   # in the MVP), NOT the discounting exponent. The SLT variance is
   # s_slt^2 * mu*(1-mu)/(phi+1), so SD = s_slt * sqrt(mu*(1-mu)/(phi+1)).
   s_slt <- 1
-  if (object$param_info$n_random_effects == 2L && !is.null(ids)) {
+  # Per-subject phi only applies when the 2nd RE TARGET is phi (re2_target == 0).
+  # For an s-target 2-RE fit there is no per-subject phi; always use population phi.
+  is_phi_re <- object$param_info$n_random_effects == 2L &&
+               identical(as.integer(object$param_info$re2_target %||% 0L), 0L)
+  if (is_phi_re && !is.null(ids)) {
     phi_by_id <- stats::setNames(object$subject_pars$phi,
                                  as.character(object$subject_pars$id))
     phi <- unname(phi_by_id[as.character(ids)])
@@ -643,14 +669,19 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
     Sigma <- object$Sigma
     sds   <- sqrt(diag(Sigma))
     rho   <- Sigma[1, 2] / prod(sds)
+    re2_lab <- if (identical(as.integer(object$param_info$re2_target %||% 0L), 1L)) {
+      "s"
+    } else {
+      "phi"
+    }
     rows <- list(
       data.frame(Component = "sd_re[k] (log10-k RE SD)",
                  Estimate = unname(sds[1]) / ln10, Scale = "log10",
                  stringsAsFactors = FALSE),
-      data.frame(Component = "sd_re[phi] (log10-phi RE SD)",
+      data.frame(Component = sprintf("sd_re[%s] (log10-%s RE SD)", re2_lab, re2_lab),
                  Estimate = unname(sds[2]) / ln10, Scale = "log10",
                  stringsAsFactors = FALSE),
-      data.frame(Component = "rho (k,phi)",
+      data.frame(Component = sprintf("rho (k,%s)", re2_lab),
                  Estimate = unname(rho), Scale = "correlation",
                  stringsAsFactors = FALSE)
     )
@@ -1094,7 +1125,8 @@ print.beezdiscounting_tmb <- function(x, ...) {
   cat("Number of subjects:", x$param_info$n_subjects, "\n")
   cat("Number of observations:", x$param_info$n_obs, "\n")
   re_lab <- if (x$param_info$n_random_effects == 2L) {
-    sprintf("(k + phi ~ 1, %s)\n", x$param_info$covariance_structure)
+    re2 <- if (identical(as.integer(x$param_info$re2_target %||% 0L), 1L)) "s" else "phi"
+    sprintf("(k + %s ~ 1, %s)\n", re2, x$param_info$covariance_structure)
   } else {
     "(k ~ 1)\n"
   }

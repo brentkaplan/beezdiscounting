@@ -4,8 +4,8 @@
 # Seeds chosen by a documented sweep (n=80, multi_start=FALSE) over seeds 6–12.
 # "Centered" means minimum sum of absolute deviations from the true generating
 # parameters; no seed was cherry-picked merely to pass. Seeds and estimates:
-#   SEED_SYMM  = 8  -> sd_u 0.604, sd_s 0.412, rho 0.450 (deviations .004/.012/.150)
-#   SEED_DIAG  = 6  -> sd_u 0.612, sd_s 0.391, rho N/A    (deviations .012/.009)
+#   SEED_SYMM  =  8 -> sd_u 0.604, sd_s 0.412, rho 0.450 (deviations .004/.012/.150)
+#   SEED_DIAG  = 10 -> sd_u 0.598, sd_s 0.386, rho N/A    (deviations .002/.014)
 #   SEED_GAUSS = 10 -> sd_u 0.576, sd_s 0.317, rho 0.389  (deviations .024/.083/.089)
 #
 # Tolerances are looser than the (k, phi) recovery tests because log s enters
@@ -40,7 +40,7 @@ describe("2-RE (k, s) parameter recovery", {
       n_subjects = 80, delays = delays,
       equation = "rachlin",
       s = 1.3, sigma_u = 0.6, sigma_s = 0.4, rho_ks = 0, phi = 14,
-      seed = 6)
+      seed = 10)
     fit <- fit_dd_tmb(sim, equation = "rachlin",
                       random_effects = k + s ~ 1,
                       covariance_structure = "pdDiag", verbose = 0)

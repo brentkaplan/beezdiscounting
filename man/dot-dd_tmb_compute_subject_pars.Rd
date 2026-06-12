@@ -47,12 +47,12 @@ row-for-row with \code{design_X}. Used to locate each subject's first design row
 \item{Sigma}{Fitted 2x2 RE covariance (from \code{\link[=.dd_tmb_extract_estimates]{.dd_tmb_extract_estimates()}});
 required for \code{n_re == 2}.}
 
-\item{re2_target}{Integer flag: \code{0L} for a φ-target 2-RE fit, \code{1L} for an
+\item{re2_target}{Integer flag: \code{0L} for a phi-target 2-RE fit, \code{1L} for an
 s-target fit. Ignored when \code{n_re == 1L}. Defaults to \code{0L}.}
 }
 \value{
 data.frame: \verb{id, u_i, k} (1-RE), \verb{id, re_k, re_phi, k, phi}
-(φ-target 2-RE), or \verb{id, re_k, re_s, k, s} (s-target 2-RE).
+(phi-target 2-RE), or \verb{id, re_k, re_s, k, s} (s-target 2-RE).
 }
 \description{
 Reconstructs each subject's \code{k_i = exp(eta_i)} where
@@ -66,7 +66,7 @@ group's \code{beta_k} contribution rather than the reference-group intercept.
 }
 \details{
 For a 1-RE fit the auxiliary scalar \code{phi} is population-level, so it is not a
-subject-level parameter (the returned frame is \verb{id, u_i, k}). For a φ-target
+subject-level parameter (the returned frame is \verb{id, u_i, k}). For a phi-target
 2-RE fit (\code{k + phi ~ 1}) each subject's natural-scale \code{re = L * b_hat} is
 reconstructed (\code{L = chol(Sigma)} lower-triangular; the \code{sdreport} "random"
 block holds the STANDARDIZED \code{b_hat}, not \code{re}), giving \verb{id, re_k, re_phi, k, phi} with a per-subject \code{phi_i} floor matching the kernel clamp. For an

@@ -156,7 +156,7 @@ fixef.beezdiscounting_tmb <- function(object, ...) {
 #' @return Data frame keyed by `id`. For a 1-RE fit (`k ~ 1`): the standardized
 #'   random-intercept deviate `u_i` (such that `log k_i = X beta + sigma_u *
 #'   u_i`) and the resolved per-subject discount rate `k` (no `phi` or `s`
-#'   column - both are population-level). For a φ-target 2-RE fit
+#'   column - both are population-level). For a phi-target 2-RE fit
 #'   (`k + phi ~ 1`): `(re_k, re_phi)` offsets plus per-subject `k` and `phi`.
 #'   For an s-target 2-RE fit (`k + s ~ 1`, GM/Rachlin only): `(re_k, re_s)`
 #'   offsets plus per-subject `k` and `s` (clamped to `[0.05, 20]`).
@@ -187,7 +187,7 @@ ranef.beezdiscounting_tmb <- function(object, ...) {
 #' For a 2-RE fit returns the 2x2 covariance with `StdDev` and the joint
 #' correlation (a structural `0` for `pdDiag`; the first row's `Corr` is `NA`
 #' by convention). The `Term` column reflects the fitted pair: `(k, phi)` for a
-#' φ-target fit (`k + phi ~ 1`) or `(k, s)` for an s-target fit (`k + s ~ 1`,
+#' phi-target fit (`k + phi ~ 1`) or `(k, s)` for an s-target fit (`k + s ~ 1`,
 #' GM/Rachlin only). For a 1-RE fit (`k ~ 1`) returns the single
 #' random-intercept SD on the log-k scale.
 #'
@@ -493,7 +493,7 @@ predict.beezdiscounting_tmb <- function(object,
 #'
 #' @param object A `beezdiscounting_tmb` fit.
 #' @param mu Numeric vector of fitted mu values (from `.dd_discount_mu`).
-#' @param ids Optional per-row subject ids (length `mu`). For a **φ-target**
+#' @param ids Optional per-row subject ids (length `mu`). For a **phi-target**
 #'   2-RE SLT fit at the subject level, supplying `ids` uses each subject's
 #'   `phi_i` so the SD is subject-conditional. For an **s-target** 2-RE fit
 #'   there is no per-subject `phi`; the SD always uses the population precision

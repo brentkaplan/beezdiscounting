@@ -82,7 +82,7 @@ An object of class \code{beezdiscounting_tmb} with components:
 spec, parsed random effects).}
 \item{formula_details}{Fixed-effect design (\code{X}, \code{rhs}, \code{contrasts}).}
 \item{subject_pars}{Data frame of subject-level parameters. For a 1-RE fit
-(\code{k ~ 1}) the columns are \verb{id, u_i, k}; for a φ-target 2-RE fit
+(\code{k ~ 1}) the columns are \verb{id, u_i, k}; for a phi-target 2-RE fit
 (\code{k + phi ~ 1}) they are \verb{id, re_k, re_phi, k, phi}; for an s-target
 2-RE fit (\code{k + s ~ 1}, GM/Rachlin) they are \verb{id, re_k, re_s, k, s}
 where \code{s} is clamped to \verb{[0.05, 20]}.}

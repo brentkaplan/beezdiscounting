@@ -21,7 +21,7 @@ A data frame with \code{Group}, \code{Term}, \code{Variance}, \code{StdDev}, and
 For a 2-RE fit returns the 2x2 covariance with \code{StdDev} and the joint
 correlation (a structural \code{0} for \code{pdDiag}; the first row's \code{Corr} is \code{NA}
 by convention). The \code{Term} column reflects the fitted pair: \verb{(k, phi)} for a
-φ-target fit (\code{k + phi ~ 1}) or \verb{(k, s)} for an s-target fit (\code{k + s ~ 1},
+phi-target fit (\code{k + phi ~ 1}) or \verb{(k, s)} for an s-target fit (\code{k + s ~ 1},
 GM/Rachlin only). For a 1-RE fit (\code{k ~ 1}) returns the single
 random-intercept SD on the log-k scale.
 }

@@ -958,7 +958,7 @@ NULL
 #' group's `beta_k` contribution rather than the reference-group intercept.
 #'
 #' For a 1-RE fit the auxiliary scalar `phi` is population-level, so it is not a
-#' subject-level parameter (the returned frame is `id, u_i, k`). For a φ-target
+#' subject-level parameter (the returned frame is `id, u_i, k`). For a phi-target
 #' 2-RE fit (`k + phi ~ 1`) each subject's natural-scale `re = L * b_hat` is
 #' reconstructed (`L = chol(Sigma)` lower-triangular; the `sdreport` "random"
 #' block holds the STANDARDIZED `b_hat`, not `re`), giving `id, re_k, re_phi,
@@ -984,10 +984,10 @@ NULL
 #'   `coefficients` (`"log_phi"` for sltb). Used only for `n_re == 2`.
 #' @param Sigma Fitted 2x2 RE covariance (from [.dd_tmb_extract_estimates()]);
 #'   required for `n_re == 2`.
-#' @param re2_target Integer flag: `0L` for a φ-target 2-RE fit, `1L` for an
+#' @param re2_target Integer flag: `0L` for a phi-target 2-RE fit, `1L` for an
 #'   s-target fit. Ignored when `n_re == 1L`. Defaults to `0L`.
 #' @return data.frame: `id, u_i, k` (1-RE), `id, re_k, re_phi, k, phi`
-#'   (φ-target 2-RE), or `id, re_k, re_s, k, s` (s-target 2-RE).
+#'   (phi-target 2-RE), or `id, re_k, re_s, k, s` (s-target 2-RE).
 #' @note Subject-level `k` assumes between-subject predictors: the first design
 #'   row per subject defines that subject's fixed-effect contribution. A
 #'   within-subject-varying covariate would make a single per-subject `k`
@@ -1141,7 +1141,7 @@ NULL
 #'       spec, parsed random effects).}
 #'     \item{formula_details}{Fixed-effect design (`X`, `rhs`, `contrasts`).}
 #'     \item{subject_pars}{Data frame of subject-level parameters. For a 1-RE fit
-#'       (`k ~ 1`) the columns are `id, u_i, k`; for a φ-target 2-RE fit
+#'       (`k ~ 1`) the columns are `id, u_i, k`; for a phi-target 2-RE fit
 #'       (`k + phi ~ 1`) they are `id, re_k, re_phi, k, phi`; for an s-target
 #'       2-RE fit (`k + s ~ 1`, GM/Rachlin) they are `id, re_k, re_s, k, s`
 #'       where `s` is clamped to `[0.05, 20]`.}

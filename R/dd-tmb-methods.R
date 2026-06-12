@@ -155,18 +155,20 @@ fixef.beezdiscounting_tmb <- function(object, ...) {
 #' @param ... Unused.
 #' @return Data frame keyed by `id`. For a 1-RE fit (`k ~ 1`): the standardized
 #'   random-intercept deviate `u_i` (such that `log k_i = X beta + sigma_u *
-#'   u_i`) and the resolved per-subject discount rate `k` (no `phi` column - phi
-#'   is population-level). For a 2-RE fit (`k + phi ~ 1`): the natural-scale
-#'   `(re_k, re_phi)` offsets plus the resolved per-subject `k` and `phi`.
+#'   u_i`) and the resolved per-subject discount rate `k` (no `phi` or `s`
+#'   column - both are population-level). For a φ-target 2-RE fit
+#'   (`k + phi ~ 1`): `(re_k, re_phi)` offsets plus per-subject `k` and `phi`.
+#'   For an s-target 2-RE fit (`k + s ~ 1`, GM/Rachlin only): `(re_k, re_s)`
+#'   offsets plus per-subject `k` and `s` (clamped to `[0.05, 20]`).
 #' @importFrom nlme ranef
 #' @export
 ranef.beezdiscounting_tmb <- function(object, ...) {
   sp <- object$subject_pars
   keep <- if (object$param_info$n_random_effects == 2L) {
     re2 <- if (identical(as.integer(object$param_info$re2_target %||% 0L), 1L)) {
-      c("re_s", "s")
+      c("re_s", "k", "s")
     } else {
-      c("re_phi", "phi")
+      c("re_phi", "k", "phi")
     }
     intersect(c("id", "re_k", re2), names(sp))
   } else {
@@ -182,15 +184,18 @@ ranef.beezdiscounting_tmb <- function(object, ...) {
 
 #' Random-effect covariance for a TMB discounting model
 #'
-#' For a 2-RE fit (`k + phi ~ 1`) returns the 2x2 covariance with `StdDev` and
-#' the `(k, phi)` correlation (a structural `0` for `pdDiag`; the first row's
-#' `Corr` is `NA` by convention). For a 1-RE fit (`k ~ 1`) returns the single
+#' For a 2-RE fit returns the 2x2 covariance with `StdDev` and the joint
+#' correlation (a structural `0` for `pdDiag`; the first row's `Corr` is `NA`
+#' by convention). The `Term` column reflects the fitted pair: `(k, phi)` for a
+#' φ-target fit (`k + phi ~ 1`) or `(k, s)` for an s-target fit (`k + s ~ 1`,
+#' GM/Rachlin only). For a 1-RE fit (`k ~ 1`) returns the single
 #' random-intercept SD on the log-k scale.
 #'
 #' @param x A `beezdiscounting_tmb` fit.
 #' @param sigma Ignored (present for the `nlme::VarCorr()` generic).
 #' @param ... Unused.
-#' @return A data frame with `Variance`, `StdDev`, and (2-RE) `Corr`.
+#' @return A data frame with `Group`, `Term`, `Variance`, `StdDev`, and (2-RE)
+#'   `Corr`.
 #' @importFrom nlme VarCorr
 #' @export
 VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
@@ -364,7 +369,9 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
 #'   each subject's estimated random intercept, requires the id column) and/or
 #'   `"population"` (random effects set to zero - the population-mean curve;
 #'   no id column needed). Pass `c("population", "subject")` for both columns
-#'   side-by-side. A numeric nlme-style level is rejected with an error.
+#'   side-by-side. A numeric nlme-style level is rejected with an error. For
+#'   an s-target 2-RE fit (`k + s ~ 1`), the subject level uses each subject's
+#'   estimated `s_i`; the population level uses the population `exp(log_s)`.
 #' @param ... Unused.
 #'
 #' @return
@@ -486,10 +493,12 @@ predict.beezdiscounting_tmb <- function(object,
 #'
 #' @param object A `beezdiscounting_tmb` fit.
 #' @param mu Numeric vector of fitted mu values (from `.dd_discount_mu`).
-#' @param ids Optional per-row subject ids (length `mu`). For a 2-RE SLT fit at
-#'   the subject level, supplying `ids` uses each subject's `phi_i` so the SD is
-#'   subject-conditional; `NULL` (population level, or any 1-RE fit) uses the
-#'   population precision `exp(log_phi)`.
+#' @param ids Optional per-row subject ids (length `mu`). For a **φ-target**
+#'   2-RE SLT fit at the subject level, supplying `ids` uses each subject's
+#'   `phi_i` so the SD is subject-conditional. For an **s-target** 2-RE fit
+#'   there is no per-subject `phi`; the SD always uses the population precision
+#'   `exp(log_phi)`. `NULL` (population level, or any 1-RE fit) also uses the
+#'   population precision.
 #' @return Numeric vector of per-row response SDs, same length as `mu`.
 #' @keywords internal
 .dd_tmb_response_sd <- function(object, mu, ids = NULL) {

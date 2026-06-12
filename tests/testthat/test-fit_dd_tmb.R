@@ -1102,3 +1102,54 @@ describe("fit_dd_tmb 2-RE (k + phi ~ 1)", {
                     c("beta_k", "log_sigma_u", "log_aux"))
   })
 })
+
+describe("fit_dd_tmb k + s ~ 1 (subject-random s)", {
+  skip_on_cran(); skip_if_not_installed("TMB")
+
+  it("aborts when k + s ~ 1 is used with a 1-parameter equation", {
+    sim <- simulate_dd_ip(n_subjects = 8, equation = "mazur", seed = 1)
+    expect_error(
+      fit_dd_tmb(sim, equation = "mazur", random_effects = k + s ~ 1,
+                 verbose = 0),
+      "green-myerson|rachlin")
+  })
+
+  it("fits k + s ~ 1 under green-myerson/sltb and records re2_target", {
+    sim <- simulate_dd_ip(n_subjects = 25, equation = "green-myerson", s = 1.3,
+                          sigma_u = 0.5, sigma_s = 0.3, rho_ks = 0.2,
+                          phi = 12, seed = 7)
+    fit <- fit_dd_tmb(sim, equation = "green-myerson",
+                      random_effects = k + s ~ 1, verbose = 0)
+    expect_s3_class(fit, "beezdiscounting_tmb")
+    expect_equal(fit$param_info$n_random_effects, 2L)
+    expect_equal(fit$param_info$re2_target, 1L)
+    expect_equal(fit$param_info$re_aux_param, "s")
+    expect_true(is.finite(fit$loglik))
+  })
+
+  it("fits k + s ~ 1 under rachlin/gaussian", {
+    sim <- simulate_dd_ip(n_subjects = 25, equation = "rachlin", s = 1.2,
+                          sigma_u = 0.5, sigma_s = 0.3, rho_ks = 0,
+                          family = "gaussian", sigma_e = 0.06, seed = 8)
+    fit <- fit_dd_tmb(sim, equation = "rachlin", family = "gaussian",
+                      random_effects = k + s ~ 1, covariance_structure = "pdDiag",
+                      verbose = 0)
+    expect_true(is.finite(fit$loglik))
+    expect_equal(fit$param_info$re2_target, 1L)
+  })
+
+  it("the start_values$s alias still works alongside k + s ~ 1", {
+    # start_values$s -> log_s (population start). It must not collide with the
+    # re2_target derivation (which reads the parsed RE, not start_values).
+    sim <- simulate_dd_ip(n_subjects = 20, equation = "green-myerson", s = 1.3,
+                          sigma_u = 0.5, sigma_s = 0.3, phi = 12, seed = 9)
+    fit <- fit_dd_tmb(sim, equation = "green-myerson", random_effects = k + s ~ 1,
+                      start_values = list(s = 1.1), verbose = 0)
+    expect_true(is.finite(fit$loglik))
+    expect_equal(fit$param_info$re2_target, 1L)
+    expect_error(
+      fit_dd_tmb(sim, equation = "green-myerson", random_effects = k + s ~ 1,
+                 start_values = list(s = 1.1, log_s = 0), verbose = 0),
+      "either 's' or 'log_s'")
+  })
+})

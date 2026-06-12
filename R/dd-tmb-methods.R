@@ -672,9 +672,10 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
   ln10   <- log(10)
 
   if (object$param_info$n_random_effects == 2L) {
-    # 2-RE (k + phi ~ 1): emit the two RE SDs on the log10 scale (consistent
-    # with the 1-RE sigma_u convention: divide by log(10)) and the (k, phi)
-    # correlation from the fitted Sigma. The correlation is scale-free.
+    # 2-RE fit: emit the two RE SDs on the log10 scale (consistent with the
+    # 1-RE sigma_u convention: divide by log(10)) and the joint correlation
+    # from the fitted Sigma. The correlation is scale-free.
+    # re2_lab reflects the target ("phi" or "s").
     Sigma <- object$Sigma
     sds   <- sqrt(diag(Sigma))
     rho   <- Sigma[1, 2] / prod(sds)

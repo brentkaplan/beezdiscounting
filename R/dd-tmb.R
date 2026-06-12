@@ -958,11 +958,13 @@ NULL
 #' group's `beta_k` contribution rather than the reference-group intercept.
 #'
 #' For a 1-RE fit the auxiliary scalar `phi` is population-level, so it is not a
-#' subject-level parameter (the returned frame is `id, u_i, k`). For a 2-RE fit
-#' (`k + phi ~ 1`) each subject's natural-scale `re = L * b_hat` is reconstructed
-#' (`L = chol(Sigma)` lower-triangular; the `sdreport` "random" block holds the
-#' STANDARDIZED `b_hat`, not `re`), giving `id, re_k, re_phi, k, phi` with a
-#' per-subject `phi_i` floor matching the kernel clamp.
+#' subject-level parameter (the returned frame is `id, u_i, k`). For a φ-target
+#' 2-RE fit (`k + phi ~ 1`) each subject's natural-scale `re = L * b_hat` is
+#' reconstructed (`L = chol(Sigma)` lower-triangular; the `sdreport` "random"
+#' block holds the STANDARDIZED `b_hat`, not `re`), giving `id, re_k, re_phi,
+#' k, phi` with a per-subject `phi_i` floor matching the kernel clamp. For an
+#' s-target 2-RE fit (`k + s ~ 1`) the same reconstruction gives `id, re_k,
+#' re_s, k, s` with `s_i = exp(log_s + re_s)` clamped to `[0.05, 20]`.
 #'
 #' @param coefficients Named coefficient vector (with `beta_k`, `log_sigma_u`
 #'   for 1-RE, and `log_phi` or `log_sigma_e`).
@@ -982,7 +984,10 @@ NULL
 #'   `coefficients` (`"log_phi"` for sltb). Used only for `n_re == 2`.
 #' @param Sigma Fitted 2x2 RE covariance (from [.dd_tmb_extract_estimates()]);
 #'   required for `n_re == 2`.
-#' @return data.frame: `id, u_i, k` (1-RE) or `id, re_k, re_phi, k, phi` (2-RE).
+#' @param re2_target Integer flag: `0L` for a φ-target 2-RE fit, `1L` for an
+#'   s-target fit. Ignored when `n_re == 1L`. Defaults to `0L`.
+#' @return data.frame: `id, u_i, k` (1-RE), `id, re_k, re_phi, k, phi`
+#'   (φ-target 2-RE), or `id, re_k, re_s, k, s` (s-target 2-RE).
 #' @note Subject-level `k` assumes between-subject predictors: the first design
 #'   row per subject defines that subject's fixed-effect contribution. A
 #'   within-subject-varying covariate would make a single per-subject `k`
@@ -1106,8 +1111,9 @@ NULL
 #'   reduce to `"mazur"` at `s = 1`.
 #' @param family Observation family: `"sltb"` (default) or `"gaussian"`.
 #' @param random_effects RE formula: `k ~ 1` (single random intercept on
-#'   `log k`) or `k + phi ~ 1` (a joint 2-D random intercept on
-#'   `(log k, log phi)`, SLT-beta only).
+#'   `log k`), `k + phi ~ 1` (a joint 2-D random intercept on
+#'   `(log k, log phi)`, SLT-beta only), or `k + s ~ 1` (a joint 2-D random
+#'   intercept on `(log k, log s)`, Green-Myerson and Rachlin only).
 #' @param factors Character vector of between-subject factor names.
 #' @param factor_interaction Logical; include a pairwise factor interaction.
 #' @param continuous_covariates Character vector of covariate names.
@@ -1119,8 +1125,9 @@ NULL
 #'   multi-start.
 #' @param verbose Integer verbosity (0 silent, 1 progress, 2 debug).
 #' @param covariance_structure Covariance for a 2-D random effect
-#'   (`k + phi ~ 1`): `"pdSymm"` (default; correlated `(log k, log phi)`) or
-#'   `"pdDiag"` (independent, correlation fixed at 0). Ignored for `k ~ 1`.
+#'   (`k + phi ~ 1` or `k + s ~ 1`): `"pdSymm"` (default; correlated random
+#'   intercepts) or `"pdDiag"` (independent, correlation fixed at 0). Ignored
+#'   for `k ~ 1`.
 #' @param ... Reserved.
 #' @return An object of class `beezdiscounting_tmb` with components:
 #'   \describe{
@@ -1134,8 +1141,10 @@ NULL
 #'       spec, parsed random effects).}
 #'     \item{formula_details}{Fixed-effect design (`X`, `rhs`, `contrasts`).}
 #'     \item{subject_pars}{Data frame of subject-level parameters. For a 1-RE fit
-#'       (`k ~ 1`) the columns are `id, u_i, k`; for a 2-RE fit (`k + phi ~ 1`)
-#'       they are `id, re_k, re_phi, k, phi`.}
+#'       (`k ~ 1`) the columns are `id, u_i, k`; for a φ-target 2-RE fit
+#'       (`k + phi ~ 1`) they are `id, re_k, re_phi, k, phi`; for an s-target
+#'       2-RE fit (`k + s ~ 1`, GM/Rachlin) they are `id, re_k, re_s, k, s`
+#'       where `s` is clamped to `[0.05, 20]`.}
 #'     \item{loglik, AIC, BIC}{Fit statistics.}
 #'     \item{converged, se_available}{Convergence / SE-availability flags.}
 #'     \item{opt_warnings}{Character vector of optimizer warnings.}

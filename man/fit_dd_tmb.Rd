@@ -39,8 +39,9 @@ reduce to \code{"mazur"} at \code{s = 1}.}
 \item{family}{Observation family: \code{"sltb"} (default) or \code{"gaussian"}.}
 
 \item{random_effects}{RE formula: \code{k ~ 1} (single random intercept on
-\verb{log k}) or \code{k + phi ~ 1} (a joint 2-D random intercept on
-\verb{(log k, log phi)}, SLT-beta only).}
+\verb{log k}), \code{k + phi ~ 1} (a joint 2-D random intercept on
+\verb{(log k, log phi)}, SLT-beta only), or \code{k + s ~ 1} (a joint 2-D random
+intercept on \verb{(log k, log s)}, Green-Myerson and Rachlin only).}
 
 \item{factors}{Character vector of between-subject factor names.}
 
@@ -62,8 +63,9 @@ multi-start.}
 \item{verbose}{Integer verbosity (0 silent, 1 progress, 2 debug).}
 
 \item{covariance_structure}{Covariance for a 2-D random effect
-(\code{k + phi ~ 1}): \code{"pdSymm"} (default; correlated \verb{(log k, log phi)}) or
-\code{"pdDiag"} (independent, correlation fixed at 0). Ignored for \code{k ~ 1}.}
+(\code{k + phi ~ 1} or \code{k + s ~ 1}): \code{"pdSymm"} (default; correlated random
+intercepts) or \code{"pdDiag"} (independent, correlation fixed at 0). Ignored
+for \code{k ~ 1}.}
 
 \item{...}{Reserved.}
 }
@@ -80,8 +82,10 @@ An object of class \code{beezdiscounting_tmb} with components:
 spec, parsed random effects).}
 \item{formula_details}{Fixed-effect design (\code{X}, \code{rhs}, \code{contrasts}).}
 \item{subject_pars}{Data frame of subject-level parameters. For a 1-RE fit
-(\code{k ~ 1}) the columns are \verb{id, u_i, k}; for a 2-RE fit (\code{k + phi ~ 1})
-they are \verb{id, re_k, re_phi, k, phi}.}
+(\code{k ~ 1}) the columns are \verb{id, u_i, k}; for a φ-target 2-RE fit
+(\code{k + phi ~ 1}) they are \verb{id, re_k, re_phi, k, phi}; for an s-target
+2-RE fit (\code{k + s ~ 1}, GM/Rachlin) they are \verb{id, re_k, re_s, k, s}
+where \code{s} is clamped to \verb{[0.05, 20]}.}
 \item{loglik, AIC, BIC}{Fit statistics.}
 \item{converged, se_available}{Convergence / SE-availability flags.}
 \item{opt_warnings}{Character vector of optimizer warnings.}

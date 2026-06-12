@@ -19,7 +19,9 @@ simulate_dd_ip(
   seed = NULL,
   sigma_phi = 0,
   rho_kphi = 0,
-  attach_truth = FALSE
+  attach_truth = FALSE,
+  sigma_s = 0,
+  rho_ks = 0
 )
 }
 \arguments{
@@ -62,17 +64,29 @@ only). When \verb{> 0}, the \verb{(log k, log phi)} pair is drawn jointly from
 \item{rho_kphi}{Numeric in \verb{[-1, 1]}; correlation between subject random
 intercepts on \verb{log k} and \verb{log phi}. Ignored when \code{sigma_phi = 0}.}
 
-\item{attach_truth}{Logical; when \code{TRUE}, a \code{phi} column containing each
-observation's subject-specific precision is appended to the returned
-tibble. When \code{sigma_phi = 0} the column equals the constant \code{phi} for
-every observation. Default \code{FALSE}.}
+\item{attach_truth}{Logical; when \code{TRUE}, a \code{phi} column is always appended
+(equal to the constant \code{phi} when \code{sigma_phi = 0}, or subject-specific when
+\code{sigma_phi > 0}); when \code{sigma_s > 0}, an \code{s} column is also appended with
+the subject-specific curvature exponent. Default \code{FALSE}.}
+
+\item{sigma_s}{Numeric; SD of the subject random intercept on \verb{log s}
+(GM/Rachlin curvature exponent). Default \code{0} (no subject-random s).
+When \verb{> 0}, the \verb{(log k, log s)} pair is drawn jointly from
+\code{N(0, Sigma)} where \code{Sigma} is parameterized by \code{sigma_u}, \code{sigma_s}, and
+\code{rho_ks}. Requires \code{equation = "green-myerson"} or \code{"rachlin"}. Mutually
+exclusive with \code{sigma_phi > 0} (q = 2 only).}
+
+\item{rho_ks}{Numeric in \verb{[-1, 1]}; correlation between subject random
+intercepts on \verb{log k} and \verb{log s}. Ignored when \code{sigma_s = 0}.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with columns \code{id} (factor),
 \code{condition} (factor; only when \code{n_conditions > 1}), \code{x} (delay), and
 \code{y} (indifference proportion in \verb{[0, 1]}). When \code{attach_truth = TRUE}, an
 additional \code{phi} column is appended with the subject-specific SLT-beta
-precision (equal to the constant \code{phi} when \code{sigma_phi = 0}).
+precision (equal to the constant \code{phi} when \code{sigma_phi = 0}). When
+\code{attach_truth = TRUE} and \code{sigma_s > 0}, an additional \code{s} column is
+appended with the subject-specific curvature exponent.
 }
 \description{
 Generates long-format indifference-point data from the mixed-effects

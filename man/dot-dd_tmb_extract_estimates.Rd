@@ -11,7 +11,8 @@
   family,
   has_s = FALSE,
   verbose = 1,
-  n_re = 1L
+  n_re = 1L,
+  re2_target = 0L
 )
 }
 \arguments{

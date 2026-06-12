@@ -11,7 +11,7 @@
 
 \item{mu}{Numeric vector of fitted mu values (from \code{.dd_discount_mu}).}
 
-\item{ids}{Optional per-row subject ids (length \code{mu}). For a \strong{φ-target}
+\item{ids}{Optional per-row subject ids (length \code{mu}). For a \strong{phi-target}
 2-RE SLT fit at the subject level, supplying \code{ids} uses each subject's
 \code{phi_i} so the SD is subject-conditional. For an \strong{s-target} 2-RE fit
 there is no per-subject \code{phi}; the SD always uses the population precision

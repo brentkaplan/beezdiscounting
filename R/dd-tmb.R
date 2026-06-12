@@ -835,7 +835,8 @@ NULL
 #'   covariance for `n_re == 2` (NULL otherwise).
 #' @keywords internal
 .dd_tmb_extract_estimates <- function(obj, opt, n_subjects, family,
-                                      has_s = FALSE, verbose = 1, n_re = 1L) {
+                                      has_s = FALSE, verbose = 1, n_re = 1L,
+                                      re2_target = 0L) {
   sdr <- tryCatch(
     TMB::sdreport(obj),
     error = function(e1) {
@@ -922,9 +923,10 @@ NULL
       0
     }
     rho_hat <- tanh(cor_hat)            # pdDiag: cor_re mapped out -> rho = 0
+    re2_name <- if (identical(as.integer(re2_target), 1L)) "s" else "phi"
     Sigma <- matrix(c(sd_re_hat[1]^2, rho_hat * sd_re_hat[1] * sd_re_hat[2],
                       rho_hat * sd_re_hat[1] * sd_re_hat[2], sd_re_hat[2]^2), 2L,
-                    dimnames = list(c("k", "phi"), c("k", "phi")))
+                    dimnames = list(c("k", re2_name), c("k", re2_name)))
   }
 
   # Rename the generic auxiliary scalar in both coefficients and se.
@@ -990,7 +992,7 @@ NULL
                                          design_X, subject_id,
                                          equation, family, n_re = 1L,
                                          log_aux_name = "log_phi",
-                                         Sigma = NULL) {
+                                         Sigma = NULL, re2_target = 0L) {
   beta_k <- unname(coefficients[names(coefficients) == "beta_k"])
   n_subjects <- length(subject_levels)
 
@@ -1009,15 +1011,24 @@ NULL
   if (n_re == 2L) {
     if (is.null(Sigma)) stop("internal: 2-RE Sigma unavailable", call. = FALSE)
     b_hat <- u_hat                       # n_subjects x 2 standardized deviates
-    L <- t(chol(Sigma))                  # lower-triangular Cholesky of fitted Sigma
-    re <- t(L %*% t(b_hat))              # natural-scale (re_k, re_phi)
+    L  <- t(chol(Sigma))                 # lower-triangular Cholesky of fitted Sigma
+    re <- t(L %*% t(b_hat))             # natural-scale (re_k, re_2)
     re_k <- as.numeric(re[, 1L])
-    re_phi <- as.numeric(re[, 2L])
     log_k_i <- xbeta_i + re_k
-    log_aux <- unname(coefficients[[log_aux_name]])
-    phi_i <- pmax(exp(log_aux + re_phi), 0.1)   # same per-subject floor as the kernel clamp
-    data.frame(id = subject_levels, re_k = re_k, re_phi = re_phi,
-               k = exp(log_k_i), phi = phi_i, stringsAsFactors = FALSE)
+    if (identical(as.integer(re2_target), 1L)) {
+      # s-target: second RE is on log s; phi/sigma_e stays population.
+      re_s  <- as.numeric(re[, 2L])
+      log_s <- unname(coefficients[["log_s"]])
+      s_i   <- pmin(pmax(exp(log_s + re_s), 0.05), 20)   # same clamp as the kernel
+      data.frame(id = subject_levels, re_k = re_k, re_s = re_s,
+                 k = exp(log_k_i), s = s_i, stringsAsFactors = FALSE)
+    } else {
+      re_phi  <- as.numeric(re[, 2L])
+      log_aux <- unname(coefficients[[log_aux_name]])
+      phi_i   <- pmax(exp(log_aux + re_phi), 0.1)        # per-subject phi floor
+      data.frame(id = subject_levels, re_k = re_k, re_phi = re_phi,
+                 k = exp(log_k_i), phi = phi_i, stringsAsFactors = FALSE)
+    }
   } else {
     sigma_u <- exp(unname(coefficients[["log_sigma_u"]]))
     u_i <- as.numeric(u_hat[, 1L])
@@ -1351,7 +1362,8 @@ fit_dd_tmb <- function(data,
                                          n_subjects = prepared$n_subjects,
                                          family = family, has_s = has_s,
                                          verbose = verbose,
-                                         n_re = n_random_effects)
+                                         n_re = n_random_effects,
+                                         re2_target = re2_target)
 
   # The aux scalar's renamed coefficient name (mirrors the rename in
   # .dd_tmb_extract_estimates) -- needed for the 2-RE per-subject phi.
@@ -1371,7 +1383,8 @@ fit_dd_tmb <- function(data,
     family = family,
     n_re = n_random_effects,
     log_aux_name = aux_name,
-    Sigma = estimates$Sigma
+    Sigma = estimates$Sigma,
+    re2_target = re2_target
   )
 
   # 10. Likelihood / IC.

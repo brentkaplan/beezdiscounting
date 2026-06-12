@@ -1152,4 +1152,18 @@ describe("fit_dd_tmb k + s ~ 1 (subject-random s)", {
                  start_values = list(s = 1.1, log_s = 0), verbose = 0),
       "either 's' or 'log_s'")
   })
+
+  it("subject_pars for k + s ~ 1 has id/re_k/re_s/k/s with s in [0.05,20]", {
+    skip_on_cran(); skip_if_not_installed("TMB")
+    sim <- simulate_dd_ip(n_subjects = 30, equation = "green-myerson", s = 1.3,
+                          sigma_u = 0.5, sigma_s = 0.3, rho_ks = 0.2, phi = 12,
+                          seed = 11)
+    fit <- fit_dd_tmb(sim, equation = "green-myerson",
+                      random_effects = k + s ~ 1, verbose = 0)
+    sp <- fit$subject_pars
+    expect_named(sp, c("id", "re_k", "re_s", "k", "s"))
+    expect_true(all(sp$s >= 0.05 - 1e-9 & sp$s <= 20 + 1e-9))
+    expect_true(all(is.finite(sp$k)))
+    expect_equal(dimnames(fit$Sigma)[[1]], c("k", "s"))
+  })
 })

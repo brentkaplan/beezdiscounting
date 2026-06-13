@@ -147,10 +147,13 @@ NULL
 #' @param equation One of "mazur", "exponential".
 #' @param family One of "sltb", "gaussian".
 #' @param n_re Number of random-effect intercepts: `1L` (on `log k`) or `2L`
-#'   (joint `(log k, log phi)`). Defaults to `1L`.
+#'   (joint `(log k, second target)`). Defaults to `1L`.
+#' @param re2_target Second-RE target for `n_re == 2L`: `0L` = the precision
+#'   `log phi` (default), `1L` = the GM/Rachlin curvature `log s`. Ignored for
+#'   `n_re == 1L`.
 #' @return A list whose names match the C++ `DATA_*` macros: `model`, `y`, `x`,
 #'   `subject_id` (0-indexed integer), `X`, `eqn_type`, `family`, `n_obs`,
-#'   `n_subjects`, `n_re`.
+#'   `n_subjects`, `n_re`, `re2_target`.
 #' @keywords internal
 .dd_tmb_build_tmb_data <- function(prepared, design, equation, family,
                                    n_re = 1L, re2_target = 0L) {
@@ -828,6 +831,8 @@ NULL
 #' @param verbose Integer verbosity.
 #' @param n_re Number of random-effect intercepts (`1L` or `2L`). Defaults to
 #'   `1L` so existing positional callers stay valid.
+#' @param re2_target Second-RE target (`0L` = phi, `1L` = s); selects the fitted
+#'   `Sigma` dimnames (`(k, phi)` vs `(k, s)`) for `n_re == 2L`. Defaults to `0L`.
 #' @return list(coefficients, se, sdr, variance_components, u_hat, hessian_pd,
 #'   Sigma). `u_hat` is the per-subject random-effect block: a 1-column matrix
 #'   of standardized `u` deviates for `n_re == 1`, an `n_subjects x 2` matrix of

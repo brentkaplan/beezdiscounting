@@ -16,9 +16,10 @@
 \item{object}{A \code{beezdiscounting_tmb} object.}
 
 \item{parm}{Optional character vector for filtering. Accepts display names
-(\code{"k:(Intercept)"}) \strong{or} raw optimizer names (\code{"beta_k"},
-\code{"log_sigma_u"}, \code{"log_phi"}, \code{"log_sigma_e"}, and for a 2-RE fit
-\code{"log_sd_re"} / \code{"cor_re"}). \code{NULL} returns all coefficients.}
+(\code{"k:(Intercept)"}, and \code{"s"} for the GM/Rachlin shape parameter) \strong{or} raw
+optimizer names (\code{"beta_k"}, \code{"log_sigma_u"}, \code{"log_phi"}, \code{"log_sigma_e"},
+\code{"log_s"}, and for a 2-RE fit \code{"log_sd_re"} / \code{"cor_re"}). \code{NULL} returns
+all coefficients.}
 
 \item{level}{Confidence level (default \code{0.95}).}
 

@@ -23,12 +23,16 @@
 \item{family}{One of "sltb", "gaussian".}
 
 \item{n_re}{Number of random-effect intercepts: \code{1L} (on \verb{log k}) or \code{2L}
-(joint \verb{(log k, log phi)}). Defaults to \code{1L}.}
+(joint \verb{(log k, second target)}). Defaults to \code{1L}.}
+
+\item{re2_target}{Second-RE target for \code{n_re == 2L}: \code{0L} = the precision
+\verb{log phi} (default), \code{1L} = the GM/Rachlin curvature \verb{log s}. Ignored for
+\code{n_re == 1L}.}
 }
 \value{
 A list whose names match the C++ \verb{DATA_*} macros: \code{model}, \code{y}, \code{x},
 \code{subject_id} (0-indexed integer), \code{X}, \code{eqn_type}, \code{family}, \code{n_obs},
-\code{n_subjects}, \code{n_re}.
+\code{n_subjects}, \code{n_re}, \code{re2_target}.
 }
 \description{
 Build the TMB data list for MixedDiscounting

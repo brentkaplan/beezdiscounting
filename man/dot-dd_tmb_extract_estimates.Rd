@@ -31,6 +31,9 @@ rachlin), where \code{log_s} is a free coefficient.}
 
 \item{n_re}{Number of random-effect intercepts (\code{1L} or \code{2L}). Defaults to
 \code{1L} so existing positional callers stay valid.}
+
+\item{re2_target}{Second-RE target (\code{0L} = phi, \code{1L} = s); selects the fitted
+\code{Sigma} dimnames (\verb{(k, phi)} vs \verb{(k, s)}) for \code{n_re == 2L}. Defaults to \code{0L}.}
 }
 \value{
 list(coefficients, se, sdr, variance_components, u_hat, hessian_pd,

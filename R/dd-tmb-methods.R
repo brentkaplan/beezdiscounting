@@ -896,9 +896,10 @@ glance.beezdiscounting_tmb <- function(x, ...) {
 #'
 #' @param object A `beezdiscounting_tmb` object.
 #' @param parm Optional character vector for filtering. Accepts display names
-#'   (`"k:(Intercept)"`) **or** raw optimizer names (`"beta_k"`,
-#'   `"log_sigma_u"`, `"log_phi"`, `"log_sigma_e"`, and for a 2-RE fit
-#'   `"log_sd_re"` / `"cor_re"`). `NULL` returns all coefficients.
+#'   (`"k:(Intercept)"`, and `"s"` for the GM/Rachlin shape parameter) **or** raw
+#'   optimizer names (`"beta_k"`, `"log_sigma_u"`, `"log_phi"`, `"log_sigma_e"`,
+#'   `"log_s"`, and for a 2-RE fit `"log_sd_re"` / `"cor_re"`). `NULL` returns
+#'   all coefficients.
 #' @param level Confidence level (default `0.95`).
 #' @param report_space `"internal"` (default; all coefficients on their
 #'   estimation/log scale) or `"natural"` (exponentiate `beta_k` rows so the

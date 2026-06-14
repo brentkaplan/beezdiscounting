@@ -991,7 +991,8 @@ NULL
 #' block holds the STANDARDIZED `b_hat`, not `re`), giving `id, re_k, re_phi,
 #' k, phi` with a per-subject `phi_i` floor matching the kernel clamp. For an
 #' s-target 2-RE fit (`k + s ~ 1`) the same reconstruction gives `id, re_k,
-#' re_s, k, s` with `s_i = exp(log_s + re_s)` clamped to `[0.05, 20]`.
+#' re_s, k, s` with `s_i = .dd_soft_clamp_s_log(log_s + re_s)` (approximately
+#' `exp(log_s + re_s)` in the interior, smoothly saturating toward `(0.05, 20)`).
 #'
 #' @param coefficients Named coefficient vector (with `beta_k`, `log_sigma_u`
 #'   for 1-RE, and `log_phi` or `log_sigma_e`).
@@ -1051,7 +1052,7 @@ NULL
       # s-target: second RE is on log s; phi/sigma_e stays population.
       re_s  <- as.numeric(re[, 2L])
       log_s <- unname(coefficients[["log_s"]])
-      s_i   <- pmin(pmax(exp(log_s + re_s), 0.05), 20)   # same clamp as the kernel
+      s_i   <- .dd_soft_clamp_s_log(log_s + re_s)        # soft clamp; matches the kernel
       data.frame(id = subject_levels, re_k = re_k, re_s = re_s,
                  k = exp(log_k_i), s = s_i, stringsAsFactors = FALSE)
     } else {
@@ -1171,7 +1172,7 @@ NULL
 #'       (`k ~ 1`) the columns are `id, u_i, k`; for a phi-target 2-RE fit
 #'       (`k + phi ~ 1`) they are `id, re_k, re_phi, k, phi`; for an s-target
 #'       2-RE fit (`k + s ~ 1`, GM/Rachlin) they are `id, re_k, re_s, k, s`
-#'       where `s` is clamped to `[0.05, 20]`.}
+#'       where `s` is soft-clamped toward `(0.05, 20)`.}
 #'     \item{loglik, AIC, BIC}{Fit statistics.}
 #'     \item{converged, se_available}{Convergence / SE-availability flags.}
 #'     \item{opt_warnings}{Character vector of optimizer warnings.}

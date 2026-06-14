@@ -17,7 +17,7 @@ random-intercept deviate \code{u_i} (such that \verb{log k_i = X beta + sigma_u 
 column - both are population-level). For a phi-target 2-RE fit
 (\code{k + phi ~ 1}): \verb{(re_k, re_phi)} offsets plus per-subject \code{k} and \code{phi}.
 For an s-target 2-RE fit (\code{k + s ~ 1}, GM/Rachlin only): \verb{(re_k, re_s)}
-offsets plus per-subject \code{k} and \code{s} (clamped to \verb{[0.05, 20]}).
+offsets plus per-subject \code{k} and \code{s} (soft-clamped toward \verb{(0.05, 20)}).
 }
 \description{
 Extract subject-level random effects from a TMB discounting model

@@ -470,6 +470,28 @@ NULL
 .dd_s_log_lower <- log(0.05)
 .dd_s_log_upper <- log(20)
 
+# Softplus temperature for the s-target 2-RE soft clamp. MUST equal the literal in
+# src/MixedDiscounting.h (the compile gate enforces C++ == R to 1e-8). The smooth
+# (C-infinity) clamp replaces a hard CondExp clamp whose C0 kink gave the Laplace
+# inner solve a singular Hessian (a hang) when a subject bound the [0.05, 20] guard.
+# See dev/notes/specs/2026-06-14-smooth-clamp-design.md.
+.dd_s_softclamp_tau <- 0.05
+
+# Numerically stable softplus: log(1 + e^z) without overflow at large |z|.
+# (z = (u-a)/tau reaches ~120 at tau=0.05, so naive log1p(exp(z)) would overflow.)
+# Equivalent to TMB's logspace_add(0, z) used kernel-side.
+.dd_softplus <- function(z) pmax(z, 0) + log1p(exp(-abs(z)))
+
+# Two-sided C-infinity soft clamp of s = exp(u) toward the open interval
+# (exp(a), exp(b)), worked in log space (the bounds are multiplicatively symmetric:
+# log(0.05) = -log(20)). g(u) ~= u in the interior, saturates with a small but
+# strictly non-zero gradient at the bounds.
+.dd_soft_clamp_s_log <- function(u, a = .dd_s_log_lower, b = .dd_s_log_upper,
+                                 tau = .dd_s_softclamp_tau) {
+  g <- a + tau * .dd_softplus((u - a) / tau) - tau * .dd_softplus((u - b) / tau)
+  exp(g)
+}
+
 
 #' Build the TMB `map` for the discounting shape + random-effect blocks
 #'

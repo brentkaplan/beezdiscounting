@@ -13,7 +13,9 @@
 
 \item{family}{One of "sltb", "gaussian".}
 
-\item{equation}{One of "mazur", "exponential" (for the start inversion).}
+\item{equation}{One of "mazur", "exponential", "green-myerson", "rachlin".
+The start-value inversion handles "mazur"/"exponential"; "green-myerson"/
+"rachlin" use the mazur start branch (\code{log_s} then starts at 0).}
 }
 \value{
 A parameters list: \code{beta_k} (length \code{ncol(X)}), \code{log_sigma_u},

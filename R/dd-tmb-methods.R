@@ -357,6 +357,17 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
 }
 
 
+# Population-level (random-effects-zero) discounting exponent s for predict().
+# For an s-target 2-RE fit the kernel maps log_s through the per-subject SOFT clamp
+# (re = 0 for the population curve), so the population s is .dd_soft_clamp_s_log(log_s),
+# NOT exp(log_s) -- they diverge near the [0.05, 20] bounds. For a population-only s
+# (1-RE or phi-target GM/Rachlin) the kernel uses s = exp(log_s); without s, s = 1.
+.dd_tmb_population_s <- function(has_s, is_s_re, log_s) {
+  if (!isTRUE(has_s)) return(1)
+  if (isTRUE(is_s_re)) .dd_soft_clamp_s_log(log_s) else exp(log_s)
+}
+
+
 #' Predict from a TMB mixed-effects discounting model
 #'
 #' @param object A `beezdiscounting_tmb` object.
@@ -426,16 +437,23 @@ predict.beezdiscounting_tmb <- function(object,
   # type == "response"
   equation <- object$param_info$equation
   x_var    <- object$param_info$x_var
-  s_hat    <- if (isTRUE(object$param_info$has_s)) {
-    exp(unname(object$model$coefficients[["log_s"]]))
-  } else {
-    1
-  }
 
   # For an s-target 2-RE fit the curvature is per-subject; resolve s by id for
-  # the subject level (population level always keeps the scalar s_hat).
+  # the subject level (population level keeps the scalar s_hat).
   is_s_re <- isTRUE(object$param_info$n_random_effects == 2L) &&
              identical(as.integer(object$param_info$re2_target %||% 0L), 1L)
+
+  # Population (re = 0) s. For an s-target fit this is the SOFT-clamped log_s so the
+  # population curve matches the kernel near the bounds (not exp(log_s)).
+  s_hat <- .dd_tmb_population_s(
+    has_s   = object$param_info$has_s,
+    is_s_re = is_s_re,
+    log_s   = if (isTRUE(object$param_info$has_s)) {
+      unname(object$model$coefficients[["log_s"]])
+    } else {
+      NA_real_
+    }
+  )
   s_sub_by_id <- if (is_s_re) {
     stats::setNames(object$subject_pars$s, as.character(object$subject_pars$id))
   } else NULL

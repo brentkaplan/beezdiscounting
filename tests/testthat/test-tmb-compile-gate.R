@@ -388,4 +388,15 @@ describe("MixedDiscounting 2-RE (k, s) compile gate", {
                          b = b_mat, eqn_type = 3L, family = 0L)
     expect_equal(cpp, rr, tolerance = 1e-8); expect_true(is.finite(cpp))
   })
+
+  it("the production .dd_soft_clamp_s_log matches the gate's independent inline form", {
+    # Ties the production helper (used kernel-side mirror + predict) to the gate's
+    # INDEPENDENT inline softplus reference, including where the clamp is active --
+    # so a future drift in either is caught here (Codex capstone 2026-06-14).
+    lo <- log(0.05); hi <- log(20); tau <- 0.05
+    sp <- function(z) pmax(z, 0) + log1p(exp(-abs(z)))
+    inline <- function(u) exp(lo + tau * sp((u - lo) / tau) - tau * sp((u - hi) / tau))
+    u <- c(log(0.05) - 2, log(0.05), log(0.3), log(1.3), log(20), log(20) + 2)  # incl active bounds
+    expect_equal(.dd_soft_clamp_s_log(u), inline(u), tolerance = 1e-12)
+  })
 })

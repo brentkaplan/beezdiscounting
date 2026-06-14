@@ -289,7 +289,8 @@ describe("MixedDiscounting 2-RE (k, s) compile gate", {
   skip_if_not_installed("TMB")
 
   # R reference for n_re == 2, re2_target == 1 (second RE on log s). The
-  # per-subject s_i is two-sided clamped to [0.05, 20] (matching the kernel).
+  # per-subject s_i is two-sided SOFT-clamped toward (0.05, 20) via a softplus map
+  # (matching the kernel's logspace_add form).
   .gate2s_nll_r <- function(y, x, subject_id, beta0, log_aux, log_s,
                             log_sd_re, cor_re, b, eqn_type, family = 0L) {
     sd <- exp(log_sd_re); rho <- tanh(cor_re)
@@ -298,8 +299,14 @@ describe("MixedDiscounting 2-RE (k, s) compile gate", {
     L  <- t(chol(Sigma))
     re <- t(L %*% t(b))                                   # n_subjects x 2
     k  <- exp(beta0 + re[subject_id + 1L, 1L])
-    s_raw <- exp(log_s + re[subject_id + 1L, 2L])
-    s_i   <- pmin(pmax(s_raw, 0.05), 20)                  # two-sided clamp
+    # Two-sided SOFT clamp, re-implemented inline so the gate stays an INDEPENDENT
+    # check (matches src/MixedDiscounting.h's logspace_add softplus to 1e-8).
+    # NB: locals are lo/hi (NOT a/b) so they do not shadow the `b` deviates arg
+    # used by re_prior below.
+    lo <- log(0.05); hi <- log(20); tau <- 0.05
+    sp <- function(z) pmax(z, 0) + log1p(exp(-abs(z)))
+    u   <- log_s + re[subject_id + 1L, 2L]
+    s_i <- exp(lo + tau * sp((u - lo) / tau) - tau * sp((u - hi) / tau))
     mu_raw <- switch(as.character(eqn_type),
       "2" = (1 + k * x)^(-s_i),
       "3" = ifelse(x > 0, 1 / (1 + k * x^s_i), 1))
@@ -356,9 +363,9 @@ describe("MixedDiscounting 2-RE (k, s) compile gate", {
     })
   }
 
-  it("C++ (k,s) -nll matches R with the UPPER clamp active (s_i -> 20)", {
+  it("C++ (k,s) -nll matches R with the UPPER soft-clamp active (s_i -> 20)", {
     # Large sd_re[2] + log_s drives s_raw above 20 for at least one subject;
-    # kernel and reference both clamp to 20, so they must still agree to 1e-8.
+    # kernel and reference both soft-saturate toward 20, so they must agree to 1e-8.
     d <- mk_data(2L, 0L)
     p <- mk_pars(cor_re = 0); p$log_sd_re <- c(log(0.5), log(3)); p$log_s <- log(5)
     cpp <- .gate2s_cpp_nll(d, p)
@@ -369,9 +376,9 @@ describe("MixedDiscounting 2-RE (k, s) compile gate", {
     expect_equal(cpp, rr, tolerance = 1e-8); expect_true(is.finite(cpp))
   })
 
-  it("C++ (k,s) -nll matches R with the LOWER clamp active (s_i -> 0.05)", {
+  it("C++ (k,s) -nll matches R with the LOWER soft-clamp active (s_i -> 0.05)", {
     # Small log_s + large sd_re[2] + the negative b entries drive s_raw below
-    # 0.05; both clamp to 0.05 and must agree to 1e-8.
+    # 0.05; both soft-saturate toward 0.05 and must agree to 1e-8.
     d <- mk_data(3L, 0L)
     p <- mk_pars(cor_re = 0); p$log_sd_re <- c(log(0.5), log(3)); p$log_s <- log(0.1)
     cpp <- .gate2s_cpp_nll(d, p)

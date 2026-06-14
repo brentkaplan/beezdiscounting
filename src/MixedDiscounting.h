@@ -146,13 +146,22 @@ Type MixedDiscounting(objective_function<Type>* obj) {
 
     // Effective discounting exponent. Population s = exp(log_s) for n_re==1, the
     // phi-target 2-RE, and the 1-parameter equations. For the s-target 2-RE
-    // (n_re==2 && re2_target==1) it is per-subject and clamped to [0.05, 20]
-    // (mirrors the population .dd_apply_s_bounds; both s->0 and s->inf degenerate).
+    // (n_re==2 && re2_target==1) it is per-subject, SOFT-clamped toward the open
+    // (0.05, 20) via a C-infinity two-sided softplus in log space (tau = 0.05).
+    // The smooth map removes the hard-clamp C0 kink that gave the Laplace inner
+    // solve a singular Hessian (a hang) when a subject bound the guard. Constants
+    // MUST equal R's .dd_s_log_lower/.dd_s_log_upper/.dd_s_softclamp_tau; the
+    // compile gate enforces C++ == R to 1e-8. softplus(z) = log(1+e^z) =
+    // logspace_add(0, z): stable and differentiable.
     Type s_eff = s;
     if (n_re == 2 && re2_target == 1) {
-      Type s_raw = exp(log_s + re2(subj));
-      s_eff = CppAD::CondExpLt(s_raw, Type(0.05), Type(0.05),
-                CppAD::CondExpGt(s_raw, Type(20.0), Type(20.0), s_raw));
+      Type u   = log_s + re2(subj);
+      Type lo  = Type(log(0.05));     // .dd_s_log_lower (std::log of a double literal)
+      Type hi  = Type(log(20.0));     // .dd_s_log_upper
+      Type tau = Type(0.05);          // .dd_s_softclamp_tau
+      Type g   = lo + tau * logspace_add(Type(0), (u - lo) / tau)
+                    - tau * logspace_add(Type(0), (u - hi) / tau);
+      s_eff = exp(g);
     }
 
     // Mean via the discounting function (identity link). eqn_type is a

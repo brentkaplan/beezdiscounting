@@ -47,6 +47,17 @@ describe("2-RE (k, phi) parameter recovery", {
     # likelihood toward phi_i -> 0. The per-subject phi floor (CondExp clamp at
     # 0.1 in the kernel + pmax(., 0.1) in subject_pars) must keep the 2-RE fit
     # finite with every subject's phi_i at or above the floor.
+    #
+    # NOTE (2026-06-14): unlike the s-target clamp, this one-sided phi floor does NOT
+    # exhibit the singular-Hessian HANG, so the smooth-clamp follow-up left it
+    # byte-for-byte (still a hard CondExp). Reason: the floor (0.1) is effectively
+    # unreachable from data -- three escalating probes (alternating y, then maximally
+    # dispersed 0.99/0.01 subjects, then the population precision crushed to ~0.68)
+    # bottomed out at min phi_i ~ 0.31, never entering the floor's flat/kinked zone,
+    # and every probe converged in 60-81s with no hang. Because the optimum never
+    # reaches the kink, the inner-Laplace solve never sees the singular Hessian that
+    # hangs the (two-sided, easily-bound) s clamp. See
+    # dev/notes/specs/2026-06-14-smooth-clamp-design.md section 4.
     sim <- simulate_dd_ip(n_subjects = 30, sigma_u = 0.5, sigma_phi = 0.4,
                           rho_kphi = 0.2, phi = 10, seed = 303)
     bad <- data.frame(id = "boundary",

@@ -382,7 +382,9 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
 #'   no id column needed). Pass `c("population", "subject")` for both columns
 #'   side-by-side. A numeric nlme-style level is rejected with an error. For
 #'   an s-target 2-RE fit (`k + s ~ 1`), the subject level uses each subject's
-#'   estimated `s_i`; the population level uses the population `exp(log_s)`.
+#'   estimated `s_i`; the population level (random effects zero) uses the
+#'   soft-clamped population `s = .dd_soft_clamp_s_log(log_s)`, matching the
+#'   kernel near the `(0.05, 20)` bounds (equal to `exp(log_s)` in the interior).
 #' @param ... Unused.
 #'
 #' @return

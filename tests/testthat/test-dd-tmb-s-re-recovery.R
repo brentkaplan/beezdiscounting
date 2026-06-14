@@ -40,7 +40,7 @@ describe("2-RE (k, s) parameter recovery", {
     expect_equal(vc$StdDev[2], 0.4, tolerance = 0.35)   # sigma_s
     expect_equal(vc$Corr[2],   0.3, tolerance = 0.40)   # rho
     expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
-                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from clamps
+                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from the soft-clamp bounds
   })
 
   it("recovers sigma_u and sigma_s with rho fixed at 0 under rachlin/sltb (pdDiag)", {
@@ -58,7 +58,7 @@ describe("2-RE (k, s) parameter recovery", {
     expect_equal(vc$StdDev[2], 0.4, tolerance = 0.35)   # sigma_s
     expect_true(is.na(vc$Corr[1]) && vc$Corr[2] == 0)   # pdDiag: structural 0
     expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
-                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from clamps
+                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from the soft-clamp bounds
   })
 
   it("recovers sigma_u, sigma_s, and rho under green-myerson/gaussian (pdSymm)", {
@@ -76,35 +76,46 @@ describe("2-RE (k, s) parameter recovery", {
     expect_equal(vc$StdDev[2], 0.4, tolerance = 0.35)   # sigma_s
     expect_equal(vc$Corr[2],   0.3, tolerance = 0.40)   # rho
     expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
-                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from clamps
+                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from the soft-clamp bounds
   })
 
-  it("fits finitely on high between-subject s variance; every s_i within [0.05, 20]", {
-    # Robustness + clamp-invariant check on ELEVATED s variance (sigma_s = 0.5):
-    # the fit stays finite, converges, and every per-subject s_i respects the
-    # [0.05, 20] clamp (pmin(pmax(s_i, 0.05), 20)).
-    #
-    # NOTE on scope: the clamp's correctness when it BINDS is covered by the
-    # compile-gate's active upper/lower-clamp cases (R vs C++ to 1e-8), which need
-    # no model fit. We deliberately do NOT fit perfectly-degenerate boundary
-    # subjects (e.g. y ~ 1 at every delay) here: such a subject's optimal s_i
-    # lands in the clamp's zero-gradient zone, giving a singular inner-Laplace
-    # Hessian that the optimizer cannot resolve (the fit grinds to iter_max rather
-    # than failing fast). Gracefully fitting INTO the clamp would require a smooth
-    # (non-zero-gradient) clamp; that fitter-robustness improvement is tracked as
-    # a follow-up (see the project notes). Here the data is high-variance but
-    # identifiable, so the fit converges and the invariant holds.
-    sim_d <- simulate_dd_ip(n_subjects = 40, delays = delays,
-                            equation = "green-myerson",
-                            s = 1.4, sigma_u = 0.6, sigma_s = 0.5,
-                            rho_ks = 0.2, phi = 12, seed = 99)
-    fit <- fit_dd_tmb(sim_d, equation = "green-myerson",
+  it("fits finitely (no hang) on a clamp-binding degenerate subject", {
+    # Regression for the singular-Hessian HANG. A "no discounting" subject (flat y
+    # across every delay, including 2920) drives its optimal s_i to the LOWER bound
+    # (s -> 0). Under the old HARD clamp that lands in the zero-gradient/kinked zone
+    # -> singular inner-Laplace Hessian -> the fit grinds to iter_max (a HANG).
+    # VERIFIED: this exact data hangs under the develop hard-clamp kernel (>150s /
+    # iter_max in a worktree at develop) but converges in ~80s here. The SOFT clamp
+    # (.dd_soft_clamp_s_log / kernel logspace_add) removes the kink. The UPPER bound
+    # is symmetric (same softplus map) and its parity is covered by the compile
+    # gate's UPPER-soft-clamp-active case; the "step" subject below adds a sharply
+    # discounting subject to stress the joint fit. We assert convergence + finiteness
+    # + bounds ONLY: a boundary subject is uninformative about sigma_s/rho, so we do
+    # NOT require a clean pdHess/sdreport here.
+    delays_d <- c(1, 7, 14, 30, 90, 180, 365, 730, 1460, 2920)
+    base <- simulate_dd_ip(n_subjects = 18, delays = delays_d,
+                           equation = "green-myerson",
+                           s = 1.4, sigma_u = 0.5, sigma_s = 0.3,
+                           rho_ks = 0.2, phi = 12, seed = 707)
+    flat <- data.frame(id = "flat", x = delays_d, y = rep(0.98, length(delays_d)))
+    step <- data.frame(id = "step", x = delays_d,
+                       y = c(0.99, 0.99, 0.99, 0.99, 0.5, 0.02, 0.02, 0.02, 0.02, 0.02))
+    sim <- rbind(data.frame(id = as.character(base$id), x = base$x, y = base$y),
+                 flat, step)
+    fit <- fit_dd_tmb(sim, equation = "green-myerson",
                       random_effects = k + s ~ 1, verbose = 0)
-    expect_true(fit$converged)
+    expect_true(fit$converged)                       # optimizer code 0 (not pdHess)
     expect_true(is.finite(fit$loglik))
     expect_true(all(is.finite(fit$subject_pars$s)))
-    # The clamp invariant: every s_i in [0.05, 20].
+    # Bounded to [0.05, 20] (closed; the soft clamp can round to the bound by ~1 ULP
+    # for a strongly-binding subject, so allow a tiny tolerance).
     expect_true(all(fit$subject_pars$s >= 0.05 - 1e-9 &
                     fit$subject_pars$s <= 20   + 1e-9))
+
+    # PROVE the bug is actually exercised: at least one subject's s_i is pinned near
+    # the LOWER clamp (the flat no-discounting subject). Without an active clamp a
+    # converged fit would not demonstrate the de-hang. Proximity (not equality): the
+    # soft clamp asymptotes toward 0.05 without reaching it.
+    expect_lt(min(fit$subject_pars$s), 0.1)          # lower soft clamp ACTIVE (binding)
   })
 })

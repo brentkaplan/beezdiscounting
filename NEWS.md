@@ -6,12 +6,16 @@
   intercept on the Green-Myerson / Rachlin curvature `s`, jointly with `log k`,
   with `covariance_structure = "pdSymm"` (correlated) or `"pdDiag"`
   (independent), for both `family = "sltb"` and `"gaussian"`. Per-subject `s_i`
-  is clamped to `[0.05, 20]`. `VarCorr()`/`ranef()`/`summary()` surface the
+  is soft-clamped toward `(0.05, 20)` (a C-infinity softplus map; see the de-hang
+  note below). `VarCorr()`/`ranef()`/`summary()` surface the
   `(k, s)` covariance and per-subject `s`. `predict()` at
   `level = "subject"` uses each subject's estimated `s_i`; response-SD
   standardization uses the population precision `phi`. `simulate_dd_ip()` gains
   `sigma_s`/`rho_ks` to generate `(log k, log s)` bivariate-normal data for
   recovery testing.
+* The per-subject `s` random effect now uses a smooth (C-infinity) softplus soft
+  clamp instead of a hard clamp, so a clamp-binding subject (e.g. a no-discounting
+  or step subject) converges instead of hanging the Laplace inner solve.
 
 ### Bayesian (brms) modeling tier
 

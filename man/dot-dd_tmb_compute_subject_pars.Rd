@@ -70,7 +70,8 @@ subject-level parameter (the returned frame is \verb{id, u_i, k}). For a phi-tar
 2-RE fit (\code{k + phi ~ 1}) each subject's natural-scale \code{re = L * b_hat} is
 reconstructed (\code{L = chol(Sigma)} lower-triangular; the \code{sdreport} "random"
 block holds the STANDARDIZED \code{b_hat}, not \code{re}), giving \verb{id, re_k, re_phi, k, phi} with a per-subject \code{phi_i} floor matching the kernel clamp. For an
-s-target 2-RE fit (\code{k + s ~ 1}) the same reconstruction gives \verb{id, re_k, re_s, k, s} with \code{s_i = exp(log_s + re_s)} clamped to \verb{[0.05, 20]}.
+s-target 2-RE fit (\code{k + s ~ 1}) the same reconstruction gives \verb{id, re_k, re_s, k, s} with \code{s_i = .dd_soft_clamp_s_log(log_s + re_s)} (approximately
+\code{exp(log_s + re_s)} in the interior, smoothly saturating toward \verb{(0.05, 20)}).
 }
 \note{
 Subject-level \code{k} assumes between-subject predictors: the first design

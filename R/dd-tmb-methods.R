@@ -159,7 +159,7 @@ fixef.beezdiscounting_tmb <- function(object, ...) {
 #'   column - both are population-level). For a phi-target 2-RE fit
 #'   (`k + phi ~ 1`): `(re_k, re_phi)` offsets plus per-subject `k` and `phi`.
 #'   For an s-target 2-RE fit (`k + s ~ 1`, GM/Rachlin only): `(re_k, re_s)`
-#'   offsets plus per-subject `k` and `s` (clamped to `[0.05, 20]`).
+#'   offsets plus per-subject `k` and `s` (soft-clamped toward `(0.05, 20)`).
 #' @importFrom nlme ranef
 #' @export
 ranef.beezdiscounting_tmb <- function(object, ...) {

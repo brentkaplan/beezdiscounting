@@ -85,7 +85,7 @@ spec, parsed random effects).}
 (\code{k ~ 1}) the columns are \verb{id, u_i, k}; for a phi-target 2-RE fit
 (\code{k + phi ~ 1}) they are \verb{id, re_k, re_phi, k, phi}; for an s-target
 2-RE fit (\code{k + s ~ 1}, GM/Rachlin) they are \verb{id, re_k, re_s, k, s}
-where \code{s} is clamped to \verb{[0.05, 20]}.}
+where \code{s} is soft-clamped toward \verb{(0.05, 20)}.}
 \item{loglik, AIC, BIC}{Fit statistics.}
 \item{converged, se_available}{Convergence / SE-availability flags.}
 \item{opt_warnings}{Character vector of optimizer warnings.}

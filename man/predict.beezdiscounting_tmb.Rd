@@ -28,7 +28,9 @@ each subject's estimated random intercept, requires the id column) and/or
 no id column needed). Pass \code{c("population", "subject")} for both columns
 side-by-side. A numeric nlme-style level is rejected with an error. For
 an s-target 2-RE fit (\code{k + s ~ 1}), the subject level uses each subject's
-estimated \code{s_i}; the population level uses the population \code{exp(log_s)}.}
+estimated \code{s_i}; the population level (random effects zero) uses the
+soft-clamped population \code{s = .dd_soft_clamp_s_log(log_s)}, matching the
+kernel near the \verb{(0.05, 20)} bounds (equal to \code{exp(log_s)} in the interior).}
 
 \item{...}{Unused.}
 }

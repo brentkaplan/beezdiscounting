@@ -18,7 +18,8 @@
 
 \item{design}{Output from \code{\link[=.dd_tmb_build_design]{.dd_tmb_build_design()}}.}
 
-\item{equation}{One of "mazur", "exponential".}
+\item{equation}{One of "mazur", "exponential", "green-myerson", "rachlin"
+(sets the kernel \code{eqn_type}).}
 
 \item{family}{One of "sltb", "gaussian".}
 

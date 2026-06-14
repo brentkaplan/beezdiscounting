@@ -144,7 +144,8 @@ NULL
 #'
 #' @param prepared Output from [.dd_tmb_prepare_data()].
 #' @param design Output from [.dd_tmb_build_design()].
-#' @param equation One of "mazur", "exponential".
+#' @param equation One of "mazur", "exponential", "green-myerson", "rachlin"
+#'   (sets the kernel `eqn_type`).
 #' @param family One of "sltb", "gaussian".
 #' @param n_re Number of random-effect intercepts: `1L` (on `log k`) or `2L`
 #'   (joint `(log k, second target)`). Defaults to `1L`.
@@ -196,7 +197,9 @@ NULL
 #' @param prepared Output from [.dd_tmb_prepare_data()].
 #' @param design Output from [.dd_tmb_build_design()].
 #' @param family One of "sltb", "gaussian".
-#' @param equation One of "mazur", "exponential" (for the start inversion).
+#' @param equation One of "mazur", "exponential", "green-myerson", "rachlin".
+#'   The start-value inversion handles "mazur"/"exponential"; "green-myerson"/
+#'   "rachlin" use the mazur start branch (`log_s` then starts at 0).
 #' @return A parameters list: `beta_k` (length `ncol(X)`), `log_sigma_u`,
 #'   `log_aux`, `log_s` (always present; held fixed for 1-parameter equations),
 #'   `u` (matrix `n_subjects` x 1), plus the joint 2-RE blocks `log_sd_re`

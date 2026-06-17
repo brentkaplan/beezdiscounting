@@ -1,5 +1,18 @@
 # beezdiscounting (development version)
 
+### New vignettes
+
+* `vignette("mcq27-scoring")`: scoring the 27-item Monetary Choice Questionnaire
+  (`score_mcq27()`, `get_lookup_table()`, `prop_ss()`, `summarize_mcq()`,
+  `mcq27_to_choice()`, and the wide/long converters).
+* `vignette("delay-discounting-basics")`: a getting-started walk-through of
+  indifference-point screening (`check_unsystematic()`), curve fitting
+  (`fit_dd()`/`results_dd()`), discount rate `k`, and AUC (`calc_aucs()`).
+* `vignette("fivetrial-task")`: scoring the 5.5-trial delay and probability
+  discounting tasks from the Qualtrics minute-discounting template.
+* `vignette("tmb-mixed-effects")`: the `fit_dd_tmb()` mixed-effects workflow and
+  its S3 methods, prediction, diagnostics, and group comparisons.
+
 ### Bug fixes
 
 * `check_unsystematic()` and `calc_aucs()` now compute results per `id`. Previously

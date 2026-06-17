@@ -1,0 +1,170 @@
+---
+title: "Getting started: indifference points, k, and AUC"
+author: "Brent Kaplan"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started: indifference points, k, and AUC}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.2)
+set.seed(1)
+library(beezdiscounting)
+```
+
+This vignette covers the everyday delay-discounting workflow in `beezdiscounting`:
+screen the data for quality, fit a discounting model to get a rate `k`, and compute
+area under the curve (AUC) as a model-free summary. It is the place to start before
+moving on to the mixed-effects and Bayesian tiers.
+
+## Indifference points
+
+A delay-discounting task trades a smaller-sooner reward against a larger-later one
+across several delays. At each delay the **indifference point** is the immediate
+amount that feels equivalent to the later reward, expressed as a proportion of that
+later reward, which places it on `[0, 1]`. A value near 1 means the person barely
+discounts the delay; a value near 0 means the delayed reward is worth almost
+nothing to them.
+
+`beezdiscounting` works with long-format data: one row per subject per delay, with
+columns `id`, `x` (the delay), and `y` (the indifference point). Here is one
+well-behaved subject:
+
+```{r clean}
+clean <- data.frame(
+  id = "demo",
+  x  = c(1, 7, 30, 90, 180, 365),
+  y  = c(0.95, 0.81, 0.55, 0.32, 0.17, 0.08)
+)
+clean
+```
+
+## Screening for unsystematic data
+
+Before fitting anything, check whether each subject's indifference points form an
+orderly, decreasing pattern. `check_unsystematic()` applies the two criteria of
+Johnson and Bickel (2008) to each subject's points, taken in delay order, and
+returns one row per `id`:
+
+```{r screen-clean}
+check_unsystematic(clean)
+```
+
+- **Criterion 1 (`c1_pass`)** flags non-systematic *increases*: no indifference
+  point may exceed the immediately preceding (shorter-delay) point by more than `c1`
+  (default 0.2, i.e. 20% of the larger reward).
+- **Criterion 2 (`c2_pass`)** flags a lack of overall discounting: the last
+  indifference point must fall at least `c2` (default 0.1) below the first.
+
+Our demo subject passes both. Treat a failure as a signal to inspect that subject's
+data rather than as an automatic exclusion. Noisy titration, a misunderstanding of
+the task, or genuinely shallow discounting can all trip these rules.
+
+## Fitting a discounting model
+
+`fit_dd()` fits either Mazur's (1987) hyperbola, `y = 1 / (1 + k * x)`, or the
+exponential model, `y = exp(-k * x)`. The `method` argument controls how subjects
+are pooled: `"two stage"` fits each subject separately, `"mean"` fits the averaged
+indifference points, and `"pooled"` fits all rows together. `results_dd()` tidies
+the fitted object into a data frame of estimates and fit statistics:
+
+```{r fit-clean}
+fit <- fit_dd(clean, equation = "mazur", method = "two stage")
+results_dd(fit)
+```
+
+The `estimate` column is `k`, the discount rate: larger values mean steeper
+discounting. `results_dd()` also returns the standard error, a confidence interval
+(`conf_low`, `conf_high`), `R2`, and the usual information criteria. Swap
+`equation = "exponential"` to fit and compare the exponential form.
+
+Plot the fit against the observed points with `plot_dd()`:
+
+```{r plot-clean}
+plot_dd(fit)
+```
+
+## Area under the curve
+
+AUC (Myerson, Green & Warusawitharana, 2001) summarizes discounting without
+committing to a model: the normalized area beneath the indifference points, running
+from 1 (no discounting) toward 0 (steep discounting). `calc_aucs()` returns three
+variants:
+
+```{r auc}
+calc_aucs(clean)
+```
+
+`auc_regular` integrates over the raw delays; `auc_log10` and `auc_ord` integrate
+over log-spaced and ordinally-spaced delays, the rescalings recommended by Borges
+et al. (2016) so that closely-spaced short delays do not dominate the area. Like
+`check_unsystematic()`, `calc_aucs()` returns one row per subject. Use AUC when you
+want an atheoretical index, or alongside `k` as a robustness check.
+
+## Working at scale
+
+The built-in `dd_ip` dataset has 100 simulated subjects measured at six delays:
+
+```{r dd-ip}
+data(dd_ip)
+str(dd_ip)
+length(unique(dd_ip$id))
+```
+
+Fit every subject in one call and summarize the resulting rates:
+
+```{r dd-ip-fit}
+fits <- fit_dd(dd_ip, equation = "mazur", method = "two stage")
+res <- results_dd(fits)
+summary(res$estimate)   # distribution of k across subjects
+summary(res$R2)         # per-subject fit
+```
+
+The hyperbola fits these subjects well (median `R2` around 0.98). A two-stage fit
+also returns each subject's AUC, so the model-free indices come back in the same
+table:
+
+```{r dd-ip-auc}
+head(res[c("id", "estimate", "auc_regular", "auc_log10", "auc_ord")])
+```
+
+`check_unsystematic()` and `calc_aucs()` both take the whole data frame and return
+one row per subject, so screening the full sample is a single call:
+
+```{r dd-ip-screen}
+screen <- check_unsystematic(dd_ip)
+colMeans(screen[c("c1_pass", "c2_pass")])
+```
+
+Every subject passes both criteria, which is what we expect from cleanly simulated
+data. With real data the proportion failing each criterion tells you how much of the
+sample shows orderly discounting before you commit to a model.
+
+## Where to go next
+
+For multi-subject data, the mixed-effects tier estimates the population rate and
+subject-level rates jointly and handles indifference points that pile up at 0 and 1.
+See:
+
+- `vignette("sltb-discounting")` for why bounded indifference points need a bounded
+  error distribution, and the SLT-beta mixed model.
+- `vignette("tmb-mixed-effects")` for the `fit_dd_tmb()` workflow and its methods.
+- `vignette("dd-group-comparisons")` for comparing discount rates between groups.
+- `vignette("bayesian-discounting")` for the Bayesian tier via brms.
+
+## References
+
+- Borges, A. M., Kuang, J., Milhorn, H., & Yi, R. (2016). An alternative approach
+  to calculating area-under-the-curve (AUC) in delay discounting research. *Journal
+  of the Experimental Analysis of Behavior, 106*, 145--155.
+- Johnson, M. W., & Bickel, W. K. (2008). An algorithm for identifying nonsystematic
+  delay-discounting data. *Experimental and Clinical Psychopharmacology, 16*(3),
+  264--274.
+- Mazur, J. E. (1987). An adjusting procedure for studying delayed reinforcement.
+  In *The effect of delay and of intervening events on reinforcement value*
+  (pp. 55--73). Lawrence Erlbaum Associates.
+- Myerson, J., Green, L., & Warusawitharana, M. (2001). Area under the curve as a
+  measure of discounting. *Journal of the Experimental Analysis of Behavior, 76*(2),
+  235--243.

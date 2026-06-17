@@ -1,0 +1,105 @@
+---
+title: "Scoring the 5.5-trial discounting task"
+author: "Brent Kaplan"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Scoring the 5.5-trial discounting task}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.2)
+library(beezdiscounting)
+```
+
+## A one-minute discounting task
+
+The 5-trial adjusting-delay task (Koffarnus & Bickel, 2014) estimates a discount
+rate in under a minute. Rather than titrating an amount at each of many delays, it
+presents five binary choices in which the delay of the larger reward adjusts based on
+the previous response, converging on the delay at which the person is indifferent.
+The "5.5-trial" family extends the original with a sixth attention-check trial and
+adds a probability-discounting variant and a wider range of delays (Koffarnus,
+Rzeszutek & Kaplan, 2021). All of it is delivered through the Qualtrics minute
+discounting template (Koffarnus, Kaplan & Stein, 2017), and `beezdiscounting` scores
+the template's raw export directly.
+
+## The raw data
+
+The package includes one example export per task. They are wide Qualtrics files: one
+row per respondent and many columns (the choice items `I1`, `I3`, ..., the per-item
+response-timing columns, and the attention-check items).
+
+```{r data}
+data(five.fivetrial_dd)
+dim(five.fivetrial_dd)
+```
+
+You do not need to reshape anything. The scoring functions read the template's column
+names and pull out what they need.
+
+## Scoring delay discounting
+
+`score_dd()` returns one row per respondent with the discount rate and an
+attention flag:
+
+```{r score-dd}
+score_dd(five.fivetrial_dd)
+```
+
+- `kval` is the discount rate from Mazur's hyperbola, mapped from the converged
+  indifference delay.
+- `ed50` is the effective delay 50%, `1 / k`: the delay at which the reward loses
+  half its value. Because it sits on the natural time scale, `ed50` is often easier
+  to talk about than `k`.
+- `index` records the item at which the adjusting sequence settled.
+- `attentionflag` is `"Yes"` when the respondent failed an attention check. Those
+  respondents get an `NA` rate, because a failed check means the choices cannot be
+  trusted. The third and fourth respondents here are flagged for that reason.
+
+### Response times
+
+`calc_dd()` returns the full trial-by-trial record, joining each choice to its
+response-timing data:
+
+```{r calc-dd}
+dd_full <- calc_dd(five.fivetrial_dd)
+names(dd_full)
+head(dd_full, 6)
+```
+
+Alongside the scored `kval` and `ed50`, you get the trial order (`q`), the
+first-click, last-click, and page-submit times, and the click count for each trial.
+Response latencies are a useful secondary check on engagement: implausibly fast
+submissions often accompany careless responding.
+
+If you only want the raw choices or the timing on their own, `ans_dd()` and
+`timing_dd()` return those pieces separately.
+
+## Scoring probability discounting
+
+The probability variant works the same way. `score_pd()` reads the probability
+template and returns a discount rate for odds against winning:
+
+```{r score-pd}
+data(five.fivetrial_pd)
+score_pd(five.fivetrial_pd)
+```
+
+Here `hval` is the probability-discounting rate, `etheta50` is the odds-against value
+at the point of indifference (`1 / h`), and `ep50` is the corresponding effective
+probability, `100 / (etheta50 + 1)`, expressed as a percentage. As with delay
+discounting, `calc_pd()` adds the trial-level timing, and `ans_pd()` and
+`timing_pd()` return the components.
+
+## References
+
+- Koffarnus, M. N., & Bickel, W. K. (2014). A 5-trial adjusting delay discounting
+  task: Accurate discount rates in less than one minute. *Experimental and Clinical
+  Psychopharmacology, 22*(3), 222--228. <https://doi.org/10.1037/a0035973>
+- Koffarnus, M. N., Kaplan, B. A., & Stein, J. S. (2017). *User guide for Qualtrics
+  minute discounting template.* <https://doi.org/10.13140/RG.2.2.26495.79527>
+- Koffarnus, M. N., Rzeszutek, M. J., & Kaplan, B. A. (2021). *Additional discounting
+  rates in less than one minute: Task variants for probability and a wider range of
+  delays.* <https://doi.org/10.13140/RG.2.2.31281.92000>

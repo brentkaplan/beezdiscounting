@@ -1,0 +1,182 @@
+---
+title: "Scoring the 27-Item Monetary Choice Questionnaire"
+author: "Brent Kaplan"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Scoring the 27-Item Monetary Choice Questionnaire}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.2)
+set.seed(1)
+library(beezdiscounting)
+```
+
+## The questionnaire
+
+The Monetary Choice Questionnaire (MCQ; Kirby, Petry & Bickel, 1999) is the most
+widely used paper-and-pencil measure of delay discounting. Each item asks the
+respondent to choose between a smaller reward available immediately and a larger
+reward available after a delay, for example "Would you prefer \$54 today or \$55 in
+117 days?" The 27 items are constructed so that the implied indifference points
+sweep across a wide range of discount rates and three reward magnitudes (small,
+medium, large). The pattern of choices a person makes estimates their discount
+rate `k` in Mazur's (1987) hyperbola, `V = A / (1 + k * D)`.
+
+Scoring the MCQ by hand is tedious and error-prone. `beezdiscounting` automates the
+procedure described in Kaplan et al. (2016), returning `k` overall and by
+magnitude, along with the consistency and choice-proportion diagnostics you need
+to judge whether a respondent's pattern is interpretable.
+
+## Data format
+
+`score_mcq27()` expects long-format data with one row per item per respondent and
+exactly three columns: `subjectid`, `questionid` (1--27), and `response`. The
+package includes a small example, `mcq27`, with two respondents:
+
+```{r data}
+data(mcq27)
+str(mcq27)
+head(mcq27, 9)
+```
+
+Responses are coded `0` when the person chose the smaller, immediate reward and
+`1` when they chose the larger, delayed reward. A respondent who almost always
+takes the immediate money is a steep discounter (large `k`); one who waits for the
+larger reward is a shallow discounter (small `k`).
+
+The 27 items and the discount rates they bracket are fixed by the Kirby design.
+You can inspect that lookup table directly:
+
+```{r lookup}
+head(get_lookup_table())
+```
+
+Each item belongs to a magnitude band (`magnitude`: small, medium, or large) and
+sits at one of nine indifference `k` ranks (`k_rank`), defined by its
+smaller-immediate amount (`ss_amount`), larger-delayed amount (`ll_amount`), and
+`delay` in days.
+
+## Scoring
+
+`score_mcq27()` returns one row per respondent:
+
+```{r score}
+scores <- score_mcq27(mcq27)
+scores
+```
+
+The output carries three families of columns:
+
+- **Discount rates.** `overall_k` is the single discount rate that best matches the
+  full set of choices; `small_k`, `medium_k`, and `large_k` are estimated within
+  each magnitude band; `geomean_k` is the geometric mean of the three
+  magnitude-specific rates. Discount rates are strongly right-skewed, which is why
+  the geometric mean is the conventional summary.
+- **Consistency.** `overall_consistency` (and the per-magnitude versions) is the
+  proportion of the respondent's choices that agree with the estimated `k`. Values
+  near 1 mean the choices form a clean switch from delayed to immediate as the
+  implied `k` increases; low values signal a noisy or inattentive respondent whose
+  `k` should be interpreted cautiously.
+- **Choice proportions.** `overall_proportion` and its per-magnitude versions give
+  the proportion of larger-delayed choices, a quick, model-free index of patience.
+
+### A magnitude effect
+
+Estimating `k` separately by reward magnitude lets you look for the magnitude
+effect: discount rates often differ across small, medium, and large rewards. The
+`small_k`, `medium_k`, and `large_k` columns make that comparison directly, within
+respondent.
+
+## Summarizing a sample
+
+Two respondents are enough to show the mechanics but not to describe a sample. To
+illustrate the summary tools, simulate a larger set of respondents with
+`generate_data_mcq()`, score them, and summarize across people with
+`summarize_mcq()`:
+
+```{r sample}
+sim <- generate_data_mcq(n_ids = 80)
+sim_scores <- score_mcq27(sim)
+summarize_mcq(sim_scores)
+```
+
+`summarize_mcq()` returns the mean, standard deviation, and standard error of the
+k and consistency metrics across respondents. The `plot()` method for a scored
+object shows the distribution of `k` across magnitudes:
+
+```{r plot-scores}
+plot(sim_scores)
+```
+
+## A model-free look at the choice gradient
+
+`prop_ss()` reports the proportion of smaller-immediate choices at each of the nine
+`k` ranks, pooled across whatever respondents you pass it. For a single respondent,
+three items sit at each rank (one per magnitude), which gives a quick picture of
+where, along the discount-rate continuum, that person switches from waiting to
+taking the immediate reward:
+
+```{r prop-ss}
+s1 <- subset(mcq27, subjectid == 1)
+prop_ss(s1)
+plot(prop_ss(s1))
+```
+
+## Converting between layouts
+
+Raw MCQ data arrive in different shapes. `wide_to_long_mcq()` and
+`long_to_wide_mcq()` move between a wide layout (one column per item) and the long
+layout `score_mcq27()` expects:
+
+```{r convert}
+wide <- long_to_wide_mcq(mcq27)
+dim(wide)
+long <- wide_to_long_mcq(wide)
+head(long, 3)
+```
+
+`wide_to_long_mcq_excel()` and `long_to_wide_mcq_excel()` handle the column layout
+used by the published Excel automated scorer, which lets data prepared for that tool
+be read in without reformatting.
+
+## Handling missing responses
+
+When a respondent leaves items blank, the `impute_method` argument controls how the
+`NA` responses are handled: `"none"` (the default; they stay `NA`), `"ggm"`
+(geometric grand-mean handling, which drops `NA`s when forming `geomean_k`), or
+`"inn"` (item nearest-neighbor imputation, following Yeh et al., 2023, which can
+still leave a value unresolved unless `random = TRUE`). Every respondent must still
+have all 27 items present as rows; `impute_method` governs only the `NA` responses
+within them, not missing rows.
+
+## From choices to trial-level data
+
+Because the MCQ is a choice task, its items can also feed the structural choice
+models in `beezdiscounting`. `mcq27_to_choice()` reshapes the responses into the
+trial-level frame those models expect:
+
+```{r to-choice}
+head(mcq27_to_choice(mcq27))
+```
+
+The result (one row per trial with the smaller and larger amounts, the delay, and
+the binary choice) is ready for `fit_dd_choice()`. See the choice-modeling and TMB
+vignettes for that workflow.
+
+## References
+
+- Kaplan, B. A., Amlung, M., Reed, D. D., Jarmolowicz, D. P., McKerchar, T. L., &
+  Lemley, S. M. (2016). Automating scoring of delay discounting for the 21- and
+  27-item monetary choice questionnaires. *The Behavior Analyst, 39*, 293--304.
+- Kirby, K. N., Petry, N. M., & Bickel, W. K. (1999). Heroin addicts have higher
+  discount rates for delayed rewards than non-drug-using controls. *Journal of
+  Experimental Psychology: General, 128*(1), 78--87.
+- Mazur, J. E. (1987). An adjusting procedure for studying delayed reinforcement.
+  In *The effect of delay and of intervening events on reinforcement value*
+  (pp. 55--73). Lawrence Erlbaum Associates.
+- Yeh, Y. H., Tegge, A. N., Freitas-Lemos, R., Myerson, J., Green, L., & Bickel,
+  W. K. (2023). Discounting of delayed rewards: Missing data imputation for the 21-
+  and 27-item monetary choice questionnaires. *PLOS ONE, 18*(10), e0292258.

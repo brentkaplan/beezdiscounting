@@ -1,0 +1,230 @@
+---
+title: "Mixed-effects discounting with TMB"
+author: "Brent Kaplan"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Mixed-effects discounting with TMB}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+has_tmb <- requireNamespace("TMB", quietly = TRUE)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.2,
+                      eval = has_tmb)
+set.seed(1)
+library(beezdiscounting)
+```
+
+Fitting each subject's discounting curve in isolation ignores that subjects are
+samples from a population. The mixed-effects tier in `beezdiscounting` estimates a
+population discount rate and each subject's rate at the same time, borrowing strength
+across subjects so that noisy individuals are pulled toward the group. `fit_dd_tmb()`
+is the engine for that tier.
+
+This vignette is a tour of the `fit_dd_tmb()` workflow and the methods that act on a
+fitted model. It pairs with two other vignettes: `vignette("sltb-discounting")`
+explains *why* indifference points need a bounded error distribution and develops the
+scale-location-truncated beta (SLT-beta) likelihood used below, and
+`vignette("dd-group-comparisons")` goes deeper on contrasting groups. Here the focus
+is the model object and what you can do with it.
+
+## Why TMB
+
+The discount rate is estimated on the natural-log scale, where the log-k predictor
+is linear in the fixed effects, which makes each subject's rate
+`k_i = exp(population log-k + random deviation)`. Integrating the random deviations
+out of the likelihood has no closed form. Template Model Builder (TMB) handles it
+with a Laplace approximation and automatic differentiation: exact gradients, a fast
+compiled objective, and maximum-likelihood estimates in seconds rather than minutes.
+TMB must be installed for any of this to run.
+
+## Some data
+
+`simulate_dd_ip()` generates indifference-point data from the same model
+`fit_dd_tmb()` fits, which makes it convenient for a reproducible walk-through. The
+built-in `dd_ip` dataset works exactly the same way.
+
+```{r sim}
+sim <- simulate_dd_ip(
+  n_subjects = 15,
+  delays     = c(7, 30, 90, 180, 365, 730),
+  log_k_pop  = log(0.01),
+  sigma_u    = 0.5,
+  phi        = 10,
+  family     = "sltb",
+  equation   = "mazur",
+  seed       = 1
+)
+head(sim)
+```
+
+The data are long format with columns `id`, `x` (delay), and `y` (indifference
+point on `[0, 1]`), the same layout used throughout the package.
+
+## Fitting a model
+
+A one-group hyperbolic model with a random intercept on log-k and the SLT-beta
+likelihood:
+
+```{r fit}
+fit <- fit_dd_tmb(
+  sim,
+  equation       = "mazur",
+  family         = "sltb",
+  random_effects = k ~ 1
+)
+fit
+```
+
+The `random_effects = k ~ 1` formula puts a subject random intercept on the discount
+rate. `family = "sltb"` selects the bounded error distribution; use
+`family = "gaussian"` for unbounded residuals.
+
+## Inspecting the fit
+
+`summary()` reports the fixed effect (the population `k` on the natural scale), the
+variance components, and fit statistics:
+
+```{r summary}
+summary(fit)
+```
+
+`tidy()` returns the same information as a data frame (one row per term, with the
+scale each estimate is reported on), which is handy for tables and for stacking
+models:
+
+```{r tidy}
+tidy(fit)
+```
+
+`glance()` gives a one-row model summary for comparisons:
+
+```{r glance}
+glance(fit)
+```
+
+## Subject-level rates
+
+`ranef()` returns each subject's random deviation (`u_i`) and their fitted discount
+rate (`k`):
+
+```{r ranef}
+head(ranef(fit))
+```
+
+These are the shrinkage estimates: subjects with noisy or extreme data are pulled
+toward the population rate, more so when they have fewer or messier observations.
+
+## Predictions
+
+`predict()` returns fitted indifference points. The `level` argument chooses between
+the population-average curve (random effects set to their mean) and subject-specific
+curves. Predict the population curve on a fine grid of delays and plot it over the
+raw points:
+
+```{r predict-plot}
+library(ggplot2)
+
+grid <- data.frame(x = seq(1, 730, length.out = 100))
+pop_curve <- predict(fit, newdata = grid, level = "population")
+
+ggplot(sim, aes(x, y)) +
+  geom_point(alpha = 0.3) +
+  geom_line(data = pop_curve, aes(x, predict.fixed), linewidth = 1) +
+  labs(x = "Delay (days)", y = "Indifference point",
+       title = "Population discounting curve") +
+  theme_minimal()
+```
+
+For data that includes an `id` column, request both levels at once with
+`level = c("population", "subject")` to get the population prediction and each
+subject's prediction side by side.
+
+## Diagnostics
+
+`augment()` attaches fitted values and residuals to the model frame, including
+standardized residuals that account for the SLT-beta's non-constant variance:
+
+```{r augment}
+aug <- augment(fit)
+head(aug)
+
+ggplot(aug, aes(.fitted, .std_resid)) +
+  geom_point(alpha = 0.3) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(x = "Fitted indifference point", y = "Standardized residual") +
+  theme_minimal()
+```
+
+## Choosing an equation
+
+`fit_dd_tmb()` fits four discounting functions: `"mazur"` and `"exponential"`
+(one-parameter), and `"green-myerson"` and `"rachlin"` (two-parameter hyperboloids
+that add a curvature exponent). Fit several and compare them with `glance()`:
+
+```{r compare-eq}
+equations <- c("mazur", "exponential", "green-myerson")
+fits <- lapply(equations, function(eq)
+  fit_dd_tmb(sim, equation = eq, family = "sltb", random_effects = k ~ 1))
+
+do.call(rbind, lapply(fits, function(f) glance(f)[c("equation", "logLik", "AIC", "BIC")]))
+```
+
+Because these data were generated from a hyperbola, Mazur wins on AIC; the
+exponential fits worse, and the extra parameter in Green-Myerson does not earn its
+keep. With real data the ranking is an empirical question worth checking.
+
+## Beyond one group and one random effect
+
+Add between-subject factors with the `factors` argument, then get per-group rates and
+contrasts. Simulate two groups and fit a model with a condition effect on log-k:
+
+```{r groups}
+sim2 <- simulate_dd_ip(
+  n_subjects = 30, delays = c(7, 30, 90, 180, 365, 730),
+  log_k_pop = log(0.01), sigma_u = 0.6, phi = 12,
+  family = "sltb", equation = "mazur",
+  n_conditions = 2, delta_k = c(0, log(2)), seed = 42
+)
+
+fit2 <- fit_dd_tmb(sim2, equation = "mazur", family = "sltb",
+                   random_effects = k ~ 1, factors = "condition")
+
+get_dd_param_emms(fit2)
+```
+
+`get_dd_comparisons()` turns those marginal means into contrasts, reported both on
+the log10 scale and as multiplicative ratios with Holm-adjusted p-values:
+
+```{r comparisons}
+cmp <- get_dd_comparisons(fit2, compare_specs = ~ condition,
+                          contrast_type = "pairwise", adjust = "holm")
+cmp$k$contrasts_ratio
+```
+
+See `vignette("dd-group-comparisons")` for the full treatment of group inference.
+
+The random-effects structure can grow too. With the SLT-beta family,
+`random_effects = k + phi ~ 1` adds a subject random effect on the precision, letting
+each subject have their own spread around the curve; the two-parameter equations
+support `k + s ~ 1` for a random curvature. The `covariance_structure` argument
+controls whether those two random effects are allowed to correlate.
+
+## Practical notes
+
+- **TMB is required.** The fitting functions load a compiled C++ template; if TMB is
+  not installed, the calls fail.
+- **Convergence.** `fit_dd_tmb()` runs a short multi-start by default and keeps the
+  best fit that passes a sanity check. A returned model carries a `converged` flag;
+  when standard errors cannot be computed, the uncertainty columns come back `NA`.
+- **Column names.** Whatever you call your columns via `id_var`, `x_var`, and
+  `y_var`, the model frame and all method output use the canonical `id`, `x`, `y`.
+
+## See also
+
+- `vignette("sltb-discounting")` for the SLT-beta error model and why bounded
+  indifference points need it.
+- `vignette("dd-group-comparisons")` for comparing discount rates between groups.
+- `vignette("delay-discounting-basics")` for single-subject fitting, `k`, and AUC.
+- `vignette("bayesian-discounting")` for the same models in a Bayesian framework.

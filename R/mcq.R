@@ -302,20 +302,19 @@ inn <- function(dat, random, verbose) {
 #' @examples prop_ss(mcq27)
 prop_ss <- function(dat) {
 
-  # bring in lookup table
+  # bring in lookup table (k_rank etc.); keep every row so all respondents pool
   dat <- merge(dat, lookup, by.x = "questionid",
                by.y = "questionid", all.x = TRUE)
-  # order df
-  dat <- dat[match(lookup$questionid, dat$questionid), ]
-
-  prop_ss_tbl <- dplyr::group_by(dat, k_rank) |>
-    dplyr::summarise(prop_ss = sum(response == 0, na.rm = TRUE) / 3) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(prop_ss = round(prop_ss, 2))
 
   if (any(is.na(dat$response))) {
     warning("Missing data found and ignored. Consider imputing missing data.")
   }
+
+  prop_ss_tbl <- dplyr::group_by(dat, k_rank) |>
+    dplyr::summarise(prop_ss = mean(response == 0, na.rm = TRUE)) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(prop_ss = ifelse(is.nan(prop_ss), NA_real_, round(prop_ss, 2)))
+
   class(prop_ss_tbl) <- c("prop_ss_output", class(prop_ss_tbl))
   return(prop_ss_tbl)
 

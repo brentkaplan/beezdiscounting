@@ -11,6 +11,7 @@ check_unsystematic(dat, ll = 1, c1 = 0.2, c2 = 0.1)
 \itemize{
 \item \code{id}: A unique identifier for the data set.
 \item \code{y}: The indifference points to be analyzed.
+\item \code{x} (optional): Delay values; when present, each subject's points are ordered by delay first.
 }}
 
 \item{ll}{A numeric value representing the larger later reward. Default is 1.}
@@ -33,6 +34,11 @@ This function checks a dataset for violations of two criteria commonly used to i
 \item Criterion 1: Any subsequent value of \code{y} exceeds the previous value by more than a specified proportion of the larger later reward (\code{ll}).
 \item Criterion 2: The last value of \code{y} is not at least a specified proportion less than the first value of \code{y}.
 }
+}
+\details{
+The criteria are applied separately to each \code{id}, so a data frame containing
+several subjects returns one row per subject. When an \code{x} (delay) column is
+present, each subject's points are ordered by delay before the criteria are applied.
 }
 \examples{
 data <- tibble::tibble(

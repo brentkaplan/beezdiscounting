@@ -35,3 +35,9 @@ src/*.o
 src/*.so
 src/*.dll
 revdep/
+
+# Claude Code — personal config, never committed #
+###########
+CLAUDE.md
+CLAUDE.local.md
+.claude/

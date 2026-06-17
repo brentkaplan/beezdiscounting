@@ -1,5 +1,20 @@
 # beezdiscounting (development version)
 
+### Bug fixes
+
+* `check_unsystematic()` and `calc_aucs()` now compute results per `id`. Previously
+  they computed a single result over the whole data frame and recycled it across
+  `unique(id)`, so multi-subject input returned the same verdict / AUC for every
+  subject. Each now returns one correct row per subject (single-subject output is
+  unchanged). `check_unsystematic()` orders points by `x` when that column is present,
+  and `calc_aucs()` orders by `x` within each subject. Rows with a missing `id` are
+  dropped so they cannot contaminate other subjects' results.
+* `prop_ss()` now pools correctly across respondents. It previously dropped all but
+  the first occurrence of each `questionid` (via `match()`) and divided by a fixed
+  denominator of 3, so multi-respondent input was reduced to one respondent and could
+  return values above 1. It now averages over all retained rows per k-rank and returns
+  `NA` for a rank with no observed responses.
+
 ### Subject-random `s` (GM/Rachlin curvature)
 
 * `fit_dd_tmb(..., random_effects = k + s ~ 1)` now fits a per-subject random

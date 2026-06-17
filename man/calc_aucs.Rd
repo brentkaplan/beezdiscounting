@@ -21,13 +21,15 @@ A tibble with the following columns:
 \item \code{id}: The participant or group identifier.
 \item \code{auc_regular}: The regular AUC, calculated using the raw delay values.
 \item \code{auc_log10}: The log10 AUC, calculated using logarithmically transformed delay values.
-\item \code{auc_rank}: The rank AUC, calculated using ordinally scaled delay values.
+\item \code{auc_ord}: The ordinal AUC, calculated using ordinally scaled delay values.
 }
 }
 \description{
 This function calculates three types of Area-Under-the-Curve (AUC) metrics for delay discounting data:
 regular AUC (using raw delays), log10 AUC (using logarithmically scaled delays), and ordinal AUC (using ordinally scaled delays).
 These metrics provide different perspectives on the rate of delay discounting.
+Metrics are computed separately for each \code{id}, so a data frame with several
+subjects returns one row per subject.
 }
 \examples{
 # Example data

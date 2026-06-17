@@ -107,9 +107,14 @@ long_to_wide_mcq_excel <- function(dat, subj_col = "subjectid",
 #' - Criterion 1: Any subsequent value of `y` exceeds the previous value by more than a specified proportion of the larger later reward (`ll`).
 #' - Criterion 2: The last value of `y` is not at least a specified proportion less than the first value of `y`.
 #'
+#' The criteria are applied separately to each `id`, so a data frame containing
+#' several subjects returns one row per subject. When an `x` (delay) column is
+#' present, each subject's points are ordered by delay before the criteria are applied.
+#'
 #' @param dat A data frame containing the delay-discounting data. It must have at least two columns:
 #'   - `id`: A unique identifier for the data set.
 #'   - `y`: The indifference points to be analyzed.
+#'   - `x` (optional): Delay values; when present, each subject's points are ordered by delay first.
 #' @param ll A numeric value representing the larger later reward. Default is 1.
 #' @param c1 A numeric value for the threshold proportion for Criterion 1. Default is 0.2.
 #' @param c2 A numeric value for the threshold proportion for Criterion 2. Default is 0.1.
@@ -128,24 +133,44 @@ long_to_wide_mcq_excel <- function(dat, subj_col = "subjectid",
 #' )
 #' check_unsystematic(data, ll = 1, c1 = 0.2, c2 = 0.1)
 check_unsystematic <- function(dat, ll = 1, c1 = .2, c2 = .1) {
-
   c1_threshold <- c1 * ll
   c2_threshold <- c2 * ll
 
-  # C1: Check if any subsequent y exceeds the previous y by more than c1 of ll
-  c1_check <- any(diff(dat$y) > c1_threshold / ll)
+  one_subject <- function(d, id = NULL) {
+    if ("x" %in% names(d)) {
+      d <- d[order(d$x), , drop = FALSE]
+    }
+    # C1: any subsequent y exceeds the previous y by more than c1 of ll
+    c1_check <- any(diff(d$y) > c1_threshold / ll)
+    # C2: the last y is not at least c2 less than the first y
+    c2_check <- (d$y[nrow(d)] >= (d$y[1] - c2_threshold / ll))
+    res <- tibble::tibble(
+      c1_pass = !c1_check,
+      c2_pass = !c2_check
+    )
+    if (!is.null(id)) {
+      res <- dplyr::bind_cols(tibble::tibble(id = id), res)
+    }
+    res
+  }
 
-  # C2: Check if the last y is not at least c2 less than the first y
-  c2_check <- (dat$y[nrow(dat)] >= (dat$y[1] - c2_threshold / ll))
+  # Data without an id column is treated as a single subject
+  if (!"id" %in% names(dat)) {
+    return(one_subject(dat))
+  }
 
-  out <- tibble::tibble(
-    id = unique(dat$id),
-    c1_pass = !c1_check,
-    c2_pass = !c2_check
+  # Otherwise apply per subject, preserving first-appearance id order
+  # Drop rows with a missing id; NA comparisons would inject synthetic NA rows
+  dat <- dat[!is.na(dat$id), , drop = FALSE]
+  ids <- unique(dat$id)
+  out <- do.call(
+    rbind,
+    lapply(ids, function(i) {
+      one_subject(dat[dat$id == i, , drop = FALSE], id = i)
+    })
   )
 
-  return(out)
-
+  tibble::as_tibble(out)
 }
 
 
@@ -214,6 +239,8 @@ calc_conf_int <- function(estimate, std_error, model, alpha = 0.05) {
 #' This function calculates three types of Area-Under-the-Curve (AUC) metrics for delay discounting data:
 #' regular AUC (using raw delays), log10 AUC (using logarithmically scaled delays), and ordinal AUC (using ordinally scaled delays).
 #' These metrics provide different perspectives on the rate of delay discounting.
+#' Metrics are computed separately for each `id`, so a data frame with several
+#' subjects returns one row per subject.
 #'
 #' @param dat A data frame containing delay discounting data.
 #'   It must include the following columns:
@@ -225,7 +252,7 @@ calc_conf_int <- function(estimate, std_error, model, alpha = 0.05) {
 #'   - `id`: The participant or group identifier.
 #'   - `auc_regular`: The regular AUC, calculated using the raw delay values.
 #'   - `auc_log10`: The log10 AUC, calculated using logarithmically transformed delay values.
-#'   - `auc_rank`: The rank AUC, calculated using ordinally scaled delay values.
+#'   - `auc_ord`: The ordinal AUC, calculated using ordinally scaled delay values.
 #'
 #' @export
 #'
@@ -240,35 +267,48 @@ calc_conf_int <- function(estimate, std_error, model, alpha = 0.05) {
 #' # Calculate AUC metrics for a single participant
 #' calc_aucs(data)
 calc_aucs <- function(dat) {
-  dat <- dat |> dplyr::arrange(x)  # Ensure dat is sorted by delay (x)
-
   # Helper function to calculate trapezoidal AUC and normalize it
   calc_trap_auc <- function(x, y) {
     raw_auc <- sum((diff(x) * (y[-length(y)] + y[-1]) / 2))
     max_area <- diff(range(x))
-    normalized_auc <- raw_auc / max_area
-    return(normalized_auc)
+    raw_auc / max_area
   }
 
-  # Regular AUC
-  auc_regular <- calc_trap_auc(dat$x, dat$y)
+  one_subject <- function(d, id = NULL) {
+    d <- d[order(d$x), , drop = FALSE] # sort by delay (x)
 
-  # Log10 AUC
-  log_x <- log10(dat$x + 1)  # Add 1 to handle log10(0) issue
-  log_x <- log_x / max(log_x)  # Scale to proportions
-  auc_log10 <- calc_trap_auc(log_x, dat$y)
+    log_x <- log10(d$x + 1) # add 1 to handle log10(0)
+    log_x <- log_x / max(log_x) # scale to proportions
+    ord_x <- seq_len(nrow(d)) / nrow(d) # ranks as proportions
 
-  # Ordinal AUC
-  ord_x <- seq_len(nrow(dat)) / nrow(dat)  # Ranks as proportions
-  auc_ord <- calc_trap_auc(ord_x, dat$y)
+    res <- tibble::tibble(
+      auc_regular = calc_trap_auc(d$x, d$y),
+      auc_log10 = calc_trap_auc(log_x, d$y),
+      auc_ord = calc_trap_auc(ord_x, d$y)
+    )
+    if (!is.null(id)) {
+      res <- dplyr::bind_cols(tibble::tibble(id = id), res)
+    }
+    res
+  }
 
-  # Return a tibble with the results
-  tibble::tibble(
-    id = unique(dat$id),
-    auc_regular = auc_regular,
-    auc_log10 = auc_log10,
-    auc_ord = auc_ord
+  # Data without an id column (e.g. aggregated mean indifference points) is one subject
+  if (!"id" %in% names(dat)) {
+    return(one_subject(dat))
+  }
+
+  # Otherwise compute per subject, preserving first-appearance id order
+  # Drop rows with a missing id; NA comparisons would inject synthetic NA rows
+  dat <- dat[!is.na(dat$id), , drop = FALSE]
+  ids <- unique(dat$id)
+  out <- do.call(
+    rbind,
+    lapply(ids, function(i) {
+      one_subject(dat[dat$id == i, , drop = FALSE], id = i)
+    })
   )
+
+  tibble::as_tibble(out)
 }
 
 

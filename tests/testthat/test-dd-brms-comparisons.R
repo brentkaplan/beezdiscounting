@@ -1,6 +1,7 @@
 # TICKET-041: draws-based EMMs/comparisons + init = "tmb" for the dd brms tier --
 
 skip_if_not_installed("brms")
+skip_on_ci()  # brms fits real Stan models; too slow/fragile under covr on CI (run locally)
 skip_if_not_installed("posterior")
 
 dd_grp_fixture <- function() {

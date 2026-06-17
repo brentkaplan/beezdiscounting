@@ -6,6 +6,7 @@
 # against independent posterior draw summaries (acceptance criterion 2).
 
 skip_if_not_installed("brms")
+skip_on_ci()  # brms fits real Stan models; too slow/fragile under covr on CI (run locally)
 skip_if_not_installed("posterior")
 
 dd_choice_grp_fixture <- function() {

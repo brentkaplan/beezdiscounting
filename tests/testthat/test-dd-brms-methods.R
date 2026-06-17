@@ -5,6 +5,7 @@
 # columns, confint shape.
 
 skip_if_not_installed("brms")
+skip_on_ci()  # brms fits real Stan models; too slow/fragile under covr on CI (run locally)
 skip_if_not_installed("posterior")
 
 read_dd_fixture <- function() {

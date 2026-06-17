@@ -6,6 +6,7 @@
 # (pure R, no toolchain).
 
 skip_if_not_installed("brms")
+skip_on_ci()  # brms fits real Stan models; too slow/fragile under covr on CI (run locally)
 
 squish <- function(x) gsub("[[:space:]]+", "", paste(deparse(x, width.cutoff = 500), collapse = ""))
 mu_formula <- function(spec) spec$formula$formula

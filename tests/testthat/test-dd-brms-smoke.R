@@ -4,6 +4,7 @@
 # anywhere brms is installed (they error before compilation).
 
 skip_if_not_installed("brms")
+skip_on_ci()  # brms fits real Stan models; too slow/fragile under covr on CI (run locally)
 
 dd_smoke_data <- function(n_id = 8) {
   set.seed(31)

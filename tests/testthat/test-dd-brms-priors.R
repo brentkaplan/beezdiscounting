@@ -4,6 +4,7 @@
 # (beezdemand internal_docs/design/DESIGN-brms-tier.md section 3.2).
 
 skip_if_not_installed("brms")
+skip_on_ci()  # brms fits real Stan models; too slow/fragile under covr on CI (run locally)
 
 fmt6 <- function(x) format(x, digits = 6, scientific = FALSE, trim = TRUE)
 

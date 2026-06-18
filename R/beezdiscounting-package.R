@@ -25,6 +25,10 @@ nlme::fixef
 #' @export
 nlme::ranef
 
+#' @importFrom beezdemand plot_qq
+#' @export
+beezdemand::plot_qq
+
 utils::globalVariables(c(
     ".",
     "ResponseId",

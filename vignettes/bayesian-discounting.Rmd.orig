@@ -41,6 +41,20 @@ confint(fit)     # equal-tailed credible intervals
 head(ranef(fit)) # per-subject k posterior summaries
 ```
 
+The posterior discount curve is what the Bayesian fit adds over a point
+estimate. `plot()` draws the population curve (random effects set to zero) with
+an equal-tailed credible band for the conditional mean, over the observed
+(boundary-squeezed) indifference points; `type = "parameters"` shows each
+subject's posterior `k` with its credible interval.
+
+```{r post-curve, fig.alt = "Posterior population discount curve with a 95% credible band over the observed indifference points.", fig.width = 7, fig.height = 4}
+plot(fit, type = "population")
+```
+
+```{r post-k, fig.alt = "Posterior subject-level discount rates, each with a 95% credible interval, on a log scale.", fig.width = 6, fig.height = 4.5}
+plot(fit, type = "parameters")
+```
+
 ### Families and boundaries
 
 The TMB tier's SLT-beta family has no brms equivalent. Two options cover

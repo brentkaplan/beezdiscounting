@@ -113,12 +113,9 @@ cat("\n\nDONE\n")
 sink()
 
 ## ---- Figure LAST -------------------------------------------------------
-# Drawn with base graphics on a cairo PNG device. ggplot2 + systemfonts
-# segfaults computing text metrics under headless Rscript here (it renders fine
-# under knitr, just not standalone), so the figure uses base graphics, which
-# rely on the device's own font metrics.
-k_pop <- tidy(fit)$estimate[tidy(fit)$term == "k:(Intercept)"][1]
-gx <- exp(seq(log(min(sim$x)), log(max(sim$x)), length.out = 200))
+# The README figure is the package's own plot() method. ggplot2 + systemfonts
+# can segfault computing text metrics under headless Rscript, so render onto an
+# explicit cairo device (its own font metrics) and print() -- which is clean.
 png(
   "man/figures/readme-tmb-fit.png",
   width = 7,
@@ -127,21 +124,6 @@ png(
   res = 110,
   type = "cairo"
 )
-plot(
-  sim$x,
-  sim$y,
-  log = "x",
-  pch = 16,
-  col = grDevices::adjustcolor("black", 0.35),
-  xlab = "Delay (days, log scale)",
-  ylab = "Indifference point",
-  main = sprintf("Population fit: k = %.4f", k_pop)
-)
-for (s in split(sim, sim$id)) {
-  o <- order(s$x)
-  lines(s$x[o], s$y[o], col = grDevices::adjustcolor("black", 0.15))
-}
-lines(gx, 1 / (1 + k_pop * gx), col = "#2B4560", lwd = 2.5)
+print(plot(fit, type = "individual"))
 dev.off()
-cat("Figure written.\n")
 cat("Figure written.\n")

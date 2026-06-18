@@ -161,9 +161,13 @@ reference:
       - check_unsystematic
 
   - title: Visualization
-    desc: Plotting methods for scored task outputs.
+    desc: >
+      Plot methods for fitted discounting models -- discount curves, Bayesian
+      posterior bands, group-comparison forest plots, and random-effect QQ
+      diagnostics -- plus plotting for scored task outputs.
     contents:
       - starts_with("plot.")
+      - plot_qq.beezdiscounting
 
   - title: Datasets
     desc: Built-in datasets for examples and testing.

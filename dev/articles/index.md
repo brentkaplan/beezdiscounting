@@ -4,6 +4,8 @@
 
 - [Bayesian discounting models with
   brms](https://brentkaplan.github.io/beezdiscounting/articles/bayesian-discounting.md):
+- [Discounting from trial-level
+  choices](https://brentkaplan.github.io/beezdiscounting/articles/choice-discounting.md):
 - [Comparing discounting rates between
   groups](https://brentkaplan.github.io/beezdiscounting/articles/dd-group-comparisons.md):
 - [Getting started: indifference points, k, and

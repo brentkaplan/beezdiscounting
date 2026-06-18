@@ -49,6 +49,8 @@ navbar:
         - text: Modeling
         - text: Mixed-effects discounting (TMB)
           href: articles/tmb-mixed-effects.html
+        - text: Discounting from trial-level choices
+          href: articles/choice-discounting.html
         - text: Bounded error distributions (SLT-beta)
           href: articles/sltb-discounting.html
         - text: Bayesian models (brms)

@@ -44,7 +44,7 @@ question, then follow the vignette for a worked example:
 | Indifference points, mixed-effects (borrows strength across subjects) | `fit_dd_tmb()` | [Mixed-effects with TMB](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html) |
 | Indifference points at exactly 0 or 1 | `fit_dd_tmb(family = "sltb")` | [Bounded error distributions](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.html) |
 | Comparing discount rates between groups | `get_dd_param_emms()` / `get_dd_comparisons()` | [Group comparisons](https://brentkaplan.github.io/beezdiscounting/articles/dd-group-comparisons.html) |
-| Trial-level smaller-sooner vs. larger-later choices | `fit_dd_choice()` | [Group comparisons](https://brentkaplan.github.io/beezdiscounting/articles/dd-group-comparisons.html) |
+| Trial-level smaller-sooner vs. larger-later choices | `fit_dd_choice()` | [Choice-based discounting](https://brentkaplan.github.io/beezdiscounting/articles/choice-discounting.html) |
 | Bayesian versions of the model tiers | `fit_dd_brms()` / `fit_dd_choice_brms()` | [Bayesian discounting](https://brentkaplan.github.io/beezdiscounting/articles/bayesian-discounting.html) |
 | 5.5-trial delay or probability task | `calc_dd()` / `calc_pd()` | [5.5-trial task](https://brentkaplan.github.io/beezdiscounting/articles/fivetrial-task.html) |
 
@@ -1101,6 +1101,9 @@ Worked examples live in the package vignettes, also rendered on the
 - [Mixed-effects discounting with
   TMB](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html)
   (`vignette("tmb-mixed-effects")`)
+- [Discounting from trial-level
+  choices](https://brentkaplan.github.io/beezdiscounting/articles/choice-discounting.html)
+  (`vignette("choice-discounting")`)
 - [Indifference points with bounded error
   distributions](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.html)
   (`vignette("sltb-discounting")`)

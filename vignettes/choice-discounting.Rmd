@@ -1,0 +1,205 @@
+---
+title: "Discounting from trial-level choices"
+author: "Brent Kaplan"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Discounting from trial-level choices}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+has_tmb <- requireNamespace("TMB", quietly = TRUE)
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.2,
+  eval = has_tmb
+)
+set.seed(1)
+library(beezdiscounting)
+```
+
+Most discounting analyses start from indifference points (the amount that makes a
+delayed reward feel equal to an immediate one). Many tasks, though, record the raw
+decisions instead: for each offer, did the person take the smaller-sooner (SS)
+reward or wait for the larger-later (LL) one? `fit_dd_choice()` models those
+trial-level choices directly, without reducing them to indifference points first.
+
+It fits two kinds of model:
+
+- a **structural** model that assumes a discount function and estimates the
+  discount rate `k` from the choices, and
+- a **descriptive** model (Young, 2018) that predicts the choice from its
+  features (the amount ratio and the delay) without committing to a discount
+  function.
+
+This vignette is a tour of both. It pairs with `vignette("delay-discounting-basics")`
+(the indifference-point workflow), `vignette("dd-group-comparisons")` (contrasting
+`k` across groups), and `vignette("bayesian-discounting")` (the brms versions).
+TMB must be installed for the models to run.
+
+## Data format
+
+Choice data are long, one row per trial, with five columns: a subject `id`, the
+smaller-sooner amount `ss_amount`, the larger-later amount `ll_amount`, the
+`delay` to the larger reward, and the `choice` (`0` = chose SS, `1` = chose LL).
+`simulate_dd_choice()` generates data in exactly that layout, which makes it
+convenient for a reproducible walk-through; bring your own frame with the same
+columns for a real analysis.
+
+```{r sim}
+ch <- simulate_dd_choice(n_subjects = 30, log_k_pop = log(0.02), seed = 1)
+head(ch)
+```
+
+## Structural model
+
+`fit_dd_choice(mode = "structural")` is the model to use when you want a
+discount rate. It compares the discounted value of the larger-later reward against
+the smaller-sooner reward on every trial and estimates `log k` directly:
+
+`logit P(LL) = b0 + gamma ((ll / ss) D(k, delay) - 1)`,
+
+where `D(k, delay)` is the discount function (Mazur's hyperbola by default),
+`gamma` is the choice sensitivity (how sharply choices follow value), and the
+optional `b0` is a side-independent choice bias (off by default). The comparison
+is scale-invariant, so only the ratio of the rewards matters.
+
+```{r structural}
+fit_s <- fit_dd_choice(ch, mode = "structural", verbose = 0)
+summary(fit_s)
+```
+
+The fixed-effect `k` is on the natural scale, alongside `gamma`. A subject random
+intercept on `log k` lets each person have their own rate, pooled toward the group.
+`tidy()` returns the same information as a data frame:
+
+```{r structural-tidy}
+tidy(fit_s)
+```
+
+Because the model estimates a discount rate, it implies a discounting curve, the
+same object the indifference-point models produce. Reading `k` off the fit and
+drawing `D(k, delay) = 1 / (1 + k * delay)` shows it:
+
+```{r curve}
+k_hat <- tidy(fit_s)$estimate[tidy(fit_s)$term == "k:(Intercept)"][1]
+delays <- seq(0, max(ch$delay), length.out = 200)
+plot(delays, 1 / (1 + k_hat * delays),
+  type = "l", lwd = 2, col = "#2B4560", ylim = c(0, 1),
+  xlab = "Delay", ylab = "Relative subjective value",
+  main = sprintf("Discount curve implied by the choice fit (k = %.4f)", k_hat)
+)
+```
+
+## Descriptive model (Young, 2018)
+
+`fit_dd_choice(mode = "descriptive")` takes a different stance. Rather than assume
+a discount function, it predicts the choice with a logistic mixed model whose
+fixed effects are the log amount ratio, `log(ll / ss)`, and the log delay,
+`log(delay + 1)`, with subject random slopes on both. The coefficients (`theta`)
+are sensitivities on the logit scale, not a discount rate.
+
+```{r descriptive}
+fit_d <- fit_dd_choice(ch, mode = "descriptive", verbose = 0)
+summary(fit_d)
+```
+
+Interpret the sensitivities by their sign. A positive sensitivity on `log(ll / ss)` means
+choices move toward the larger-later reward as it grows relative to the
+smaller-sooner one; a negative sensitivity on `log(delay + 1)` means a longer wait
+pushes choices back toward smaller-sooner. The descriptive model does not return a
+`k`, so it cannot draw a discounting curve, but it does not depend on the discount
+function being correctly specified either. (The random-slope covariance is weakly
+identified in this small fixed-item example, so its correlation can sit at the
+boundary; read the fixed sensitivities first.)
+
+Use the structural model when you want an interpretable discount rate that is
+comparable across tasks and groups under a shared discount function. Reach for the
+descriptive model when you want a function-free summary of what drives the choices,
+or as a check on whether the structural form is doing the data justice.
+
+## S3 methods
+
+Both fits carry the broom and base S3 surface. `glance()` gives a one-row model
+summary; `coef()` returns the raw parameter vector on the optimizer's log scale
+(`summary()` and `tidy()` report `k` and `gamma` back-transformed to the natural
+scale); and `predict()` adds a `.prob` column with the per-trial probability of
+choosing larger-later:
+
+```{r methods}
+glance(fit_s)
+
+head(predict(fit_s))
+```
+
+`tidy()`, `summary()`, `print()`, `logLik()`, `AIC()`, and `BIC()` work as well.
+
+## From the 27-item MCQ to choices
+
+The 27-item Monetary Choice Questionnaire is itself a set of SS-vs-LL choices, so
+its responses fit this model after reshaping. `mcq27_to_choice()` turns the
+long-form questionnaire (`subjectid` / `questionid` / `response`) into the
+per-trial frame, using the Kirby, Petry, and Bickel (1999) item design:
+
+```{r mcq}
+mc <- mcq27_to_choice(mcq27)
+head(mc)
+
+fit_mcq <- fit_dd_choice(mc, mode = "structural", verbose = 0)
+tidy(fit_mcq)
+```
+
+This targets the same Mazur `k` construct and Kirby item design that
+`score_mcq27()` uses, but estimates it with a mixed-effects likelihood model
+rather than the per-subject Kirby threshold scorer (see
+`vignette("mcq27-scoring")` for the classic scorer).
+
+## Indifference points and choices agree
+
+The structural choice model and the indifference-point models target the same
+discount rate, so they should land in the same place when the data come from the
+same process. Simulating both from a common `log k` and fitting each confirms it:
+
+```{r tieout}
+lk <- log(0.02)
+
+ip <- simulate_dd_ip(
+  n_subjects = 30, log_k_pop = lk,
+  family = "sltb", equation = "mazur", seed = 3
+)
+fit_ip <- fit_dd_tmb(ip, equation = "mazur", family = "sltb", random_effects = k ~ 1)
+
+choices <- simulate_dd_choice(n_subjects = 30, log_k_pop = lk, seed = 3)
+fit_ch <- fit_dd_choice(choices, mode = "structural", verbose = 0)
+
+c(
+  truth = exp(lk),
+  indifference_point = tidy(fit_ip)$estimate[tidy(fit_ip)$term == "k:(Intercept)"][1],
+  choice = tidy(fit_ch)$estimate[tidy(fit_ch)$term == "k:(Intercept)"][1]
+)
+```
+
+The two estimates are compatible in this controlled simulation, recovering the
+same rate from different data; the package's IP-vs-choice tie-out test checks that
+this agreement holds within tolerance.
+
+## Where to go next
+
+- To compare `k` between groups (treatment vs. control, and the like), add
+  `factors =` and use `get_dd_param_emms()` / `get_dd_comparisons()`, covered in
+  `vignette("dd-group-comparisons")`.
+- For a Bayesian fit of the structural choice model, `fit_dd_choice_brms()` takes
+  the same data and design; see `vignette("bayesian-discounting")`.
+
+## References
+
+- Kirby, K. N., Petry, N. M., & Bickel, W. K. (1999). Heroin addicts have higher
+  discount rates for delayed rewards than non-drug-using controls. *Journal of
+  Experimental Psychology: General, 128*(1), 78-87.
+- Mazur, J. E. (1987). An adjusting procedure for studying delayed reinforcement.
+  In M. L. Commons, J. E. Mazur, J. A. Nevin, & H. Rachlin (Eds.), *The effect of
+  delay and of intervening events on reinforcement value* (pp. 55-73). Lawrence
+  Erlbaum Associates.
+- Young, M. E. (2018). Discounting: A practical guide to multilevel analysis of
+  choice data. *Journal of the Experimental Analysis of Behavior, 109*(2),
+  293-312.

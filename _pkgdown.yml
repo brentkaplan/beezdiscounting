@@ -38,9 +38,20 @@ navbar:
     articles:
       text: Articles
       menu:
-        - text: Modeling indifference points with bounded error distributions
+        - text: Getting started
+        - text: Scoring the 27-item MCQ
+          href: articles/mcq27-scoring.html
+        - text: Indifference points, k, and AUC
+          href: articles/delay-discounting-basics.html
+        - text: The 5.5-trial task
+          href: articles/fivetrial-task.html
+        - text: ---
+        - text: Modeling
+        - text: Mixed-effects discounting (TMB)
+          href: articles/tmb-mixed-effects.html
+        - text: Bounded error distributions (SLT-beta)
           href: articles/sltb-discounting.html
-        - text: Bayesian discounting models (brms)
+        - text: Bayesian models (brms)
           href: articles/bayesian-discounting.html
         - text: Comparing discounting rates between groups
           href: articles/dd-group-comparisons.html

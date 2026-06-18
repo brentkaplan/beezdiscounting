@@ -1,2 +1,4 @@
 *.html
 *.R
+# but track the precompute helper (regenerates the precomputed vignettes)
+!precompile.R

@@ -7,7 +7,14 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>",
+  message = FALSE, warning = FALSE, fig.path = "bayesian-discounting-"
+)
+library(beezdiscounting)
+set.seed(1)
+```
 
 The Bayesian tier fits the same discounting models as `fit_dd_tmb()` and
 `fit_dd_choice(mode = "structural")` using brms and Stan, with the discount
@@ -18,8 +25,7 @@ suggested packages.
 
 ## Indifference points
 
-
-``` r
+```{r fit}
 data(dd_ip)
 
 fit <- fit_dd_brms(
@@ -30,45 +36,9 @@ fit <- fit_dd_brms(
 )
 
 summary(fit)
-#> 
-#> Bayesian Mixed-Effects Discounting Model Summary (brms)
-#> ================================================== 
-#> 
-#> Equation: mazur  Family: beta 
-#> Backend: brms 
-#> Converged: Yes 
-#> Subjects: 100  Observations: 600 
-#> Diagnostics: rhat_max = 1.005, divergences = 0, min bulk ESS = 559
-#> 
-#> Coefficients (posterior median / SD, natural scale):
-#>   term_display estimate std.error
-#>  k:(Intercept)    0.325   0.03308
-#> 
-#> Variance components:
-#>                Component Estimate   Scale
-#>  sigma_u (log10-k RE SD)   0.4286   log10
-#>          phi (precision)  28.5854 natural
 tidy(fit)        # k on the natural scale (posterior medians of exp draws)
-#> # A tibble: 3 × 8
-#>   term             estimate std.error statistic p.value component estimate_scale
-#>   <chr>               <dbl>     <dbl>     <dbl>   <dbl> <chr>     <chr>         
-#> 1 k:(Intercept)       0.325    0.0331        NA      NA fixed     natural       
-#> 2 sigma_u (log10-…    0.429   NA             NA      NA variance  log10         
-#> 3 phi (precision)    28.6     NA             NA      NA variance  natural       
-#> # ℹ 1 more variable: term_display <chr>
 confint(fit)     # equal-tailed credible intervals
-#> # A tibble: 1 × 5
-#>   term          estimate conf.low conf.high level
-#>   <chr>            <dbl>    <dbl>     <dbl> <dbl>
-#> 1 k:(Intercept)    0.325    0.267     0.395  0.95
 head(ranef(fit)) # per-subject k posterior summaries
-#>     id     r_logk         k
-#> 1   P1 -0.1571624 0.2758678
-#> 2  P10  0.9286493 0.8219529
-#> 3 P100  0.4245741 0.4981406
-#> 4  P11  0.2369896 0.4114677
-#> 5  P12 -0.5699986 0.1839221
-#> 6  P13  0.6143202 0.5950892
 ```
 
 ### Families and boundaries
@@ -98,20 +68,14 @@ so the default `logk` prior anchors to the data: it centers
 half. The anchor is printed at fit time, stored in `fit$autoscale_info`,
 and the whole table is inspectable and overridable:
 
-
-``` r
+```{r priors}
 default_dd_priors("mazur", family = "beta", data = dd_ip)
-#>                  prior class      coef group resp dpar nlpar   lb   ub source
-#>  normal(-4.09434, 2.5)     b Intercept                  logk <NA> <NA>   user
-#>     student_t(3, 0, 1)    sd                            logk <NA> <NA>   user
-#>          gamma(2, 0.1)   phi                                 <NA> <NA>   user
 ```
 
 Override any row by passing a `brms::set_prior()` (shown here without
 re-fitting):
 
-
-``` r
+```{r priors-override, eval = FALSE}
 fit2 <- fit_dd_brms(
   dd_ip,
   equation = "mazur",
@@ -127,8 +91,7 @@ guards the `0^s` case exactly as the TMB template does).
 
 ## Trial-level choice
 
-
-``` r
+```{r choice}
 ctrl <- simulate_dd_choice(n_subjects = 12, log_k_pop = log(0.01), seed = 7)
 trt <- simulate_dd_choice(n_subjects = 12, log_k_pop = log(0.04), seed = 8)
 trt$id <- paste0("t", trt$id)
@@ -143,23 +106,7 @@ fitc <- fit_dd_choice_brms(
 )
 
 tidy(fitc)              # k and gamma (choice sensitivity), natural scale
-#> # A tibble: 3 × 8
-#>   term             estimate std.error statistic p.value component estimate_scale
-#>   <chr>               <dbl>     <dbl>     <dbl>   <dbl> <chr>     <chr>         
-#> 1 k:(Intercept)      0.0202   0.00420        NA      NA fixed     natural       
-#> 2 gamma              3.61     0.579          NA      NA shape     natural       
-#> 3 sigma_u (log10-…   0.240   NA              NA      NA variance  log10         
-#> # ℹ 1 more variable: term_display <chr>
 head(predict(fitc))     # P(choosing the larger-later), with intervals
-#> # A tibble: 6 × 9
-#>   id    ss_amount ll_amount delay choice   rel .fitted .lower .upper
-#>   <fct>     <dbl>     <dbl> <dbl>  <dbl> <dbl>   <dbl>  <dbl>  <dbl>
-#> 1 1            40        65    25      1  1.62  0.619  0.343   0.848
-#> 2 1            55        75    61      0  1.36  0.239  0.0890  0.530
-#> 3 1            31        85    14      1  2.74  0.987  0.925   0.999
-#> 4 1            14        25    19      1  1.79  0.774  0.526   0.927
-#> 5 1            47        60   160      1  1.28  0.0906 0.0313  0.251
-#> 6 1            25        30     7      0  1.2   0.562  0.448   0.653
 ```
 
 The structural likelihood is identical to
@@ -172,8 +119,7 @@ Between-subject designs on `log k` work as in `fit_dd_choice()`
 (`gamma` and `b0` stay population-level), and the draws-based
 EMM/comparison helpers accept the result:
 
-
-``` r
+```{r choice-factors}
 fitc_grp <- fit_dd_choice_brms(
   choice_data,
   equation = "mazur",
@@ -182,46 +128,7 @@ fitc_grp <- fit_dd_choice_brms(
 )
 
 get_dd_param_emms(fitc_grp)      # marginal k per group
-#> # A tibble: 2 × 6
-#>   level            k k_log std.error conf.low conf.high
-#>   <chr>        <dbl> <dbl>     <dbl>    <dbl>     <dbl>
-#> 1 group=ctrl  0.0120 -4.43     0.248  0.00742    0.0194
-#> 2 group=treat 0.0343 -3.37     0.235  0.0212     0.0531
 get_dd_comparisons(fitc_grp)     # log10 contrasts + ratios, post.prob
-#> $k
-#> $k$emmeans
-#> # A tibble: 2 × 6
-#>   level            k k_log std.error conf.low conf.high
-#>   <chr>        <dbl> <dbl>     <dbl>    <dbl>     <dbl>
-#> 1 group=ctrl  0.0120 -4.43     0.248  0.00742    0.0194
-#> 2 group=treat 0.0343 -3.37     0.235  0.0212     0.0531
-#> 
-#> $k$contrasts_log10
-#> # A tibble: 1 × 9
-#>   contrast         estimate std.error statistic    df conf.low conf.high p.value
-#>   <chr>               <dbl>     <dbl>     <dbl> <dbl>    <dbl>     <dbl>   <dbl>
-#> 1 group=ctrl - gr…   -0.451     0.142        NA    NA   -0.726    -0.168      NA
-#> # ℹ 1 more variable: post.prob <dbl>
-#> 
-#> $k$contrasts_ratio
-#> # A tibble: 1 × 6
-#>   contrast                 ratio conf.low conf.high p.value post.prob
-#>   <chr>                    <dbl>    <dbl>     <dbl>   <dbl>     <dbl>
-#> 1 group=ctrl - group=treat 0.354    0.188     0.679      NA     0.999
-#> 
-#> 
-#> attr(,"class")
-#> [1] "beezdiscounting_comparison"
-#> attr(,"backend")
-#> [1] "brms"
-#> attr(,"adjustment_method")
-#> [1] "none (posterior summaries; see post.prob)"
-#> attr(,"compare_specs_used")
-#> [1] "all fitted factors"
-#> attr(,"contrast_type_used")
-#> [1] "pairwise"
-#> attr(,"contrast_by_used")
-#> [1] "NULL"
 ```
 
 ## Reading Bayesian output

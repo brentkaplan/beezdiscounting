@@ -85,16 +85,15 @@
 <p>The Bayesian tier fits the same discounting models as
 <code><a href="../reference/fit_dd_tmb.html">fit_dd_tmb()</a></code> and
 <code>fit_dd_choice(mode = "structural")</code> using brms and Stan,
-with the discount rate estimated on the same natural-log scale. Nothing
-in this vignette runs at build time (Stan sampling takes minutes); copy
-the chunks into your session. brms, posterior, and loo are suggested
-packages.</p>
+with the discount rate estimated on the same natural-log scale. The fits
+below are precomputed (Stan sampling takes minutes), so the outputs
+shown come from real fits; copy the chunks into your session to
+reproduce them. brms, posterior, and loo are suggested packages.</p>
 <div class="section level2">
 <h2 id="indifference-points">Indifference points<a class="anchor" aria-label="anchor" href="#indifference-points"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://brentkaplan.github.io/beezdiscounting/">beezdiscounting</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">dd_ip</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">dd_ip</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_brms.html">fit_dd_brms</a></span><span class="op">(</span></span>
 <span>  <span class="va">dd_ip</span>,</span>
@@ -104,9 +103,45 @@ packages.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Bayesian Mixed-Effects Discounting Model Summary (brms)</span></span>
+<span><span class="co">#&gt; ================================================== </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Equation: mazur  Family: beta </span></span>
+<span><span class="co">#&gt; Backend: brms </span></span>
+<span><span class="co">#&gt; Converged: Yes </span></span>
+<span><span class="co">#&gt; Subjects: 100  Observations: 600 </span></span>
+<span><span class="co">#&gt; Diagnostics: rhat_max = 1.005, divergences = 0, min bulk ESS = 559</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Coefficients (posterior median / SD, natural scale):</span></span>
+<span><span class="co">#&gt;   term_display estimate std.error</span></span>
+<span><span class="co">#&gt;  k:(Intercept)    0.325   0.03308</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Variance components:</span></span>
+<span><span class="co">#&gt;                Component Estimate   Scale</span></span>
+<span><span class="co">#&gt;  sigma_u (log10-k RE SD)   0.4286   log10</span></span>
+<span><span class="co">#&gt;          phi (precision)  28.5854 natural</span></span>
 <span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>        <span class="co"># k on the natural scale (posterior medians of exp draws)</span></span>
+<span><span class="co">#&gt; # A tibble: 3 × 8</span></span>
+<span><span class="co">#&gt;   term             estimate std.error statistic p.value component estimate_scale</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;               &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;     &lt;chr&gt;         </span></span>
+<span><span class="co">#&gt; 1 k:(Intercept)       0.325    0.0331        NA      NA fixed     natural       </span></span>
+<span><span class="co">#&gt; 2 sigma_u (log10-…    0.429   NA             NA      NA variance  log10         </span></span>
+<span><span class="co">#&gt; 3 phi (precision)    28.6     NA             NA      NA variance  natural       </span></span>
+<span><span class="co">#&gt; # ℹ 1 more variable: term_display &lt;chr&gt;</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>     <span class="co"># equal-tailed credible intervals</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/random.effects.html" class="external-link">ranef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>       <span class="co"># per-subject k posterior summaries</span></span></code></pre></div>
+<span><span class="co">#&gt; # A tibble: 1 × 5</span></span>
+<span><span class="co">#&gt;   term          estimate conf.low conf.high level</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 k:(Intercept)    0.325    0.267     0.395  0.95</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/random.effects.html" class="external-link">ranef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span> <span class="co"># per-subject k posterior summaries</span></span>
+<span><span class="co">#&gt;     id     r_logk         k</span></span>
+<span><span class="co">#&gt; 1   P1 -0.1571624 0.2758678</span></span>
+<span><span class="co">#&gt; 2  P10  0.9286493 0.8219529</span></span>
+<span><span class="co">#&gt; 3 P100  0.4245741 0.4981406</span></span>
+<span><span class="co">#&gt; 4  P11  0.2369896 0.4114677</span></span>
+<span><span class="co">#&gt; 5  P12 -0.5699986 0.1839221</span></span>
+<span><span class="co">#&gt; 6  P13  0.6143202 0.5950892</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="families-and-boundaries">Families and boundaries<a class="anchor" aria-label="anchor" href="#families-and-boundaries"></a>
 </h3>
@@ -143,8 +178,14 @@ curve crosses one half. The anchor is printed at fit time, stored in
 overridable:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/default_dd_priors.html">default_dd_priors</a></span><span class="op">(</span><span class="st">"mazur"</span>, family <span class="op">=</span> <span class="st">"beta"</span>, data <span class="op">=</span> <span class="va">dd_ip</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_brms.html">fit_dd_brms</a></span><span class="op">(</span></span>
+<span><span class="co">#&gt;                  prior class      coef group resp dpar nlpar   lb   ub source</span></span>
+<span><span class="co">#&gt;  normal(-4.09434, 2.5)     b Intercept                  logk &lt;NA&gt; &lt;NA&gt;   user</span></span>
+<span><span class="co">#&gt;     student_t(3, 0, 1)    sd                            logk &lt;NA&gt; &lt;NA&gt;   user</span></span>
+<span><span class="co">#&gt;          gamma(2, 0.1)   phi                                 &lt;NA&gt; &lt;NA&gt;   user</span></span></code></pre></div>
+<p>Override any row by passing a <code><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">brms::set_prior()</a></code> (shown
+here without re-fitting):</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_brms.html">fit_dd_brms</a></span><span class="op">(</span></span>
 <span>  <span class="va">dd_ip</span>,</span>
 <span>  equation <span class="op">=</span> <span class="st">"mazur"</span>,</span>
 <span>  prior <span class="op">=</span> <span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">set_prior</a></span><span class="op">(</span><span class="st">"normal(-3, 1)"</span>, class <span class="op">=</span> <span class="st">"b"</span>,</span>
@@ -160,15 +201,38 @@ case exactly as the TMB template does).</p>
 <div class="section level2">
 <h2 id="trial-level-choice">Trial-level choice<a class="anchor" aria-label="anchor" href="#trial-level-choice"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fitc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_choice_brms.html">fit_dd_choice_brms</a></span><span class="op">(</span></span>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ctrl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_dd_choice.html">simulate_dd_choice</a></span><span class="op">(</span>n_subjects <span class="op">=</span> <span class="fl">12</span>, log_k_pop <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.01</span><span class="op">)</span>, seed <span class="op">=</span> <span class="fl">7</span><span class="op">)</span></span>
+<span><span class="va">trt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_dd_choice.html">simulate_dd_choice</a></span><span class="op">(</span>n_subjects <span class="op">=</span> <span class="fl">12</span>, log_k_pop <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.04</span><span class="op">)</span>, seed <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
+<span><span class="va">trt</span><span class="op">$</span><span class="va">id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"t"</span>, <span class="va">trt</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
+<span><span class="va">ctrl</span><span class="op">$</span><span class="va">group</span> <span class="op">&lt;-</span> <span class="st">"ctrl"</span></span>
+<span><span class="va">trt</span><span class="op">$</span><span class="va">group</span> <span class="op">&lt;-</span> <span class="st">"treat"</span></span>
+<span><span class="va">choice_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">ctrl</span>, <span class="va">trt</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fitc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_choice_brms.html">fit_dd_choice_brms</a></span><span class="op">(</span></span>
 <span>  <span class="va">choice_data</span>,</span>
 <span>  equation <span class="op">=</span> <span class="st">"mazur"</span>,</span>
 <span>  chains <span class="op">=</span> <span class="fl">4</span>, cores <span class="op">=</span> <span class="fl">4</span>, seed <span class="op">=</span> <span class="fl">1</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fitc</span><span class="op">)</span>              <span class="co"># k and gamma (choice sensitivity), natural scale</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fitc</span><span class="op">)</span>           <span class="co"># P(choosing the larger-later), with intervals</span></span></code></pre></div>
+<span><span class="co">#&gt; # A tibble: 3 × 8</span></span>
+<span><span class="co">#&gt;   term             estimate std.error statistic p.value component estimate_scale</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;               &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;     &lt;chr&gt;         </span></span>
+<span><span class="co">#&gt; 1 k:(Intercept)      0.0202   0.00420        NA      NA fixed     natural       </span></span>
+<span><span class="co">#&gt; 2 gamma              3.61     0.579          NA      NA shape     natural       </span></span>
+<span><span class="co">#&gt; 3 sigma_u (log10-…   0.240   NA              NA      NA variance  log10         </span></span>
+<span><span class="co">#&gt; # ℹ 1 more variable: term_display &lt;chr&gt;</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fitc</span><span class="op">)</span><span class="op">)</span>     <span class="co"># P(choosing the larger-later), with intervals</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 9</span></span>
+<span><span class="co">#&gt;   id    ss_amount ll_amount delay choice   rel .fitted .lower .upper</span></span>
+<span><span class="co">#&gt;   &lt;fct&gt;     &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 1            40        65    25      1  1.62  0.619  0.343   0.848</span></span>
+<span><span class="co">#&gt; 2 1            55        75    61      0  1.36  0.239  0.0890  0.530</span></span>
+<span><span class="co">#&gt; 3 1            31        85    14      1  2.74  0.987  0.925   0.999</span></span>
+<span><span class="co">#&gt; 4 1            14        25    19      1  1.79  0.774  0.526   0.927</span></span>
+<span><span class="co">#&gt; 5 1            47        60   160      1  1.28  0.0906 0.0313  0.251</span></span>
+<span><span class="co">#&gt; 6 1            25        30     7      0  1.2   0.562  0.448   0.653</span></span></code></pre></div>
 <p>The structural likelihood is identical to
 <code>fit_dd_choice(mode = "structural")</code>:
 <code>logit P(LL) = [b0] + gamma ((ll/ss) D(k, delay) - 1)</code>. The
@@ -179,7 +243,7 @@ Bayesian.</p>
 <code><a href="../reference/fit_dd_choice.html">fit_dd_choice()</a></code> (<code>gamma</code> and <code>b0</code>
 stay population-level), and the draws-based EMM/comparison helpers
 accept the result:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fitc_grp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_choice_brms.html">fit_dd_choice_brms</a></span><span class="op">(</span></span>
 <span>  <span class="va">choice_data</span>,</span>
 <span>  equation <span class="op">=</span> <span class="st">"mazur"</span>,</span>
@@ -188,7 +252,46 @@ accept the result:</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/get_dd_param_emms.html">get_dd_param_emms</a></span><span class="op">(</span><span class="va">fitc_grp</span><span class="op">)</span>      <span class="co"># marginal k per group</span></span>
-<span><span class="fu"><a href="../reference/get_dd_comparisons.html">get_dd_comparisons</a></span><span class="op">(</span><span class="va">fitc_grp</span><span class="op">)</span>     <span class="co"># log10 contrasts + ratios, post.prob</span></span></code></pre></div>
+<span><span class="co">#&gt; # A tibble: 2 × 6</span></span>
+<span><span class="co">#&gt;   level            k k_log std.error conf.low conf.high</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;        &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 group=ctrl  0.0120 -4.43     0.248  0.00742    0.0194</span></span>
+<span><span class="co">#&gt; 2 group=treat 0.0343 -3.37     0.235  0.0212     0.0531</span></span>
+<span><span class="fu"><a href="../reference/get_dd_comparisons.html">get_dd_comparisons</a></span><span class="op">(</span><span class="va">fitc_grp</span><span class="op">)</span>     <span class="co"># log10 contrasts + ratios, post.prob</span></span>
+<span><span class="co">#&gt; $k</span></span>
+<span><span class="co">#&gt; $k$emmeans</span></span>
+<span><span class="co">#&gt; # A tibble: 2 × 6</span></span>
+<span><span class="co">#&gt;   level            k k_log std.error conf.low conf.high</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;        &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 group=ctrl  0.0120 -4.43     0.248  0.00742    0.0194</span></span>
+<span><span class="co">#&gt; 2 group=treat 0.0343 -3.37     0.235  0.0212     0.0531</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $k$contrasts_log10</span></span>
+<span><span class="co">#&gt; # A tibble: 1 × 9</span></span>
+<span><span class="co">#&gt;   contrast         estimate std.error statistic    df conf.low conf.high p.value</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;               &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 group=ctrl - gr…   -0.451     0.142        NA    NA   -0.726    -0.168      NA</span></span>
+<span><span class="co">#&gt; # ℹ 1 more variable: post.prob &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $k$contrasts_ratio</span></span>
+<span><span class="co">#&gt; # A tibble: 1 × 6</span></span>
+<span><span class="co">#&gt;   contrast                 ratio conf.low conf.high p.value post.prob</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;                    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 group=ctrl - group=treat 0.354    0.188     0.679      NA     0.999</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; attr(,"class")</span></span>
+<span><span class="co">#&gt; [1] "beezdiscounting_comparison"</span></span>
+<span><span class="co">#&gt; attr(,"backend")</span></span>
+<span><span class="co">#&gt; [1] "brms"</span></span>
+<span><span class="co">#&gt; attr(,"adjustment_method")</span></span>
+<span><span class="co">#&gt; [1] "none (posterior summaries; see post.prob)"</span></span>
+<span><span class="co">#&gt; attr(,"compare_specs_used")</span></span>
+<span><span class="co">#&gt; [1] "all fitted factors"</span></span>
+<span><span class="co">#&gt; attr(,"contrast_type_used")</span></span>
+<span><span class="co">#&gt; [1] "pairwise"</span></span>
+<span><span class="co">#&gt; attr(,"contrast_by_used")</span></span>
+<span><span class="co">#&gt; [1] "NULL"</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="reading-bayesian-output">Reading Bayesian output<a class="anchor" aria-label="anchor" href="#reading-bayesian-output"></a>

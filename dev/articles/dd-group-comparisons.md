@@ -21,9 +21,9 @@ work on top of that shared backbone for:
   [`fit_dd_choice_brms()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice_brms.md)
   – their Bayesian counterparts (posterior draws; see the last section).
 
-The TMB examples below run at build time; the Bayesian section shows
-code without running it (Stan sampling takes minutes – copy the chunks
-into your session).
+Both the TMB and Bayesian examples below are precomputed (Stan sampling
+takes minutes), so the outputs shown come from real fits; copy the
+chunks into your session to reproduce them.
 
 ## Simulate a two-group study
 
@@ -237,7 +237,46 @@ fit_b <- fit_dd_brms(
   chains = 4, cores = 4, seed = 1
 )
 get_dd_param_emms(fit_b, factors_in_emm = "condition")
+#> # A tibble: 2 × 6
+#>   level             k k_log std.error conf.low conf.high
+#>   <chr>         <dbl> <dbl>     <dbl>    <dbl>     <dbl>
+#> 1 condition=C1 0.0114 -4.48     0.232  0.00729    0.0180
+#> 2 condition=C2 0.0288 -3.55     0.227  0.0183     0.0450
 get_dd_comparisons(fit_b, compare_specs = ~condition)
+#> $k
+#> $k$emmeans
+#> # A tibble: 2 × 6
+#>   level             k k_log std.error conf.low conf.high
+#>   <chr>         <dbl> <dbl>     <dbl>    <dbl>     <dbl>
+#> 1 condition=C1 0.0114 -4.48     0.232  0.00729    0.0180
+#> 2 condition=C2 0.0288 -3.55     0.227  0.0183     0.0450
+#> 
+#> $k$contrasts_log10
+#> # A tibble: 1 × 9
+#>   contrast         estimate std.error statistic    df conf.low conf.high p.value
+#>   <chr>               <dbl>     <dbl>     <dbl> <dbl>    <dbl>     <dbl>   <dbl>
+#> 1 condition=C1 - …   -0.409     0.136        NA    NA   -0.668    -0.127      NA
+#> # ℹ 1 more variable: post.prob <dbl>
+#> 
+#> $k$contrasts_ratio
+#> # A tibble: 1 × 6
+#>   contrast                    ratio conf.low conf.high p.value post.prob
+#>   <chr>                       <dbl>    <dbl>     <dbl>   <dbl>     <dbl>
+#> 1 condition=C1 - condition=C2 0.390    0.215     0.746      NA     0.996
+#> 
+#> 
+#> attr(,"class")
+#> [1] "beezdiscounting_comparison"
+#> attr(,"backend")
+#> [1] "brms"
+#> attr(,"adjustment_method")
+#> [1] "none (posterior summaries; see post.prob)"
+#> attr(,"compare_specs_used")
+#> [1] "~condition"
+#> attr(,"contrast_type_used")
+#> [1] "pairwise"
+#> attr(,"contrast_by_used")
+#> [1] "NULL"
 
 fit_cb <- fit_dd_choice_brms(
   choice_data,
@@ -245,6 +284,40 @@ fit_cb <- fit_dd_choice_brms(
   chains = 4, cores = 4, seed = 1
 )
 get_dd_comparisons(fit_cb)
+#> $k
+#> $k$emmeans
+#> # A tibble: 2 × 6
+#>   level            k k_log std.error conf.low conf.high
+#>   <chr>        <dbl> <dbl>     <dbl>    <dbl>     <dbl>
+#> 1 group=ctrl  0.0120 -4.43     0.248  0.00742    0.0194
+#> 2 group=treat 0.0343 -3.37     0.235  0.0212     0.0531
+#> 
+#> $k$contrasts_log10
+#> # A tibble: 1 × 9
+#>   contrast         estimate std.error statistic    df conf.low conf.high p.value
+#>   <chr>               <dbl>     <dbl>     <dbl> <dbl>    <dbl>     <dbl>   <dbl>
+#> 1 group=ctrl - gr…   -0.451     0.142        NA    NA   -0.726    -0.168      NA
+#> # ℹ 1 more variable: post.prob <dbl>
+#> 
+#> $k$contrasts_ratio
+#> # A tibble: 1 × 6
+#>   contrast                 ratio conf.low conf.high p.value post.prob
+#>   <chr>                    <dbl>    <dbl>     <dbl>   <dbl>     <dbl>
+#> 1 group=ctrl - group=treat 0.354    0.188     0.679      NA     0.999
+#> 
+#> 
+#> attr(,"class")
+#> [1] "beezdiscounting_comparison"
+#> attr(,"backend")
+#> [1] "brms"
+#> attr(,"adjustment_method")
+#> [1] "none (posterior summaries; see post.prob)"
+#> attr(,"compare_specs_used")
+#> [1] "all fitted factors"
+#> attr(,"contrast_type_used")
+#> [1] "pairwise"
+#> attr(,"contrast_by_used")
+#> [1] "NULL"
 ```
 
 The tables have the same shape, with draws-based summaries in place of

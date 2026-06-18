@@ -78,17 +78,11 @@ tidy(fit_s)
 ```
 
 Because the model estimates a discount rate, it implies a discounting curve, the
-same object the indifference-point models produce. Reading `k` off the fit and
-drawing `D(k, delay) = 1 / (1 + k * delay)` shows it:
+same object the indifference-point models produce. `plot()` draws that implied
+curve, `D(k, delay) = 1 / (1 + k * delay)`, from the fitted `k`:
 
 ```{r curve}
-k_hat <- tidy(fit_s)$estimate[tidy(fit_s)$term == "k:(Intercept)"][1]
-delays <- seq(0, max(ch$delay), length.out = 200)
-plot(delays, 1 / (1 + k_hat * delays),
-  type = "l", lwd = 2, col = "#2B4560", ylim = c(0, 1),
-  xlab = "Delay", ylab = "Relative subjective value",
-  main = sprintf("Discount curve implied by the choice fit (k = %.4f)", k_hat)
-)
+plot(fit_s, type = "population")
 ```
 
 ## Descriptive model (Young, 2018)

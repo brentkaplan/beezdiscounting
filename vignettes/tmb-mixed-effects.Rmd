@@ -124,17 +124,12 @@ curves. Predict the population curve on a fine grid of delays and plot it over t
 raw points:
 
 ```{r predict-plot}
-library(ggplot2)
-
 grid <- data.frame(x = seq(1, 730, length.out = 100))
-pop_curve <- predict(fit, newdata = grid, level = "population")
+head(predict(fit, newdata = grid, level = "population"))
 
-ggplot(sim, aes(x, y)) +
-  geom_point(alpha = 0.3) +
-  geom_line(data = pop_curve, aes(x, predict.fixed), linewidth = 1) +
-  labs(x = "Delay (days)", y = "Indifference point",
-       title = "Population discounting curve") +
-  theme_minimal()
+# plot() draws the population curve over the observed points directly; type =
+# "individual" adds the per-subject (shrinkage) curves.
+plot(fit, type = "population")
 ```
 
 For data that includes an `id` column, request both levels at once with
@@ -150,11 +145,7 @@ standardized residuals that account for the SLT-beta's non-constant variance:
 aug <- augment(fit)
 head(aug)
 
-ggplot(aug, aes(.fitted, .std_resid)) +
-  geom_point(alpha = 0.3) +
-  geom_hline(yintercept = 0, linetype = 2) +
-  labs(x = "Fitted indifference point", y = "Standardized residual") +
-  theme_minimal()
+plot(fit, type = "resid")
 ```
 
 ## Choosing an equation

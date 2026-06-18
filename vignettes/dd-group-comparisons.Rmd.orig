@@ -131,6 +131,19 @@ cmp_by$k$contrasts_log10
 tidy(cmp)
 ```
 
+## Visualizing the contrasts
+
+A forest plot makes these contrasts easier to scan than the table. Each row is
+a `k` ratio with its confidence interval; the dashed line marks a ratio of 1
+(no difference), and contrasts whose interval excludes 1 are highlighted.
+Across the condition-by-site grid, the condition contrasts (a threefold effect
+by construction) are flagged, whereas the site contrasts (no true effect) are
+not.
+
+```{r forest, eval = has_tmb, fig.alt = "Forest plot of pairwise k ratios with confidence intervals across the condition-by-site grid; condition contrasts clear the no-difference line while site contrasts do not.", fig.width = 7, fig.height = 3.5}
+plot(get_dd_comparisons(fit))
+```
+
 ## Trial-level choice models
 
 The structural choice model estimates the same log-k design from binary

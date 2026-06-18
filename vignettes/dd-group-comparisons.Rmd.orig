@@ -8,7 +8,15 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>",
+  message = FALSE, warning = FALSE, fig.path = "dd-group-comparisons-"
+)
+set.seed(1)
+has_tmb <- requireNamespace("TMB", quietly = TRUE)
+has_brms <- requireNamespace("brms", quietly = TRUE)
+```
 
 A common discounting question is not "what is k?" but "does k differ
 between groups?" -- treatment vs. control, clinical vs. community,
@@ -37,8 +45,7 @@ between-condition shift in log k. Here condition `C2`'s k is three times
 `C1`'s (`delta_k = log(3)`). To have a second factor for the grouped
 contrasts shown later, we also assign each subject a (null) `site`.
 
-
-``` r
+```{r simulate, eval = has_tmb}
 library(beezdiscounting)
 
 sim <- simulate_dd_ip(
@@ -51,20 +58,7 @@ sim$site <- factor(ifelse(
   ((match(sim$id, subjects) - 1) %/% 2) %% 2 == 0, "siteA", "siteB"
 ))
 with(unique(sim[, c("id", "condition", "site")]), table(condition, site))
-#>          site
-#> condition siteA siteB
-#>        C1     6     6
-#>        C2     6     6
 head(sim)
-#> # A tibble: 6 × 5
-#>   id    condition     x      y site 
-#>   <fct> <fct>     <dbl>  <dbl> <fct>
-#> 1 1     C1            7 0.990  siteA
-#> 2 1     C1           30 0.648  siteA
-#> 3 1     C1          180 0.127  siteA
-#> 4 1     C1          365 0.0523 siteA
-#> 5 1     C1          730 0.0194 siteA
-#> 6 1     C1         1460 0.0429 siteA
 ```
 
 ## Fit with a factor design on log k
@@ -73,23 +67,13 @@ head(sim)
 population-level. (`multi_start = FALSE` keeps the vignette quick; leave
 the default on for real analyses.)
 
-
-``` r
+```{r fit-tmb, eval = has_tmb}
 fit <- fit_dd_tmb(
   sim,
   factors = c("condition", "site"),
   multi_start = FALSE, verbose = 0
 )
 tidy(fit)
-#> # A tibble: 5 × 8
-#>   term           estimate std.error statistic   p.value component estimate_scale
-#>   <chr>             <dbl>     <dbl>     <dbl>     <dbl> <chr>     <chr>         
-#> 1 k:(Intercept)   0.00923   0.00253    -17.1   1.09e-65 fixed     natural       
-#> 2 k:conditionC2   2.97      0.813        3.98  6.90e- 5 fixed     natural       
-#> 3 k:sitesiteB     1.47      0.403        1.41  1.57e- 1 fixed     natural       
-#> 4 sigma_u (log1…  0.312    NA           NA    NA        variance  log10         
-#> 5 phi (precisio… 10.5      NA           NA    NA        variance  natural       
-#> # ℹ 1 more variable: term_display <chr>
 ```
 
 ## Estimated marginal means of k
@@ -99,36 +83,17 @@ you are not looking at (equal weights, the emmeans convention) and
 back-transforms: `k = exp(k_log)`, with the standard error and the Wald
 interval formed on the log scale.
 
-
-``` r
+```{r emms, eval = has_tmb}
 get_dd_param_emms(fit)
-#> # A tibble: 4 × 6
-#>   level                          k k_log std.error conf.low conf.high
-#>   <chr>                      <dbl> <dbl>     <dbl>    <dbl>     <dbl>
-#> 1 condition=C1, site=siteA 0.00923 -4.68     0.274  0.00540    0.0158
-#> 2 condition=C1, site=siteB 0.0136  -4.30     0.276  0.00791    0.0234
-#> 3 condition=C2, site=siteA 0.0274  -3.60     0.277  0.0159     0.0472
-#> 4 condition=C2, site=siteB 0.0404  -3.21     0.280  0.0233     0.0700
 ```
 
 Marginalize over `site` to get per-condition means, or condition on a
 level with `at`:
 
-
-``` r
+```{r emms-marginal, eval = has_tmb}
 get_dd_param_emms(fit, factors_in_emm = "condition")
-#> # A tibble: 2 × 6
-#>   level             k k_log std.error conf.low conf.high
-#>   <chr>         <dbl> <dbl>     <dbl>    <dbl>     <dbl>
-#> 1 condition=C1 0.0112 -4.49     0.224  0.00722    0.0174
-#> 2 condition=C2 0.0333 -3.40     0.229  0.0213     0.0521
 
 get_dd_param_emms(fit, at = list(site = "siteA"))
-#> # A tibble: 2 × 6
-#>   level                          k k_log std.error conf.low conf.high
-#>   <chr>                      <dbl> <dbl>     <dbl>    <dbl>     <dbl>
-#> 1 condition=C1, site=siteA 0.00923 -4.68     0.274  0.00540    0.0158
-#> 2 condition=C2, site=siteA 0.0274  -3.60     0.277  0.0159     0.0472
 ```
 
 ## Contrasts
@@ -140,19 +105,10 @@ also as multiplicative ratios: a ratio of 3 means one group discounts
 three times as steeply. P-values are adjusted with `stats::p.adjust()`
 (`"holm"` by default).
 
-
-``` r
+```{r contrasts, eval = has_tmb}
 cmp <- get_dd_comparisons(fit, compare_specs = ~condition)
 cmp$k$contrasts_log10
-#> # A tibble: 1 × 8
-#>   contrast         estimate std.error statistic    df conf.low conf.high p.value
-#>   <chr>               <dbl>     <dbl>     <dbl> <dbl>    <dbl>     <dbl>   <dbl>
-#> 1 condition=C1 - …   -0.473     0.139     -3.41   Inf   -0.745    -0.201 6.46e-4
 cmp$k$contrasts_ratio
-#> # A tibble: 1 × 5
-#>   contrast                    ratio conf.low conf.high  p.value
-#>   <chr>                       <dbl>    <dbl>     <dbl>    <dbl>
-#> 1 condition=C1 - condition=C2 0.336    0.180     0.629 0.000646
 ```
 
 The simulated truth was `k(C2) = 3 k(C1)`, so the displayed `C1 - C2`
@@ -161,29 +117,18 @@ ratio should land near 1/3 -- and it does. With more than one factor,
 (adjustment is applied per by-cell; with no interaction in the model the
 per-site contrasts coincide, as here):
 
-
-``` r
+```{r contrast-by, eval = has_tmb}
 cmp_by <- get_dd_comparisons(
   fit,
   compare_specs = ~ condition + site, contrast_by = "site"
 )
 cmp_by$k$contrasts_log10
-#> # A tibble: 2 × 9
-#>   site  contrast   estimate std.error statistic    df conf.low conf.high p.value
-#>   <chr> <chr>         <dbl>     <dbl>     <dbl> <dbl>    <dbl>     <dbl>   <dbl>
-#> 1 siteA condition…   -0.473     0.139     -3.41   Inf   -0.745    -0.201 6.46e-4
-#> 2 siteB condition…   -0.473     0.139     -3.41   Inf   -0.745    -0.201 6.46e-4
 ```
 
 `tidy()` flattens any comparison object into one cross-backend frame:
 
-
-``` r
+```{r tidy-cmp, eval = has_tmb}
 tidy(cmp)
-#> # A tibble: 1 × 9
-#>   param contrast   estimate std.error statistic    df conf.low conf.high p.value
-#>   <chr> <chr>         <dbl>     <dbl>     <dbl> <dbl>    <dbl>     <dbl>   <dbl>
-#> 1 k     condition…   -0.473     0.139     -3.41   Inf   -0.745    -0.201 6.46e-4
 ```
 
 ## Trial-level choice models
@@ -193,8 +138,7 @@ smaller-sooner vs. larger-later choices, so the comparison surface is
 identical. (The simulator has no built-in group effect; stack two
 simulated groups.)
 
-
-``` r
+```{r choice, eval = has_tmb}
 ctrl <- simulate_dd_choice(n_subjects = 12, log_k_pop = log(0.01), seed = 7)
 trt <- simulate_dd_choice(n_subjects = 12, log_k_pop = log(0.04), seed = 8)
 trt$id <- paste0("t", trt$id)
@@ -207,16 +151,7 @@ fit_choice <- fit_dd_choice(
   mode = "structural", factors = "group", verbose = 0
 )
 get_dd_param_emms(fit_choice)
-#> # A tibble: 2 × 6
-#>   level            k k_log std.error conf.low conf.high
-#>   <chr>        <dbl> <dbl>     <dbl>    <dbl>     <dbl>
-#> 1 group=ctrl  0.0113 -4.48     0.234  0.00716    0.0179
-#> 2 group=treat 0.0369 -3.30     0.212  0.0243     0.0559
 get_dd_comparisons(fit_choice)$k$contrasts_ratio
-#> # A tibble: 1 × 5
-#>   contrast                 ratio conf.low conf.high  p.value
-#>   <chr>                    <dbl>    <dbl>     <dbl>    <dbl>
-#> 1 group=ctrl - group=treat 0.307    0.167     0.566 0.000152
 ```
 
 ## The Bayesian analogs
@@ -225,54 +160,14 @@ get_dd_comparisons(fit_choice)$k$contrasts_ratio
 `factors`/`factor_interaction`/`continuous_covariates` arguments, and
 `get_dd_param_emms()`/`get_dd_comparisons()` accept the fits directly:
 
-
-``` r
+```{r brms, eval = has_brms}
 fit_b <- fit_dd_brms(
   sim,
   equation = "mazur", factors = c("condition", "site"),
   chains = 4, cores = 4, seed = 1
 )
 get_dd_param_emms(fit_b, factors_in_emm = "condition")
-#> # A tibble: 2 × 6
-#>   level             k k_log std.error conf.low conf.high
-#>   <chr>         <dbl> <dbl>     <dbl>    <dbl>     <dbl>
-#> 1 condition=C1 0.0114 -4.48     0.232  0.00729    0.0180
-#> 2 condition=C2 0.0288 -3.55     0.227  0.0183     0.0450
 get_dd_comparisons(fit_b, compare_specs = ~condition)
-#> $k
-#> $k$emmeans
-#> # A tibble: 2 × 6
-#>   level             k k_log std.error conf.low conf.high
-#>   <chr>         <dbl> <dbl>     <dbl>    <dbl>     <dbl>
-#> 1 condition=C1 0.0114 -4.48     0.232  0.00729    0.0180
-#> 2 condition=C2 0.0288 -3.55     0.227  0.0183     0.0450
-#> 
-#> $k$contrasts_log10
-#> # A tibble: 1 × 9
-#>   contrast         estimate std.error statistic    df conf.low conf.high p.value
-#>   <chr>               <dbl>     <dbl>     <dbl> <dbl>    <dbl>     <dbl>   <dbl>
-#> 1 condition=C1 - …   -0.409     0.136        NA    NA   -0.668    -0.127      NA
-#> # ℹ 1 more variable: post.prob <dbl>
-#> 
-#> $k$contrasts_ratio
-#> # A tibble: 1 × 6
-#>   contrast                    ratio conf.low conf.high p.value post.prob
-#>   <chr>                       <dbl>    <dbl>     <dbl>   <dbl>     <dbl>
-#> 1 condition=C1 - condition=C2 0.390    0.215     0.746      NA     0.996
-#> 
-#> 
-#> attr(,"class")
-#> [1] "beezdiscounting_comparison"
-#> attr(,"backend")
-#> [1] "brms"
-#> attr(,"adjustment_method")
-#> [1] "none (posterior summaries; see post.prob)"
-#> attr(,"compare_specs_used")
-#> [1] "~condition"
-#> attr(,"contrast_type_used")
-#> [1] "pairwise"
-#> attr(,"contrast_by_used")
-#> [1] "NULL"
 
 fit_cb <- fit_dd_choice_brms(
   choice_data,
@@ -280,40 +175,6 @@ fit_cb <- fit_dd_choice_brms(
   chains = 4, cores = 4, seed = 1
 )
 get_dd_comparisons(fit_cb)
-#> $k
-#> $k$emmeans
-#> # A tibble: 2 × 6
-#>   level            k k_log std.error conf.low conf.high
-#>   <chr>        <dbl> <dbl>     <dbl>    <dbl>     <dbl>
-#> 1 group=ctrl  0.0120 -4.43     0.248  0.00742    0.0194
-#> 2 group=treat 0.0343 -3.37     0.235  0.0212     0.0531
-#> 
-#> $k$contrasts_log10
-#> # A tibble: 1 × 9
-#>   contrast         estimate std.error statistic    df conf.low conf.high p.value
-#>   <chr>               <dbl>     <dbl>     <dbl> <dbl>    <dbl>     <dbl>   <dbl>
-#> 1 group=ctrl - gr…   -0.451     0.142        NA    NA   -0.726    -0.168      NA
-#> # ℹ 1 more variable: post.prob <dbl>
-#> 
-#> $k$contrasts_ratio
-#> # A tibble: 1 × 6
-#>   contrast                 ratio conf.low conf.high p.value post.prob
-#>   <chr>                    <dbl>    <dbl>     <dbl>   <dbl>     <dbl>
-#> 1 group=ctrl - group=treat 0.354    0.188     0.679      NA     0.999
-#> 
-#> 
-#> attr(,"class")
-#> [1] "beezdiscounting_comparison"
-#> attr(,"backend")
-#> [1] "brms"
-#> attr(,"adjustment_method")
-#> [1] "none (posterior summaries; see post.prob)"
-#> attr(,"compare_specs_used")
-#> [1] "all fitted factors"
-#> attr(,"contrast_type_used")
-#> [1] "pairwise"
-#> attr(,"contrast_by_used")
-#> [1] "NULL"
 ```
 
 The tables have the same shape, with draws-based summaries in place of

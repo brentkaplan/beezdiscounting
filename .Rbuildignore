@@ -30,3 +30,5 @@ hex-beezdiscounting.png
 ^\.Rprofile$
 ^\.lintr$
 ^tests/testthat/fixtures/brms$
+^vignettes/.*\.Rmd\.orig$
+^vignettes/precompile\.R$

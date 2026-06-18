@@ -16,10 +16,13 @@ plotdir <- "man/figures/"
 [![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/beezdiscounting)](https://cran.r-project.org/package=beezdiscounting)
 [![downloads](https://cranlogs.r-pkg.org/badges/beezdiscounting)](https://cranlogs.r-pkg.org/)
 [![total](https://cranlogs.r-pkg.org/badges/grand-total/beezdiscounting)](https://cranlogs.r-pkg.org/)
+[![R-CMD-check](https://github.com/brentkaplan/beezdiscounting/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/brentkaplan/beezdiscounting/actions/workflows/R-CMD-check.yaml)
+[![pkgdown](https://img.shields.io/badge/pkgdown-documentation-blue)](https://brentkaplan.github.io/beezdiscounting/)
 
 An R package containing commonly used functions for analyzing behavioral economic discounting data.
 
-The package supports scoring of the 27-Item Monetary Choice Questionnaire (see
+The package began as a set of scoring and curve-fitting tools. It supports
+scoring of the 27-Item Monetary Choice Questionnaire (see
 [Kaplan et al., 2016](https://doi.org/10.1007/s40614-016-0070-9)), calculating
 *k* values (and Area Under the Curve metrics) from indifference points using
 nonlinear regression (Mazur's simple hyperbola and exponential), and scoring of
@@ -28,6 +31,30 @@ the minute discounting task
 using the Qualtrics 5-trial discounting template (see the
 [Qualtrics Minute Discounting User Guide](https://doi.org/10.13140/RG.2.2.26495.79527)),
 which is also available as a .qsf file in this package.
+
+It now also fits discounting *models*: a mixed-effects (hierarchical) tier via
+Template Model Builder (`fit_dd_tmb()`), a trial-level choice model
+(`fit_dd_choice()`), and a Bayesian tier via brms (`fit_dd_brms()`). These newer
+modeling tiers are available in the development version (install from GitHub, see
+below); the current CRAN release (0.4.0) carries the scoring and NLS tools. Full
+documentation, including worked vignettes, is available at the
+[package website](https://brentkaplan.github.io/beezdiscounting/).
+
+## Which approach should I use?
+
+The package spans several tiers. Find the row that matches your data and question,
+then follow the vignette for a worked example:
+
+| Your data / question | Function(s) | Vignette |
+|---|---|---|
+| 27-Item Monetary Choice Questionnaire | `score_mcq27()` | [MCQ scoring](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.html) |
+| Indifference points, individual or aggregate (NLS) | `fit_dd()` / `results_dd()` | [Delay discounting basics](https://brentkaplan.github.io/beezdiscounting/articles/delay-discounting-basics.html) |
+| Indifference points, mixed-effects (borrows strength across subjects) | `fit_dd_tmb()` | [Mixed-effects with TMB](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html) |
+| Indifference points at exactly 0 or 1 | `fit_dd_tmb(family = "sltb")` | [Bounded error distributions](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.html) |
+| Comparing discount rates between groups | `get_dd_param_emms()` / `get_dd_comparisons()` | [Group comparisons](https://brentkaplan.github.io/beezdiscounting/articles/dd-group-comparisons.html) |
+| Trial-level smaller-sooner vs. larger-later choices | `fit_dd_choice()` | [Group comparisons](https://brentkaplan.github.io/beezdiscounting/articles/dd-group-comparisons.html) |
+| Bayesian versions of the model tiers | `fit_dd_brms()` / `fit_dd_choice_brms()` | [Bayesian discounting](https://brentkaplan.github.io/beezdiscounting/articles/bayesian-discounting.html) |
+| 5.5-trial delay or probability task | `calc_dd()` / `calc_pd()` | [5.5-trial task](https://brentkaplan.github.io/beezdiscounting/articles/fivetrial-task.html) |
 
 ## Note About Use
 
@@ -70,17 +97,18 @@ library(beezdiscounting)
 
 ### GitHub Release
 
-To install a stable release directly from
-[GitHub](https://github.com/brentkaplan/beezdiscounting), first install and
-load the `devtools` package. Then, use `install_github` to install the
-package and associated vignette. You *don’t* need to download anything
-directly from [GitHub](https://github.com/brentkaplan/beezdiscounting), as
-you should use the following instructions:
+The development version on
+[GitHub](https://github.com/brentkaplan/beezdiscounting) carries the newer
+modeling tiers (`fit_dd_tmb()`, `fit_dd_choice()`, `fit_dd_brms()`) that are not
+yet on CRAN. First install and load the `devtools` package, then use
+`install_github` to install the package and its vignettes. You *don’t* need to
+download anything directly from
+[GitHub](https://github.com/brentkaplan/beezdiscounting):
 
 ```{r git-install, eval = FALSE}
 install.packages("devtools")
 
-devtools::install_github("brentkaplan/beezdiscounting")
+devtools::install_github("brentkaplan/beezdiscounting", build_vignettes = TRUE)
 
 library(beezdiscounting)
 ```
@@ -342,26 +370,20 @@ knitr::kable(dd_ip[1:12, ], caption = "Indifference Point Data")
 
 ### Identifying unsystematic data (Johnson & Bickel, 2008)
 
-The `check_unsystematic()` function can be used to check whether the data
-conform to the assumptions of the Johnson & Bickel (2008) method. The function
-is designed to work with a single participant. As will often be the case,
-you will want to run this for each unique participant in the dataset as
-shown below:
+The `check_unsystematic()` function checks whether the data conform to the
+assumptions of the Johnson & Bickel (2008) method. As of the development version
+it computes its two criteria per `id`, so you can pass the whole data frame and
+get one row per participant (single-subject input behaves as before):
 
 ```{r dd-ip-unsystematic, results = 'asis'}
-unsys <- dd_ip |>
-  dplyr::group_split(id) |>
-  purrr::map_dfr(~ check_unsystematic(
-    dat = .x,
-    ll = 1, # LL specification
-    c1 = 0.2, # Criterion 1 threshold
-    c2 = 0.1 # Criterion 2 threshold
-  )) |>
-  dplyr::mutate(id = factor(id, levels = unique(dd_ip$id))) |>
-  dplyr::arrange(id) |>
-  dplyr::slice(1:5)
+unsys <- check_unsystematic(
+  dat = dd_ip,
+  ll = 1, # LL specification
+  c1 = 0.2, # Criterion 1 threshold
+  c2 = 0.1 # Criterion 2 threshold
+)
 
-knitr::kable(unsys, caption = "Unsystematic Data Output")
+knitr::kable(head(unsys, 5), caption = "Unsystematic Data Output")
 
 ```
 
@@ -424,6 +446,199 @@ plot_dd(
 
 ```
 
+## Mixed-effects discounting (TMB)
+
+Fitting each subject's curve in isolation ignores that subjects are samples from
+a population. `fit_dd_tmb()` estimates the population discount rate and each
+subject's rate at the same time, borrowing strength across subjects so that noisy
+individuals are pulled toward the group. It is fast (a Laplace approximation with
+automatic differentiation, via Template Model Builder), and the
+scale-location-truncated beta family (`family = "sltb"`) handles indifference
+points at exactly 0 or 1, where ordinary beta regression is undefined.
+
+Bring your own `id`/`x`/`y` data, or simulate from the same model with
+`simulate_dd_ip()`, then fit a random intercept on the discount rate:
+
+> The code below is shown but not run in this README (the outputs are pasted
+> beneath each chunk). Copy it into your session to reproduce.
+
+```{r tmb-fit, eval = FALSE}
+sim <- simulate_dd_ip(
+  n_subjects = 15,
+  delays     = c(7, 30, 90, 180, 365, 730),
+  log_k_pop  = log(0.01),
+  sigma_u    = 0.5,
+  phi        = 10,
+  family     = "sltb",
+  equation   = "mazur",
+  seed       = 1
+)
+
+fit <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", random_effects = k ~ 1)
+summary(fit)
+```
+
+```
+TMB Mixed-Effects Discounting Model Summary
+==================================================
+
+Call:
+fit_dd_tmb(data = sim, equation = "mazur", family = "sltb", random_effects = k ~
+    1)
+
+Equation: mazur
+Family: sltb
+Backend: TMB_mixed
+Convergence: Yes
+Subjects: 15  Observations: 90
+
+--- Fixed Effects (k) ---
+          term estimate std.error statistic p.value
+ k:(Intercept)   0.0103    0.0016  -30.0245  <2e-16
+
+--- Variance Components ---
+               Component Estimate   Scale
+ sigma_u (log10-k RE SD)   0.2287   log10
+         phi (precision)  12.3247 natural
+
+--- Fit Statistics ---
+Log-likelihood: 87.54
+AIC: -169.08   BIC: -161.58
+```
+
+The fitted object carries the broom and base S3 surface: `tidy()`, `glance()`,
+`augment()`, `coef()`, `fixef()`, `ranef()`, `confint()`, `predict()`,
+`logLik()`, `AIC()`, and `BIC()`. `ranef()` returns each subject's deviation and
+their shrunken discount rate:
+
+```{r tmb-ranef, eval = FALSE}
+head(ranef(fit))
+```
+
+```
+  id         u_i           k
+1  1 -0.58783897 0.007523599
+2 10  0.15864424 0.011146530
+3 11  0.93521791 0.016777805
+4 12  0.05448851 0.010551646
+5 13 -0.65165654 0.007274969
+6 14 -2.33015497 0.003005893
+```
+
+Plotting the population curve over the per-subject indifference points shows the
+shrinkage at work:
+
+![Population discounting curve over per-subject indifference points](man/figures/readme-tmb-fit.png)
+
+The `equation` argument also accepts `"exponential"` and the two-parameter
+hyperboloids `"green-myerson"` and `"rachlin"` (both reduce to `"mazur"` at their
+shape exponent of 1), and `family = "gaussian"` gives an unbounded-residual fit.
+For group designs, pass `factors =` and use the estimated marginal means and
+comparisons described below. The
+[mixed-effects vignette](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html)
+walks through the full workflow.
+
+## Choice-based discounting
+
+When the data are trial-level smaller-sooner vs. larger-later choices rather than
+indifference points, `fit_dd_choice(mode = "structural")` estimates the discount
+rate `k` directly from the binary choices as a binomial GLMM. Between-subject
+factors enter the `log k` design, and the same post-hoc helpers
+(`get_dd_param_emms()`, `get_dd_comparisons()`) report marginal `k` per level and
+contrasts as ratios of discount rates:
+
+```{r choice-fit, eval = FALSE}
+ctrl <- simulate_dd_choice(n_subjects = 12, log_k_pop = log(0.01), seed = 7)
+trt  <- simulate_dd_choice(n_subjects = 12, log_k_pop = log(0.04), seed = 8)
+trt$id <- paste0("t", trt$id)
+ctrl$group <- "ctrl"
+trt$group <- "treat"
+choice_data <- rbind(ctrl, trt)
+
+fit_choice <- fit_dd_choice(choice_data, mode = "structural", factors = "group")
+get_dd_param_emms(fit_choice)
+get_dd_comparisons(fit_choice)$k$contrasts_ratio
+```
+
+```
+# A tibble: 2 × 6
+  level            k k_log std.error conf.low conf.high
+  <chr>        <dbl> <dbl>     <dbl>    <dbl>     <dbl>
+1 group=ctrl  0.0113 -4.48     0.234  0.00716    0.0179
+2 group=treat 0.0369 -3.30     0.212  0.0243     0.0559
+
+# A tibble: 1 × 5
+  contrast                 ratio conf.low conf.high  p.value
+  <chr>                    <dbl>    <dbl>     <dbl>    <dbl>
+1 group=ctrl - group=treat 0.307    0.167     0.566 0.000152
+```
+
+If your choices come from the 27-item MCQ, `mcq27_to_choice()` reshapes the
+long-form responses into the per-trial `id`/`ss_amount`/`ll_amount`/`delay`/`choice`
+frame that `fit_dd_choice()` expects, using the Kirby, Petry, & Bickel (1999) item
+design:
+
+```{r mcq-choice, eval = FALSE}
+head(mcq27_to_choice(mcq27))
+```
+
+```
+# A tibble: 6 × 5
+  id    ss_amount ll_amount delay choice
+  <chr>     <dbl>     <dbl> <dbl>  <dbl>
+1 1            54        55   117      0
+2 1            55        75    61      0
+3 1            19        25    53      0
+4 1            31        85     7      1
+5 1            14        25    19      1
+6 1            47        50   160      0
+```
+
+## Bayesian discounting (brms)
+
+For a Bayesian treatment, `fit_dd_brms()` and `fit_dd_choice_brms()` fit the same
+models via brms and Stan, with the discount rate estimated on the same natural-log
+scale. This is a development-version feature, and brms (along with posterior and
+loo) is a suggested package, so install it first. `fit_dd_brms()` covers all four
+indifference-point equations; `fit_dd_choice_brms()` implements the structural
+choice model (Mazur or exponential) in v1.
+
+```{r brms-fit, eval = FALSE}
+fit_b <- fit_dd_brms(dd_ip,
+  equation = "mazur", family = "beta",
+  chains = 4, iter = 2000, cores = 4, seed = 1
+)
+summary(fit_b)
+```
+
+```
+Bayesian Mixed-Effects Discounting Model Summary (brms)
+==================================================
+
+Equation: mazur  Family: beta
+Backend: brms
+Converged: Yes
+Subjects: 100  Observations: 600
+Diagnostics: rhat_max = 1.005, divergences = 0, min bulk ESS = 559
+
+Coefficients (posterior median / SD, natural scale):
+  term_display estimate std.error
+ k:(Intercept)    0.325   0.03308
+
+Variance components:
+               Component Estimate   Scale
+ sigma_u (log10-k RE SD)   0.4286   log10
+         phi (precision)  28.5854 natural
+```
+
+The S3 surface mirrors the TMB tier: `tidy()`, `glance()` (reporting
+`elpd_loo`/`looic` and MCMC diagnostics in place of `AIC`/`BIC`), `confint()`
+(quantile credible intervals), `ranef()`, and `predict()`. `get_dd_param_emms()`
+and `get_dd_comparisons()` accept brms fits too, returning credible intervals and
+the posterior probability of direction in place of adjusted p-values. The
+[Bayesian discounting vignette](https://brentkaplan.github.io/beezdiscounting/articles/bayesian-discounting.html)
+covers priors, boundary handling, and diagnostics in full.
+
 ## Scoring the Minute Discounting Tasks
 
 ### 5.5 Trial Delay Discounting Task
@@ -440,6 +655,19 @@ pd_out <- calc_pd(five.fivetrial_pd)
 knitr::kable(pd_out, caption = "Scoring Summary of the 5.5 Trial Probability Discounting Task")
 ```
 
+
+## Vignettes
+
+Worked examples live in the package vignettes, also rendered on the
+[website](https://brentkaplan.github.io/beezdiscounting/articles/):
+
+- [Scoring the 27-Item Monetary Choice Questionnaire](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.html) (`vignette("mcq27-scoring")`)
+- [Getting started: indifference points, k, and AUC](https://brentkaplan.github.io/beezdiscounting/articles/delay-discounting-basics.html) (`vignette("delay-discounting-basics")`)
+- [Scoring the 5.5-trial discounting task](https://brentkaplan.github.io/beezdiscounting/articles/fivetrial-task.html) (`vignette("fivetrial-task")`)
+- [Mixed-effects discounting with TMB](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html) (`vignette("tmb-mixed-effects")`)
+- [Indifference points with bounded error distributions](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.html) (`vignette("sltb-discounting")`)
+- [Comparing discounting rates between groups](https://brentkaplan.github.io/beezdiscounting/articles/dd-group-comparisons.html) (`vignette("dd-group-comparisons")`)
+- [Bayesian discounting models with brms](https://brentkaplan.github.io/beezdiscounting/articles/bayesian-discounting.html) (`vignette("bayesian-discounting")`)
 
 ## Learn More About Functions
 
@@ -493,3 +721,11 @@ and a wider range of delays. https://doi.org/10.13140/RG.2.2.31281.92000
 - Koffarnus, M. N., Kaplan, B. A., & Stein, J. S. (2017). User guide for
 Qualtrics minute discounting template.
 https://doi.org/10.13140/RG.2.2.26495.79527
+
+- Kim, M., Koffarnus, M. N., & Franck, C. T. (2024). Thinking inside the bounds:
+Improved error distributions for indifference point data analysis and simulation
+via beta regression using common discounting functions.
+
+- Kim, M., Kaplan, B. A., Koffarnus, M. N., & Franck, C. T. (2025).
+Scale-location-truncated beta regression: Expanding beta regression to accommodate
+0 and 1. *arXiv*. https://arxiv.org/abs/2509.13167

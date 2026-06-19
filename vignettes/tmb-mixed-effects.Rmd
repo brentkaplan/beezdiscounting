@@ -212,6 +212,32 @@ controls whether those two random effects are allowed to correlate.
   when standard errors cannot be computed, the uncertainty columns come back `NA`.
 - **Column names.** Whatever you call your columns via `id_var`, `x_var`, and
   `y_var`, the model frame and all method output use the canonical `id`, `x`, `y`.
+- **Factor coding.** Between-subject factors enter through `model.matrix()` with the
+  session's contrasts (treatment coding by default). The group means and contrasts
+  from `get_dd_param_emms()` and
+  `get_dd_comparisons()` are estimated marginal means, so they do not depend on the
+  contrast coding or on the choice of reference level. The raw fixed-effect
+  coefficients are read relative to that reference level, so if you interpret them
+  directly (rather than through `emmeans`), effect coding (`contr.sum`) and centering
+  any continuous covariates make the main effects easier to read, especially with
+  interactions (Young, 2017).
+
+## Relationship to Young (2017)
+
+The model fit here is the one-stage nonlinear multilevel approach Young (2017)
+advocates for indifference-point data: the population and each subject are estimated
+together on the log-k scale, with a random intercept on log k, instead of fitting
+each subject in isolation and averaging the per-subject estimates. The two-parameter
+equations can extend this, via `random_effects = k + s ~ 1`, to a correlated random
+effect on the curvature, as Young describes for the hyperboloids.
+
+Two things differ from Young's treatment. First, the default error family is the
+bounded SLT-beta rather than normal residuals, so the non-constant variance of
+indifference points (and observations at exactly 0 or 1) is modeled instead of
+assumed away; `family = "gaussian"` recovers the normal-error model for a closer
+comparison. Second, estimation uses TMB's Laplace approximation with exact automatic
+differentiation in place of `nlme`. See `vignette("sltb-discounting")` for the error
+model and Young (2017) for the multilevel framework.
 
 ## See also
 

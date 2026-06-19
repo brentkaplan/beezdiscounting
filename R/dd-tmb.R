@@ -1184,6 +1184,19 @@ NULL
 #'     \item{data_all}{The validated frame before complete-casing.}
 #'     \item{coercion_info}{Scale-coercion/clamping audit list.}
 #'   }
+#' @references
+#' Young, M. E. (2017). Discounting: A practical guide to multilevel analysis of
+#' indifference data. \emph{Journal of the Experimental Analysis of Behavior,
+#' 108}(1), 97-112. \doi{10.1002/jeab.265}
+#'
+#' Kim, M., Koffarnus, M. N., & Franck, C. T. (2024). Thinking inside the bounds:
+#' Improved error distributions for indifference point data analysis and simulation
+#' via beta regression using common discounting functions. \emph{arXiv} preprint
+#' arXiv:2404.18000.
+#'
+#' Kim, M., Kaplan, B. A., Koffarnus, M. N., & Franck, C. T. (2025).
+#' Scale-location-truncated beta regression: Expanding beta regression to
+#' accommodate 0 and 1. \emph{arXiv} preprint arXiv:2509.13167.
 #' @examples
 #' \donttest{
 #' # Small two-subject long-format indifference-point data frame.

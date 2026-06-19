@@ -3,6 +3,10 @@
 These objects are imported from other packages. Follow the links below
 to see their documentation.
 
+- beezdemand:
+
+  [`plot_qq()`](https://brentkaplan.github.io/beezdemand/reference/plot_qq.html)
+
 - generics:
 
   [`augment()`](https://generics.r-lib.org/reference/augment.html),

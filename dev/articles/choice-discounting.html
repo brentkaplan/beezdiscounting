@@ -196,17 +196,12 @@ lets each person have their own rate, pooled toward the group.
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> sigma_u (log…   0.134   <span style="color: #BB0000;">NA</span>            <span style="color: #BB0000;">NA</span>   <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>     variance  log10         </span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: term_display &lt;chr&gt;</span></span></span></code></pre></div>
 <p>Because the model estimates a discount rate, it implies a discounting
-curve, the same object the indifference-point models produce. Reading
-<code>k</code> off the fit and drawing
-<code>D(k, delay) = 1 / (1 + k * delay)</code> shows it:</p>
+curve, the same object the indifference-point models produce.
+<code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> draws that implied curve,
+<code>D(k, delay) = 1 / (1 + k * delay)</code>, from the fitted
+<code>k</code>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">k_hat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_s</span><span class="op">)</span><span class="op">$</span><span class="va">estimate</span><span class="op">[</span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_s</span><span class="op">)</span><span class="op">$</span><span class="va">term</span> <span class="op">==</span> <span class="st">"k:(Intercept)"</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
-<span><span class="va">delays</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">ch</span><span class="op">$</span><span class="va">delay</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">delays</span>, <span class="fl">1</span> <span class="op">/</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">k_hat</span> <span class="op">*</span> <span class="va">delays</span><span class="op">)</span>,</span>
-<span>  type <span class="op">=</span> <span class="st">"l"</span>, lwd <span class="op">=</span> <span class="fl">2</span>, col <span class="op">=</span> <span class="st">"#2B4560"</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>,</span>
-<span>  xlab <span class="op">=</span> <span class="st">"Delay"</span>, ylab <span class="op">=</span> <span class="st">"Relative subjective value"</span>,</span>
-<span>  main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Discount curve implied by the choice fit (k = %.4f)"</span>, <span class="va">k_hat</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit_s</span>, type <span class="op">=</span> <span class="st">"population"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="choice-discounting_files/figure-html/curve-1.png" class="r-plt" alt="" width="672"></p>
 </div>
 <div class="section level2">

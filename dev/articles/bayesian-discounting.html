@@ -150,6 +150,26 @@ reproduce them. brms, posterior, and loo are suggested packages.</p>
 <span><span class="co">#&gt; 4  P11  0.2369896 0.4114677</span></span>
 <span><span class="co">#&gt; 5  P12 -0.5699986 0.1839221</span></span>
 <span><span class="co">#&gt; 6  P13  0.6143202 0.5950892</span></span></code></pre></div>
+<p>The posterior discount curve is what the Bayesian fit adds over a
+point estimate. <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> draws the population curve (random
+effects set to zero) with an equal-tailed credible band for the
+conditional mean, over the observed (boundary-squeezed) indifference
+points; <code>type = "parameters"</code> shows each subject’s posterior
+<code>k</code> with its credible interval.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span>, type <span class="op">=</span> <span class="st">"population"</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="bayesian-discounting-post-curve-1.png" alt="Posterior population discount curve with a 95% credible band over the observed indifference points."><p class="caption">
+plot of chunk post-curve
+</p>
+</div>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span>, type <span class="op">=</span> <span class="st">"parameters"</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="bayesian-discounting-post-k-1.png" alt="Posterior subject-level discount rates, each with a 95% credible interval, on a log scale."><p class="caption">
+plot of chunk post-k
+</p>
+</div>
 <div class="section level3">
 <h3 id="families-and-boundaries">Families and boundaries<a class="anchor" aria-label="anchor" href="#families-and-boundaries"></a>
 </h3>
@@ -184,7 +204,7 @@ centers <code>k * median(delay) = 1</code>, the delay at which the Mazur
 curve crosses one half. The anchor is printed at fit time, stored in
 <code>fit$autoscale_info</code>, and the whole table is inspectable and
 overridable:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/default_dd_priors.html">default_dd_priors</a></span><span class="op">(</span><span class="st">"mazur"</span>, family <span class="op">=</span> <span class="st">"beta"</span>, data <span class="op">=</span> <span class="va">dd_ip</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                  prior class      coef group resp dpar nlpar   lb   ub source</span></span>
 <span><span class="co">#&gt;  normal(-4.09434, 2.5)     b Intercept                  logk &lt;NA&gt; &lt;NA&gt;   user</span></span>
@@ -192,7 +212,7 @@ overridable:</p>
 <span><span class="co">#&gt;          gamma(2, 0.1)   phi                                 &lt;NA&gt; &lt;NA&gt;   user</span></span></code></pre></div>
 <p>Override any row by passing a <code><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">brms::set_prior()</a></code> (shown
 here without re-fitting):</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_brms.html">fit_dd_brms</a></span><span class="op">(</span></span>
 <span>  <span class="va">dd_ip</span>,</span>
 <span>  equation <span class="op">=</span> <span class="st">"mazur"</span>,</span>
@@ -209,7 +229,7 @@ case exactly as the TMB template does).</p>
 <div class="section level2">
 <h2 id="trial-level-choice">Trial-level choice<a class="anchor" aria-label="anchor" href="#trial-level-choice"></a>
 </h2>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ctrl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_dd_choice.html">simulate_dd_choice</a></span><span class="op">(</span>n_subjects <span class="op">=</span> <span class="fl">12</span>, log_k_pop <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.01</span><span class="op">)</span>, seed <span class="op">=</span> <span class="fl">7</span><span class="op">)</span></span>
 <span><span class="va">trt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_dd_choice.html">simulate_dd_choice</a></span><span class="op">(</span>n_subjects <span class="op">=</span> <span class="fl">12</span>, log_k_pop <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.04</span><span class="op">)</span>, seed <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">trt</span><span class="op">$</span><span class="va">id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"t"</span>, <span class="va">trt</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
@@ -251,7 +271,7 @@ Bayesian.</p>
 <code><a href="../reference/fit_dd_choice.html">fit_dd_choice()</a></code> (<code>gamma</code> and <code>b0</code>
 stay population-level), and the draws-based EMM/comparison helpers
 accept the result:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fitc_grp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_choice_brms.html">fit_dd_choice_brms</a></span><span class="op">(</span></span>
 <span>  <span class="va">choice_data</span>,</span>
 <span>  equation <span class="op">=</span> <span class="st">"mazur"</span>,</span>

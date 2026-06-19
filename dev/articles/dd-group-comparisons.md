@@ -186,6 +186,26 @@ tidy(cmp)
 #> 1 k     condition…   -0.473     0.139     -3.41   Inf   -0.745    -0.201 6.46e-4
 ```
 
+## Visualizing the contrasts
+
+A forest plot makes these contrasts easier to scan than the table. Each
+row is a `k` ratio with its confidence interval; the dashed line marks a
+ratio of 1 (no difference), and contrasts whose interval excludes 1 are
+highlighted. Across the condition-by-site grid, the condition contrasts
+(a threefold effect by construction) are flagged, whereas the site
+contrasts (no true effect) are not.
+
+``` r
+
+plot(get_dd_comparisons(fit))
+```
+
+![Forest plot of pairwise k ratios with confidence intervals across the
+condition-by-site grid; condition contrasts clear the no-difference line
+while site contrasts do not.](dd-group-comparisons-forest-1.png)
+
+plot of chunk forest
+
 ## Trial-level choice models
 
 The structural choice model estimates the same log-k design from binary

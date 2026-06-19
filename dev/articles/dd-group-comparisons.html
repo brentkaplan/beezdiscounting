@@ -256,13 +256,30 @@ cross-backend frame:</p>
 <span><span class="co">#&gt; 1 k     condition…   -0.473     0.139     -3.41   Inf   -0.745    -0.201 6.46e-4</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="visualizing-the-contrasts">Visualizing the contrasts<a class="anchor" aria-label="anchor" href="#visualizing-the-contrasts"></a>
+</h2>
+<p>A forest plot makes these contrasts easier to scan than the table.
+Each row is a <code>k</code> ratio with its confidence interval; the
+dashed line marks a ratio of 1 (no difference), and contrasts whose
+interval excludes 1 are highlighted. Across the condition-by-site grid,
+the condition contrasts (a threefold effect by construction) are
+flagged, whereas the site contrasts (no true effect) are not.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/get_dd_comparisons.html">get_dd_comparisons</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="dd-group-comparisons-forest-1.png" alt="Forest plot of pairwise k ratios with confidence intervals across the condition-by-site grid; condition contrasts clear the no-difference line while site contrasts do not."><p class="caption">
+plot of chunk forest
+</p>
+</div>
+</div>
+<div class="section level2">
 <h2 id="trial-level-choice-models">Trial-level choice models<a class="anchor" aria-label="anchor" href="#trial-level-choice-models"></a>
 </h2>
 <p>The structural choice model estimates the same log-k design from
 binary smaller-sooner vs. larger-later choices, so the comparison
 surface is identical. (The simulator has no built-in group effect; stack
 two simulated groups.)</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ctrl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_dd_choice.html">simulate_dd_choice</a></span><span class="op">(</span>n_subjects <span class="op">=</span> <span class="fl">12</span>, log_k_pop <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.01</span><span class="op">)</span>, seed <span class="op">=</span> <span class="fl">7</span><span class="op">)</span></span>
 <span><span class="va">trt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_dd_choice.html">simulate_dd_choice</a></span><span class="op">(</span>n_subjects <span class="op">=</span> <span class="fl">12</span>, log_k_pop <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.04</span><span class="op">)</span>, seed <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">trt</span><span class="op">$</span><span class="va">id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"t"</span>, <span class="va">trt</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
@@ -295,7 +312,7 @@ the same
 arguments, and
 <code><a href="../reference/get_dd_param_emms.html">get_dd_param_emms()</a></code>/<code><a href="../reference/get_dd_comparisons.html">get_dd_comparisons()</a></code>
 accept the fits directly:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_brms.html">fit_dd_brms</a></span><span class="op">(</span></span>
 <span>  <span class="va">sim</span>,</span>
 <span>  equation <span class="op">=</span> <span class="st">"mazur"</span>, factors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"site"</span><span class="op">)</span>,</span>

@@ -211,17 +211,21 @@ delays and plot it over the raw points:
 
 ``` r
 
-library(ggplot2)
-
 grid <- data.frame(x = seq(1, 730, length.out = 100))
-pop_curve <- predict(fit, newdata = grid, level = "population")
+head(predict(fit, newdata = grid, level = "population"))
+#> # A tibble: 6 × 2
+#>       x predict.fixed
+#>   <dbl>         <dbl>
+#> 1  1            0.990
+#> 2  8.36         0.921
+#> 3 15.7          0.861
+#> 4 23.1          0.809
+#> 5 30.5          0.762
+#> 6 37.8          0.721
 
-ggplot(sim, aes(x, y)) +
-  geom_point(alpha = 0.3) +
-  geom_line(data = pop_curve, aes(x, predict.fixed), linewidth = 1) +
-  labs(x = "Delay (days)", y = "Indifference point",
-       title = "Population discounting curve") +
-  theme_minimal()
+# plot() draws the population curve over the observed points directly; type =
+# "individual" adds the per-subject (shrinkage) curves.
+plot(fit, type = "population")
 ```
 
 ![](tmb-mixed-effects_files/figure-html/predict-plot-1.png)
@@ -251,11 +255,7 @@ head(aug)
 #> 5 1       365 0.402   0.267  0.135      1.12  
 #> 6 1       730 0.187   0.154  0.0331     0.334
 
-ggplot(aug, aes(.fitted, .std_resid)) +
-  geom_point(alpha = 0.3) +
-  geom_hline(yintercept = 0, linetype = 2) +
-  labs(x = "Fitted indifference point", y = "Standardized residual") +
-  theme_minimal()
+plot(fit, type = "resid")
 ```
 
 ![](tmb-mixed-effects_files/figure-html/augment-1.png)

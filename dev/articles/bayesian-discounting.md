@@ -63,6 +63,33 @@ head(ranef(fit)) # per-subject k posterior summaries
 #> 6  P13  0.6143202 0.5950892
 ```
 
+The posterior discount curve is what the Bayesian fit adds over a point
+estimate. [`plot()`](https://rdrr.io/r/graphics/plot.default.html) draws
+the population curve (random effects set to zero) with an equal-tailed
+credible band for the conditional mean, over the observed
+(boundary-squeezed) indifference points; `type = "parameters"` shows
+each subject’s posterior `k` with its credible interval.
+
+``` r
+
+plot(fit, type = "population")
+```
+
+![Posterior population discount curve with a 95% credible band over the
+observed indifference points.](bayesian-discounting-post-curve-1.png)
+
+plot of chunk post-curve
+
+``` r
+
+plot(fit, type = "parameters")
+```
+
+![Posterior subject-level discount rates, each with a 95% credible
+interval, on a log scale.](bayesian-discounting-post-k-1.png)
+
+plot of chunk post-k
+
 ### Families and boundaries
 
 The TMB tier’s SLT-beta family has no brms equivalent. Two options cover

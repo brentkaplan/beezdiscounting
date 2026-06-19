@@ -215,14 +215,29 @@ Area under the curve, fit metrics, and systematicity checks.
 
 ## Visualization
 
-Plotting methods for scored task outputs.
+Plot methods for fitted discounting models – discount curves, Bayesian
+posterior bands, group-comparison forest plots, and random-effect QQ
+diagnostics – plus plotting for scored task outputs.
 
+- [`plot(`*`<beezdiscounting_brms>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_brms.md)
+  : Plot a Bayesian (brms) indifference-point discounting model
+- [`plot(`*`<beezdiscounting_choice>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_choice.md)
+  : Plot a choice-based discounting model
+- [`plot(`*`<beezdiscounting_choice_brms>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_choice_brms.md)
+  : Plot a Bayesian (brms) choice-based discounting model
+- [`plot(`*`<beezdiscounting_comparison>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_comparison.md)
+  : Plot group differences in discount rate
+- [`plot(`*`<beezdiscounting_tmb>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_tmb.md)
+  : Plot a mixed-effects discounting model
 - [`plot(`*`<prop_ss_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.prop_ss_output.md)
   : Plot Proportion of SIR/SS Choices by k Value
 - [`plot(`*`<score_mcq27_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.score_mcq27_output.md)
   : Plot MCQ-27 Scores
 - [`plot_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/plot_dd.md)
   : Plot Delay-Discounting Model
+- [`plot_qq(`*`<beezdiscounting_tmb>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot_qq.beezdiscounting.md)
+  [`plot_qq(`*`<beezdiscounting_choice>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot_qq.beezdiscounting.md)
+  : Random-effect normal QQ plots for discounting models
 
 ## Datasets
 
@@ -249,6 +264,7 @@ Generics re-exported from other packages.
   [`glance`](https://brentkaplan.github.io/beezdiscounting/reference/reexports.md)
   [`fixef`](https://brentkaplan.github.io/beezdiscounting/reference/reexports.md)
   [`ranef`](https://brentkaplan.github.io/beezdiscounting/reference/reexports.md)
+  [`plot_qq`](https://brentkaplan.github.io/beezdiscounting/reference/reexports.md)
   : Objects exported from other packages
 - [`` `%>%` ``](https://brentkaplan.github.io/beezdiscounting/reference/pipe.md)
   : Pipe operator

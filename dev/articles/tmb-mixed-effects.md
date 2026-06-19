@@ -6,7 +6,9 @@ subjects are samples from a population. The mixed-effects tier in
 subject’s rate at the same time, borrowing strength across subjects so
 that noisy individuals are pulled toward the group.
 [`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)
-is the engine for that tier.
+is the engine for that tier. For a practical guide to this style of
+multilevel analysis of discounting indifference points, see Young
+(2017).
 
 This vignette is a tour of the
 [`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)
@@ -370,6 +372,39 @@ effects are allowed to correlate.
 - **Column names.** Whatever you call your columns via `id_var`,
   `x_var`, and `y_var`, the model frame and all method output use the
   canonical `id`, `x`, `y`.
+- **Factor coding.** Between-subject factors enter through
+  [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html) with the
+  session’s contrasts (treatment coding by default). The group means and
+  contrasts from
+  [`get_dd_param_emms()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_param_emms.md)
+  and
+  [`get_dd_comparisons()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_comparisons.md)
+  are estimated marginal means, so they do not depend on the contrast
+  coding or on the choice of reference level. The raw fixed-effect
+  coefficients are read relative to that reference level, so if you
+  interpret them directly (rather than through `emmeans`), effect coding
+  (`contr.sum`) and centering any continuous covariates make the main
+  effects easier to read, especially with interactions (Young, 2017).
+
+## Relationship to Young (2017)
+
+The model fit here is the one-stage nonlinear multilevel approach Young
+(2017) advocates for indifference-point data: the population and each
+subject are estimated together on the log-k scale, with a random
+intercept on log k, instead of fitting each subject in isolation and
+averaging the per-subject estimates. The two-parameter equations can
+extend this, via `random_effects = k + s ~ 1`, to a correlated random
+effect on the curvature, as Young describes for the hyperboloids.
+
+Two things differ from Young’s treatment. First, the default error
+family is the bounded SLT-beta rather than normal residuals, so the
+non-constant variance of indifference points (and observations at
+exactly 0 or 1) is modeled instead of assumed away;
+`family = "gaussian"` recovers the normal-error model for a closer
+comparison. Second, estimation uses TMB’s Laplace approximation with
+exact automatic differentiation in place of `nlme`. See
+[`vignette("sltb-discounting")`](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.md)
+for the error model and Young (2017) for the multilevel framework.
 
 ## See also
 
@@ -382,3 +417,9 @@ effects are allowed to correlate.
   for single-subject fitting, `k`, and AUC.
 - [`vignette("bayesian-discounting")`](https://brentkaplan.github.io/beezdiscounting/articles/bayesian-discounting.md)
   for the same models in a Bayesian framework.
+
+## References
+
+- Young, M. E. (2017). Discounting: A practical guide to multilevel
+  analysis of indifference data. *Journal of the Experimental Analysis
+  of Behavior, 108*(1), 97-112. <https://doi.org/10.1002/jeab.265>

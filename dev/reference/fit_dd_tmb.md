@@ -172,6 +172,22 @@ An object of class `beezdiscounting_tmb` with components:
 
   Scale-coercion/clamping audit list.
 
+## References
+
+Young, M. E. (2017). Discounting: A practical guide to multilevel
+analysis of indifference data. *Journal of the Experimental Analysis of
+Behavior, 108*(1), 97-112.
+[doi:10.1002/jeab.265](https://doi.org/10.1002/jeab.265)
+
+Kim, M., Koffarnus, M. N., & Franck, C. T. (2024). Thinking inside the
+bounds: Improved error distributions for indifference point data
+analysis and simulation via beta regression using common discounting
+functions. *arXiv* preprint arXiv:2404.18000.
+
+Kim, M., Kaplan, B. A., Koffarnus, M. N., & Franck, C. T. (2025).
+Scale-location-truncated beta regression: Expanding beta regression to
+accommodate 0 and 1. *arXiv* preprint arXiv:2509.13167.
+
 ## Examples
 
 ``` r

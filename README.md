@@ -1141,15 +1141,33 @@ front of the function name.
   Rachlin (Eds.), The effect of delay and of intervening events on
   reinforcement value (pp. 55–73). Lawrence Erlbaum Associates, Inc.
 
+- Myerson, J., Green, L., & Warusawitharana, M. (2001). Area under the
+  curve as a measure of discounting. *Journal of the Experimental
+  Analysis of Behavior, 76* (2), 235-243.
+  <https://doi.org/10.1901/jeab.2001.76-235>
+
 - Borges, A. M., Kuang, J., Milhorn, H. and Yi, R. (2016), An
   alternative approach to calculating Area-Under-the-Curve (AUC) in
   delay discounting research. *Journal of the Experimental Analysis of
   Behavior, 106*, 145-155. <https://doi.org/10.1002/jeab.219>
 
+- Johnson, M. W., & Bickel, W. K. (2008). An algorithm for identifying
+  nonsystematic delay-discounting data. *Experimental and Clinical
+  Psychopharmacology, 16* (3), 264-274.
+  <https://doi.org/10.1037/1064-1297.16.3.264>
+
 - Kirby, K. N., Petry, N. M., & Bickel, W. K. (1999). Heroin addicts
   have higher discount rates for delayed rewards than non-drug-using
   controls. *Journal of Experimental Psychology: General, 128* (1),
   78-87. <https://doi.org/10.1037//0096-3445.128.1.78>
+
+- Young, M. E. (2017). Discounting: A practical guide to multilevel
+  analysis of indifference data. *Journal of the Experimental Analysis
+  of Behavior, 108* (1), 97-112. <https://doi.org/10.1002/jeab.265>
+
+- Young, M. E. (2018). Discounting: A practical guide to multilevel
+  analysis of choice data. *Journal of the Experimental Analysis of
+  Behavior, 109* (2), 293-312. <https://doi.org/10.1002/jeab.316>
 
 - Yeh, Y. H., Tegge, A. N., Freitas-Lemos, R., Myerson, J., Green, L., &
   Bickel, W. K. (2023). Discounting of delayed rewards: Missing data
@@ -1179,3 +1197,8 @@ front of the function name.
 - Kim, M., Kaplan, B. A., Koffarnus, M. N., & Franck, C. T. (2025).
   Scale-location-truncated beta regression: Expanding beta regression to
   accommodate 0 and 1. *arXiv*. <https://arxiv.org/abs/2509.13167>
+
+------------------------------------------------------------------------
+
+<sub>Maintained by Brent Kaplan. For statistical consulting and R/software
+development in behavioral economics, see [codedbx](https://www.codedbx.com).</sub>

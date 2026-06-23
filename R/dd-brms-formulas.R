@@ -74,7 +74,8 @@
   boundary <- match.arg(boundary)
 
   has_s <- equation %in% c("green-myerson", "rachlin")
-  mu_str <- switch(equation,
+  mu_str <- switch(
+    equation,
     "mazur" = "1 / (1 + exp(logk) * x)",
     "exponential" = "exp(-exp(logk) * x)",
     "green-myerson" = "(1 + exp(logk) * x)^(-exp(logs))",
@@ -107,7 +108,8 @@
     data = data
   )
   rhs_core <- sub(
-    "^~\\s*", "",
+    "^~\\s*",
+    "",
     paste(deparse(stats::as.formula(rhs), width.cutoff = 500), collapse = " ")
   )
   pforms <- list(stats::as.formula(paste0("logk ~ ", rhs_core, " + (1 | id)")))
@@ -126,7 +128,11 @@
     nlpars = c("logk", if (has_s) "logs"),
     has_s = has_s,
     response_var = "y",
-    derived_cols = if (equation == "rachlin") c("xzero", "xsafe") else character(0),
+    derived_cols = if (equation == "rachlin") {
+      c("xzero", "xsafe")
+    } else {
+      character(0)
+    },
     equation = equation,
     boundary = if (family == "beta") boundary else NA_character_
   )
@@ -160,7 +166,8 @@
   .dd_brms_check_installed()
   equation <- match.arg(equation)
 
-  disc_str <- switch(equation,
+  disc_str <- switch(
+    equation,
     "mazur" = "1 / (1 + exp(logk) * delay)",
     "exponential" = "exp(-exp(logk) * delay)"
   )
@@ -179,8 +186,12 @@
     data = data
   )
   rhs_core <- sub(
-    "^~\\s*", "",
-    paste(deparse(stats::as.formula(fe_rhs), width.cutoff = 500), collapse = " ")
+    "^~\\s*",
+    "",
+    paste(
+      deparse(stats::as.formula(fe_rhs), width.cutoff = 500),
+      collapse = " "
+    )
   )
 
   pforms <- list(

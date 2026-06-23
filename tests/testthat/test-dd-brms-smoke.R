@@ -52,10 +52,15 @@ test_that("fit_dd_brms mazur/beta: object contract and recovery", {
   d <- dd_smoke_data()
   fit <- fit_dd_brms(
     d,
-    equation = "mazur", family = "beta",
-    chains = 2, iter = 600, warmup = 300,
-    cores = 2, seed = 123,
-    loo = FALSE, verbose = 0
+    equation = "mazur",
+    family = "beta",
+    chains = 2,
+    iter = 600,
+    warmup = 300,
+    cores = 2,
+    seed = 123,
+    loo = FALSE,
+    verbose = 0
   )
 
   expect_s3_class(fit, "beezdiscounting_brms")
@@ -65,7 +70,9 @@ test_that("fit_dd_brms mazur/beta: object contract and recovery", {
   expect_lt(abs(fit$model$coefficients[["beta_k"]] - log(0.02)), 1)
 
   vc <- fit$model$variance_components
-  expect_true(all(c("sigma_u (log10-k RE SD)", "phi (precision)") %in% vc$Component))
+  expect_true(all(
+    c("sigma_u (log10-k RE SD)", "phi (precision)") %in% vc$Component
+  ))
 
   sp <- fit$subject_pars
   expect_identical(nrow(sp), 8L)
@@ -114,9 +121,13 @@ test_that("fit_dd_choice_brms structural: object contract and recovery", {
   fit <- fit_dd_choice_brms(
     d,
     equation = "mazur",
-    chains = 2, iter = 600, warmup = 300,
-    cores = 2, seed = 123,
-    loo = FALSE, verbose = 0
+    chains = 2,
+    iter = 600,
+    warmup = 300,
+    cores = 2,
+    seed = 123,
+    loo = FALSE,
+    verbose = 0
   )
 
   expect_s3_class(fit, "beezdiscounting_choice_brms")
@@ -128,8 +139,16 @@ test_that("fit_dd_choice_brms structural: object contract and recovery", {
   t <- tidy(fit)
   expect_identical(
     names(t),
-    c("term", "estimate", "std.error", "statistic", "p.value",
-      "component", "estimate_scale", "term_display")
+    c(
+      "term",
+      "estimate",
+      "std.error",
+      "statistic",
+      "p.value",
+      "component",
+      "estimate_scale",
+      "term_display"
+    )
   )
   expect_true(all(c("k:(Intercept)", "gamma") %in% t$term))
   # TMB choice contract: k is the fixed row; gamma is a shape row (Codex 039-B2)
@@ -139,7 +158,9 @@ test_that("fit_dd_choice_brms structural: object contract and recovery", {
 
   # confint with parm aliases (Codex 039-B1)
   ci <- confint(fit)
-  expect_true(all(c("term", "estimate", "conf.low", "conf.high", "level") %in% names(ci)))
+  expect_true(all(
+    c("term", "estimate", "conf.low", "conf.high", "level") %in% names(ci)
+  ))
   expect_identical(nrow(confint(fit, parm = "log_gamma")), 1L)
   expect_identical(nrow(confint(fit, parm = "k:(Intercept)")), 1L)
 
@@ -171,7 +192,8 @@ test_that("fit_dd_choice_brms recovers a between-subject k effect (TICKET-048)",
   d$group <- factor(ifelse(d$id <= n_per_group, "ctrl", "treat"))
   d$ss_amount <- 50
   d$ll_amount <- 100
-  logk_i <- log(0.01) + log(4) * (seq_len(2 * n_per_group) > n_per_group) +
+  logk_i <- log(0.01) +
+    log(4) * (seq_len(2 * n_per_group) > n_per_group) +
     rnorm(2 * n_per_group, 0, 0.3)
   k_i <- exp(logk_i)
   D <- 1 / (1 + k_i[d$id] * d$delay)
@@ -182,10 +204,15 @@ test_that("fit_dd_choice_brms recovers a between-subject k effect (TICKET-048)",
 
   fit <- fit_dd_choice_brms(
     d,
-    equation = "mazur", factors = "group",
-    chains = 2, iter = 600, warmup = 300,
-    cores = 2, seed = 123,
-    loo = FALSE, verbose = 0
+    equation = "mazur",
+    factors = "group",
+    chains = 2,
+    iter = 600,
+    warmup = 300,
+    cores = 2,
+    seed = 123,
+    loo = FALSE,
+    verbose = 0
   )
 
   coefs <- fit$model$coefficients
@@ -213,13 +240,20 @@ test_that("fit_dd_brms gaussian green-myerson fits with the s parameter", {
   d <- dd_smoke_data()
   fit <- fit_dd_brms(
     d,
-    equation = "green-myerson", family = "gaussian",
-    chains = 2, iter = 600, warmup = 300,
-    cores = 2, seed = 123,
-    loo = TRUE, verbose = 0
+    equation = "green-myerson",
+    family = "gaussian",
+    chains = 2,
+    iter = 600,
+    warmup = 300,
+    cores = 2,
+    seed = 123,
+    loo = TRUE,
+    verbose = 0
   )
 
   expect_identical(names(fit$model$coefficients), c("beta_k", "log_s"))
   expect_s3_class(fit$loo, "loo")
-  expect_true("sigma_e (Residual SD)" %in% fit$model$variance_components$Component)
+  expect_true(
+    "sigma_e (Residual SD)" %in% fit$model$variance_components$Component
+  )
 })

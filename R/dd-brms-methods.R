@@ -8,7 +8,10 @@
 #' Fixed-effect (and shape) coefficient table from posterior draws
 #' @noRd
 .dd_brms_coef_table <- function(object, report_space = "natural") {
-  report_space <- match.arg(report_space, c("natural", "log10", "internal", "log"))
+  report_space <- match.arg(
+    report_space,
+    c("natural", "log10", "internal", "log")
+  )
   to <- if (report_space == "internal") "log" else report_space
 
   draws <- .dd_brms_draws_matrix(object)
@@ -33,16 +36,19 @@
   if (isTRUE(object$param_info$has_s)) {
     dj <- as.numeric(draws[, "b_logs_Intercept"])
     tdraws <- .dd_brms_transform_draws(dj, to = to)
-    rows <- c(rows, list(tibble::tibble(
-      term = "s",
-      estimate = stats::median(tdraws),
-      std.error = stats::sd(tdraws),
-      statistic = NA_real_,
-      p.value = NA_real_,
-      component = "shape",
-      estimate_scale = to,
-      term_display = .dd_term_display_space("s", to)
-    )))
+    rows <- c(
+      rows,
+      list(tibble::tibble(
+        term = "s",
+        estimate = stats::median(tdraws),
+        std.error = stats::sd(tdraws),
+        statistic = NA_real_,
+        p.value = NA_real_,
+        component = "shape",
+        estimate_scale = to,
+        term_display = .dd_term_display_space("s", to)
+      ))
+    )
   }
 
   dplyr::bind_rows(rows)
@@ -226,8 +232,11 @@ augment.beezdiscounting_brms <- function(x, ...) {
     # phi recycles down the columns (draw-aligned: column length == n_draws)
     if (nrow(epred_draws) != length(phi_draws)) {
       stop(
-        "Internal error: epred draw count (", nrow(epred_draws),
-        ") does not match phi draw count (", length(phi_draws), ").",
+        "Internal error: epred draw count (",
+        nrow(epred_draws),
+        ") does not match phi draw count (",
+        length(phi_draws),
+        ").",
         call. = FALSE
       )
     }
@@ -287,7 +296,12 @@ confint.beezdiscounting_brms <- function(
   out <- dplyr::bind_rows(rows)
 
   if (!is.null(parm)) {
-    display <- vapply(terms, .dd_term_display_space, character(1), report_space = to)
+    display <- vapply(
+      terms,
+      .dd_term_display_space,
+      character(1),
+      report_space = to
+    )
     keep <- out$term %in% parm | tmb_names %in% parm | display %in% parm
     out <- out[keep, , drop = FALSE]
   }
@@ -330,8 +344,11 @@ predict.beezdiscounting_brms <- function(
     return(object$subject_pars)
   }
 
-  if (!is.null(newdata) && object$param_info$equation == "rachlin" &&
-    !all(c("xzero", "xsafe") %in% names(newdata))) {
+  if (
+    !is.null(newdata) &&
+      object$param_info$equation == "rachlin" &&
+      !all(c("xzero", "xsafe") %in% names(newdata))
+  ) {
     newdata$xzero <- as.numeric(newdata$x == 0)
     newdata$xsafe <- ifelse(newdata$x == 0, 1, newdata$x)
   }
@@ -339,7 +356,8 @@ predict.beezdiscounting_brms <- function(
   re_formula <- if (level == "population") NA else NULL
   ep <- brms::posterior_epred(
     object$brmsfit,
-    newdata = newdata, re_formula = re_formula
+    newdata = newdata,
+    re_formula = re_formula
   )
   if (draws) {
     return(ep)
@@ -383,12 +401,18 @@ residuals.beezdiscounting_brms <- function(
 #' method). Columns mirror the TMB output: `level`, `k`, `k_log`,
 #' `std.error` (log-scale posterior SD), `conf.low`, `conf.high`.
 #' @noRd
-.dd_brms_param_emms <- function(fit, factors_in_emm = NULL, at = NULL,
-                                ci_level = 0.95) {
+.dd_brms_param_emms <- function(
+  fit,
+  factors_in_emm = NULL,
+  at = NULL,
+  ci_level = 0.95
+) {
   .dd_validate_at(fit, at)
   grid <- .dd_build_emm_ref_grid(
     fit,
-    at = at, factors_in_emm = factors_in_emm, validate = FALSE
+    at = at,
+    factors_in_emm = factors_in_emm,
+    validate = FALSE
   )
   draws <- .dd_brms_draws_matrix(fit)
   b <- as.matrix(
@@ -413,7 +437,8 @@ residuals.beezdiscounting_brms <- function(
 
   ref_X <- grid$ref_X
   if (ncol(ref_X) != ncol(b)) {
-    stop("Reference-grid design and posterior coefficient draws disagree.",
+    stop(
+      "Reference-grid design and posterior coefficient draws disagree.",
       call. = FALSE
     )
   }
@@ -430,13 +455,27 @@ residuals.beezdiscounting_brms <- function(
 #' @noRd
 .dd_brms_grid_label <- function(grid, i, fs) {
   if (length(fs) > 0L) {
-    paste(vapply(fs, function(f) {
-      paste0(f, "=", grid$level_combos[[f]][i])
-    }, character(1)), collapse = ", ")
+    paste(
+      vapply(
+        fs,
+        function(f) {
+          paste0(f, "=", grid$level_combos[[f]][i])
+        },
+        character(1)
+      ),
+      collapse = ", "
+    )
   } else if (length(grid$cov_names) > 0L) {
-    paste(vapply(grid$cov_names, function(cv) {
-      paste0(cv, "=", grid$level_combos[[cv]][i])
-    }, character(1)), collapse = ", ")
+    paste(
+      vapply(
+        grid$cov_names,
+        function(cv) {
+          paste0(cv, "=", grid$level_combos[[cv]][i])
+        },
+        character(1)
+      ),
+      collapse = ", "
+    )
   } else {
     "(Intercept)"
   }
@@ -471,7 +510,9 @@ residuals.beezdiscounting_brms <- function(
   contrast_type <- match.arg(contrast_type)
   if (!identical(adjust, "none")) {
     warning(
-      "Multiplicity adjustment ('", adjust, "') does not apply to posterior ",
+      "Multiplicity adjustment ('",
+      adjust,
+      "') does not apply to posterior ",
       "summaries; reporting unadjusted quantile intervals (see post.prob).",
       call. = FALSE
     )
@@ -484,14 +525,16 @@ residuals.beezdiscounting_brms <- function(
   factors_in_emm <- NULL
   if (!is.null(compare_specs)) {
     if (!inherits(compare_specs, "formula")) {
-      stop("`compare_specs` must be a one-sided formula (e.g. ~ group).",
+      stop(
+        "`compare_specs` must be a one-sided formula (e.g. ~ group).",
         call. = FALSE
       )
     }
     factors_in_emm <- all.vars(compare_specs)
     bad <- setdiff(factors_in_emm, fitted_factors)
     if (length(bad) > 0L) {
-      stop("`compare_specs` names factor(s) not in the fit: ",
+      stop(
+        "`compare_specs` names factor(s) not in the fit: ",
         paste(bad, collapse = ", "),
         call. = FALSE
       )
@@ -500,7 +543,8 @@ residuals.beezdiscounting_brms <- function(
   if (!is.null(contrast_by)) {
     bad_by <- setdiff(contrast_by, fitted_factors)
     if (length(bad_by) > 0L) {
-      stop("`contrast_by` names factor(s) not in the fit: ",
+      stop(
+        "`contrast_by` names factor(s) not in the fit: ",
         paste(bad_by, collapse = ", "),
         call. = FALSE
       )
@@ -510,30 +554,44 @@ residuals.beezdiscounting_brms <- function(
   .dd_validate_at(fit, at)
   grid <- .dd_build_emm_ref_grid(
     fit,
-    at = at, factors_in_emm = factors_in_emm, validate = FALSE
+    at = at,
+    factors_in_emm = factors_in_emm,
+    validate = FALSE
   )
   emm_block <- .dd_brms_param_emms(
     fit,
-    factors_in_emm = factors_in_emm, at = at, ci_level = ci_level
+    factors_in_emm = factors_in_emm,
+    at = at,
+    ci_level = ci_level
   )
 
   alpha2 <- (1 - ci_level) / 2
   ln10 <- log(10)
   empty_log10 <- tibble::tibble(
-    contrast = character(), estimate = numeric(), std.error = numeric(),
-    statistic = numeric(), df = numeric(),
-    conf.low = numeric(), conf.high = numeric(), p.value = numeric(),
+    contrast = character(),
+    estimate = numeric(),
+    std.error = numeric(),
+    statistic = numeric(),
+    df = numeric(),
+    conf.low = numeric(),
+    conf.high = numeric(),
+    p.value = numeric(),
     post.prob = numeric()
   )
   empty_ratio <- tibble::tibble(
-    contrast = character(), ratio = numeric(),
-    conf.low = numeric(), conf.high = numeric(), p.value = numeric(),
+    contrast = character(),
+    ratio = numeric(),
+    conf.low = numeric(),
+    conf.high = numeric(),
+    p.value = numeric(),
     post.prob = numeric()
   )
 
   finish <- function(contrasts_log10, contrasts_ratio, by_applied) {
     block <- list(emmeans = emm_block, contrasts_log10 = contrasts_log10)
-    if (report_ratios) block$contrasts_ratio <- contrasts_ratio
+    if (report_ratios) {
+      block$contrasts_ratio <- contrasts_ratio
+    }
     results_list <- list(k = block)
     class(results_list) <- "beezdiscounting_comparison"
     attr(results_list, "backend") <- "brms"
@@ -545,8 +603,10 @@ residuals.beezdiscounting_brms <- function(
       deparse(compare_specs)
     }
     attr(results_list, "contrast_type_used") <- contrast_type
-    attr(results_list, "contrast_by_used") <- if (is.null(contrast_by) ||
-      !by_applied) {
+    attr(results_list, "contrast_by_used") <- if (
+      is.null(contrast_by) ||
+        !by_applied
+    ) {
       "NULL"
     } else {
       paste(contrast_by, collapse = ", ")
@@ -577,16 +637,21 @@ residuals.beezdiscounting_brms <- function(
     if (length(effective_by) > 0L && !all(effective_by %in% use_factors)) {
       not_in <- setdiff(effective_by, use_factors)
       stop(
-        "`contrast_by` factor(s) ", paste(not_in, collapse = ", "),
+        "`contrast_by` factor(s) ",
+        paste(not_in, collapse = ", "),
         " are not in `compare_specs`. Name the by-variable(s) in ",
         "`compare_specs` to condition contrasts on them.",
         call. = FALSE
       )
     }
-    if (length(effective_by) > 0L && length(use_factors) == 1L &&
-      identical(sort(use_factors), sort(effective_by))) {
+    if (
+      length(effective_by) > 0L &&
+        length(use_factors) == 1L &&
+        identical(sort(use_factors), sort(effective_by))
+    ) {
       message(
-        "  `contrast_by` (", paste(effective_by, collapse = ", "),
+        "  `contrast_by` (",
+        paste(effective_by, collapse = ", "),
         ") is redundant with `compare_specs` for simple contrasts. ",
         "Ignoring `contrast_by`."
       )
@@ -597,10 +662,13 @@ residuals.beezdiscounting_brms <- function(
   label_f <- function(i, fs) .dd_brms_grid_label(grid, i, fs)
 
   if (length(effective_by) > 0L) {
-    by_key <- do.call(paste, c(
-      lapply(effective_by, function(f) as.character(level_combos[[f]])),
-      list(sep = "\r")
-    ))
+    by_key <- do.call(
+      paste,
+      c(
+        lapply(effective_by, function(f) as.character(level_combos[[f]])),
+        list(sep = "\r")
+      )
+    )
     blocks <- lapply(unique(by_key), function(k) which(by_key == k))
   } else {
     blocks <- list(seq_len(n))
@@ -610,7 +678,9 @@ residuals.beezdiscounting_brms <- function(
   ratio_parts <- list()
   for (rows in blocks) {
     m <- length(rows)
-    if (m < 2L) next
+    if (m < 2L) {
+      next
+    }
     if (contrast_type == "pairwise") {
       cmb <- utils::combn(m, 2L)
       lhs <- rows[cmb[1L, ]]
@@ -624,24 +694,28 @@ residuals.beezdiscounting_brms <- function(
       d10 <- d / ln10
       pd <- .dd_brms_post_prob(d)
       lab <- paste(
-        label_f(lhs[k], comparison_factors), "-",
+        label_f(lhs[k], comparison_factors),
+        "-",
         label_f(rhs[k], comparison_factors)
       )
       l_row <- tibble::tibble(
         contrast = lab,
         estimate = stats::median(d10),
         std.error = stats::sd(d10),
-        statistic = NA_real_, df = NA_real_,
+        statistic = NA_real_,
+        df = NA_real_,
         conf.low = unname(stats::quantile(d10, alpha2)),
         conf.high = unname(stats::quantile(d10, 1 - alpha2)),
-        p.value = NA_real_, post.prob = pd
+        p.value = NA_real_,
+        post.prob = pd
       )
       r_row <- tibble::tibble(
         contrast = lab,
         ratio = stats::median(exp(d)),
         conf.low = unname(stats::quantile(exp(d), alpha2)),
         conf.high = unname(stats::quantile(exp(d), 1 - alpha2)),
-        p.value = NA_real_, post.prob = pd
+        p.value = NA_real_,
+        post.prob = pd
       )
       if (length(effective_by) > 0L) {
         bc <- stats::setNames(
@@ -676,20 +750,28 @@ print.beezdiscounting_brms <- function(x, digits = 4, ...) {
   cat(strrep("=", 50), "\n")
   cat("Equation:", x$param_info$equation, " Family:", x$param_info$family, "\n")
   cat(
-    "Chains:", x$mcmc_info$chains,
-    " Iterations:", x$mcmc_info$iter,
-    " (warmup", paste0(x$mcmc_info$warmup, ")"), "\n"
+    "Chains:",
+    x$mcmc_info$chains,
+    " Iterations:",
+    x$mcmc_info$iter,
+    " (warmup",
+    paste0(x$mcmc_info$warmup, ")"),
+    "\n"
   )
   cat(
-    "Subjects:", x$param_info$n_subjects,
-    " Observations:", x$param_info$n_obs, "\n"
+    "Subjects:",
+    x$param_info$n_subjects,
+    " Observations:",
+    x$param_info$n_obs,
+    "\n"
   )
   cat("Converged:", ifelse(isTRUE(x$converged), "Yes", "No"), "\n")
   cat("\nCoefficients (posterior medians, natural scale):\n")
   ct <- .dd_brms_coef_table(x, "natural")
   print(
     as.data.frame(ct[, c("term_display", "estimate", "std.error")]),
-    digits = digits, row.names = FALSE
+    digits = digits,
+    row.names = FALSE
   )
   cat("\nUse summary(), tidy(), or confint() for full posterior summaries.\n")
   invisible(x)
@@ -745,7 +827,8 @@ print.summary.beezdiscounting_brms <- function(x, digits = 4, ...) {
     as.data.frame(
       x$coefficients[, c("term_display", "estimate", "std.error")]
     ),
-    digits = digits, row.names = FALSE
+    digits = digits,
+    row.names = FALSE
   )
   cat("\nVariance components:\n")
   print(x$variance_components, digits = digits, row.names = FALSE)

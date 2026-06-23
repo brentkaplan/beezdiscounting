@@ -70,7 +70,11 @@ default_dd_priors <- function(
     continuous_covariates = continuous_covariates,
     data = data
   )
-  has_coefs <- length(attr(stats::terms(stats::as.formula(rhs)), "term.labels")) > 0
+  has_coefs <- length(attr(
+    stats::terms(stats::as.formula(rhs)),
+    "term.labels"
+  )) >
+    0
 
   info <- NULL
   if (isTRUE(autoscale)) {
@@ -96,19 +100,33 @@ default_dd_priors <- function(
     brms::set_prior("student_t(3, 0, 1)", class = "sd", nlpar = "logk")
   )
   if (has_coefs) {
-    rows <- c(rows, list(
-      brms::set_prior("normal(0, 1)", class = "b", nlpar = "logk")
-    ))
+    rows <- c(
+      rows,
+      list(
+        brms::set_prior("normal(0, 1)", class = "b", nlpar = "logk")
+      )
+    )
   }
   if (has_s) {
-    rows <- c(rows, list(
-      brms::set_prior("normal(0, 0.5)", class = "b", coef = "Intercept", nlpar = "logs")
-    ))
+    rows <- c(
+      rows,
+      list(
+        brms::set_prior(
+          "normal(0, 0.5)",
+          class = "b",
+          coef = "Intercept",
+          nlpar = "logs"
+        )
+      )
+    )
   }
   if (family == "beta") {
     rows <- c(rows, list(brms::set_prior("gamma(2, 0.1)", class = "phi")))
   } else {
-    rows <- c(rows, list(brms::set_prior("student_t(3, 0, 0.25)", class = "sigma")))
+    rows <- c(
+      rows,
+      list(brms::set_prior("student_t(3, 0, 0.25)", class = "sigma"))
+    )
   }
 
   pri <- do.call(c, rows)
@@ -185,17 +203,33 @@ default_dd_choice_priors <- function(
   rows <- list(
     brms::set_prior(p_logk, class = "b", coef = "Intercept", nlpar = "logk"),
     brms::set_prior("student_t(3, 0, 1)", class = "sd", nlpar = "logk"),
-    brms::set_prior("normal(1, 1)", class = "b", coef = "Intercept", nlpar = "loggamma")
+    brms::set_prior(
+      "normal(1, 1)",
+      class = "b",
+      coef = "Intercept",
+      nlpar = "loggamma"
+    )
   )
   if (has_coefs) {
-    rows <- c(rows, list(
-      brms::set_prior("normal(0, 1)", class = "b", nlpar = "logk")
-    ))
+    rows <- c(
+      rows,
+      list(
+        brms::set_prior("normal(0, 1)", class = "b", nlpar = "logk")
+      )
+    )
   }
   if (isTRUE(intercept)) {
-    rows <- c(rows, list(
-      brms::set_prior("normal(0, 1.5)", class = "b", coef = "Intercept", nlpar = "b0")
-    ))
+    rows <- c(
+      rows,
+      list(
+        brms::set_prior(
+          "normal(0, 1.5)",
+          class = "b",
+          coef = "Intercept",
+          nlpar = "b0"
+        )
+      )
+    )
   }
 
   pri <- do.call(c, rows)

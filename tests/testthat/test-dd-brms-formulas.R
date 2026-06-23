@@ -8,7 +8,9 @@
 skip_if_not_installed("brms")
 skip_on_ci()  # brms fits real Stan models; too slow/fragile under covr on CI (run locally)
 
-squish <- function(x) gsub("[[:space:]]+", "", paste(deparse(x, width.cutoff = 500), collapse = ""))
+squish <- function(x) {
+  gsub("[[:space:]]+", "", paste(deparse(x, width.cutoff = 500), collapse = ""))
+}
 mu_formula <- function(spec) spec$formula$formula
 
 dd_test_data <- function(n_id = 6) {
@@ -23,7 +25,11 @@ dd_test_data <- function(n_id = 6) {
 
 choice_test_data <- function(n_id = 6) {
   set.seed(12)
-  d <- expand.grid(id = factor(seq_len(n_id)), delay = c(1, 7, 30, 90), rep = 1:3)
+  d <- expand.grid(
+    id = factor(seq_len(n_id)),
+    delay = c(1, 7, 30, 90),
+    rep = 1:3
+  )
   d$rel <- 2
   d$choice <- rbinom(nrow(d), 1, 0.5)
   d
@@ -34,7 +40,10 @@ choice_test_data <- function(n_id = 6) {
 # ------------------------------------------------------------------------------
 
 test_that("mazur beta formula carries the sltb-analog squish and identity link", {
-  spec <- beezdiscounting:::.dd_brms_formula(equation = "mazur", family = "beta")
+  spec <- beezdiscounting:::.dd_brms_formula(
+    equation = "mazur",
+    family = "beta"
+  )
 
   expect_s3_class(spec$formula, "brmsformula")
   expect_identical(
@@ -48,13 +57,19 @@ test_that("mazur beta formula carries the sltb-analog squish and identity link",
 })
 
 test_that("exponential / green-myerson / rachlin mu kernels match TMB", {
-  sp_exp <- beezdiscounting:::.dd_brms_formula(equation = "exponential", family = "beta")
+  sp_exp <- beezdiscounting:::.dd_brms_formula(
+    equation = "exponential",
+    family = "beta"
+  )
   expect_identical(
     squish(mu_formula(sp_exp)),
     "y~1/(10^6)+(1-2/(10^6))*(exp(-exp(logk)*x))"
   )
 
-  sp_gm <- beezdiscounting:::.dd_brms_formula(equation = "green-myerson", family = "beta")
+  sp_gm <- beezdiscounting:::.dd_brms_formula(
+    equation = "green-myerson",
+    family = "beta"
+  )
   expect_identical(
     squish(mu_formula(sp_gm)),
     "y~1/(10^6)+(1-2/(10^6))*((1+exp(logk)*x)^(-exp(logs)))"
@@ -63,7 +78,10 @@ test_that("exponential / green-myerson / rachlin mu kernels match TMB", {
   expect_true(sp_gm$has_s)
 
   # rachlin guards pow(0, s): xzero/xsafe data columns (Codex design fold)
-  sp_ra <- beezdiscounting:::.dd_brms_formula(equation = "rachlin", family = "beta")
+  sp_ra <- beezdiscounting:::.dd_brms_formula(
+    equation = "rachlin",
+    family = "beta"
+  )
   expect_identical(
     squish(mu_formula(sp_ra)),
     "y~1/(10^6)+(1-2/(10^6))*(xzero+(1-xzero)/(1+exp(logk)*xsafe^exp(logs)))"
@@ -72,14 +90,19 @@ test_that("exponential / green-myerson / rachlin mu kernels match TMB", {
 })
 
 test_that("gaussian family is exact TMB parity: raw mu, no squish", {
-  spec <- beezdiscounting:::.dd_brms_formula(equation = "mazur", family = "gaussian")
+  spec <- beezdiscounting:::.dd_brms_formula(
+    equation = "mazur",
+    family = "gaussian"
+  )
   expect_identical(squish(mu_formula(spec)), "y~1/(1+exp(logk)*x)")
   expect_identical(spec$family$family, "gaussian")
 })
 
 test_that("zoib boundary swaps in zero_one_inflated_beta", {
   spec <- beezdiscounting:::.dd_brms_formula(
-    equation = "mazur", family = "beta", boundary = "zoib"
+    equation = "mazur",
+    family = "beta",
+    boundary = "zoib"
   )
   expect_identical(spec$family$family, "zero_one_inflated_beta")
   expect_identical(spec$family$link, "identity")
@@ -102,10 +125,18 @@ test_that("IP formulas generate valid Stan code with brms parameter names", {
         dd$xzero <- as.numeric(dd$x == 0)
         dd$xsafe <- ifelse(dd$x == 0, 1, dd$x)
       }
-      scode <- brms::make_stancode(spec$formula, data = dd, family = spec$family)
+      scode <- brms::make_stancode(
+        spec$formula,
+        data = dd,
+        family = spec$family
+      )
       expect_gt(nchar(scode), 1000)
       expect_match(scode, "vector\\[K_logk\\] b_logk")
-      expect_identical(grepl("b_logs", scode), spec$has_s, info = paste(eq, fam))
+      expect_identical(
+        grepl("b_logs", scode),
+        spec$has_s,
+        info = paste(eq, fam)
+      )
       if (fam == "beta") {
         expect_match(scode, "real<lower=0> phi")
       }
@@ -115,7 +146,10 @@ test_that("IP formulas generate valid Stan code with brms parameter names", {
 
 test_that("logk carries the subject random effect; logs is population-level", {
   d <- dd_test_data()
-  spec <- beezdiscounting:::.dd_brms_formula(equation = "green-myerson", family = "beta")
+  spec <- beezdiscounting:::.dd_brms_formula(
+    equation = "green-myerson",
+    family = "beta"
+  )
   expect_match(squish(spec$formula$pforms$logk), "\\(1\\|id\\)")
   expect_false(grepl("\\|", squish(spec$formula$pforms$logs)))
   sdat <- brms::make_standata(spec$formula, data = d, family = spec$family)
@@ -136,7 +170,8 @@ test_that("choice structural formula is the TMB logit with bernoulli family", {
   expect_setequal(spec$nlpars, c("logk", "loggamma"))
 
   spec_int <- beezdiscounting:::.dd_brms_choice_formula(
-    equation = "exponential", intercept = TRUE
+    equation = "exponential",
+    intercept = TRUE
   )
   expect_identical(
     squish(mu_formula(spec_int)),
@@ -158,7 +193,9 @@ test_that("choice formula carries the factor design on logk (TICKET-048)", {
   d$group <- factor(ifelse(as.integer(d$id) <= 3, "ctrl", "treat"))
 
   spec <- beezdiscounting:::.dd_brms_choice_formula(
-    equation = "mazur", factors = "group", data = d
+    equation = "mazur",
+    factors = "group",
+    data = d
   )
   expect_match(squish(spec$formula$pforms$logk), "group")
   expect_match(squish(spec$formula$pforms$logk), "\\(1\\|id\\)")
@@ -171,7 +208,9 @@ test_that("choice formula carries the factor design on logk (TICKET-048)", {
   # continuous covariate route shares build_fixed_rhs()
   d$age <- as.numeric(d$id) * 3 + 20
   spec_cov <- beezdiscounting:::.dd_brms_choice_formula(
-    equation = "mazur", continuous_covariates = "age", data = d
+    equation = "mazur",
+    continuous_covariates = "age",
+    data = d
   )
   sdat_cov <- brms::make_standata(spec_cov$formula, data = d)
   expect_identical(as.integer(sdat_cov$K_logk), 2L)
@@ -183,6 +222,13 @@ test_that("choice formula carries the factor design on logk (TICKET-048)", {
 
 test_that("canonical dd stancode snapshot is stable", {
   d <- dd_test_data()
-  spec <- beezdiscounting:::.dd_brms_formula(equation = "mazur", family = "beta")
-  expect_snapshot(cat(brms::make_stancode(spec$formula, data = d, family = spec$family)))
+  spec <- beezdiscounting:::.dd_brms_formula(
+    equation = "mazur",
+    family = "beta"
+  )
+  expect_snapshot(cat(brms::make_stancode(
+    spec$formula,
+    data = d,
+    family = spec$family
+  )))
 })

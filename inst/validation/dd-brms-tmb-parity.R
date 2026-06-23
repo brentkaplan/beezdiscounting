@@ -31,9 +31,13 @@ compare_pars <- function(label, brms_coefs, tmb_coefs, tmb_se, par_map) {
     t_est <- unname(tmb_coefs[names(tmb_coefs) == p_tmb])[1]
     t_se <- unname(tmb_se[names(tmb_se) == p_tmb])[1]
     data.frame(
-      model = label, parameter = p_brms,
-      brms_median = b, tmb_mle = t_est, tmb_se = t_se,
-      abs_diff = abs(b - t_est), tol_3se = 3 * t_se,
+      model = label,
+      parameter = p_brms,
+      brms_median = b,
+      tmb_mle = t_est,
+      tmb_se = t_se,
+      abs_diff = abs(b - t_est),
+      tol_3se = 3 * t_se,
       pass = abs(b - t_est) < 3 * t_se
     )
   })
@@ -47,13 +51,21 @@ message("=== mazur / gaussian (exact-parity arm) ===")
 tmb_g <- fit_dd_tmb(d, equation = "mazur", family = "gaussian", verbose = 0)
 brms_g <- fit_dd_brms(
   d,
-  equation = "mazur", family = "gaussian",
-  chains = MCMC$chains, iter = MCMC$iter, warmup = MCMC$warmup,
-  cores = MCMC$cores, seed = 7, loo = FALSE, verbose = 0
+  equation = "mazur",
+  family = "gaussian",
+  chains = MCMC$chains,
+  iter = MCMC$iter,
+  warmup = MCMC$warmup,
+  cores = MCMC$cores,
+  seed = 7,
+  loo = FALSE,
+  verbose = 0
 )
 results$gaussian <- compare_pars(
-  "mazur_gaussian", brms_g$model$coefficients,
-  tmb_g$model$coefficients, tmb_g$model$se,
+  "mazur_gaussian",
+  brms_g$model$coefficients,
+  tmb_g$model$coefficients,
+  tmb_g$model$se,
   list(beta_k = "beta_k")
 )
 print(results$gaussian, row.names = FALSE, digits = 4)
@@ -62,15 +74,23 @@ message("\n=== mazur / beta vs TMB sltb (qualitative; logged only) ===")
 tmb_s <- fit_dd_tmb(d, equation = "mazur", family = "sltb", verbose = 0)
 brms_b <- fit_dd_brms(
   d,
-  equation = "mazur", family = "beta",
-  chains = MCMC$chains, iter = MCMC$iter, warmup = MCMC$warmup,
-  cores = MCMC$cores, seed = 7, loo = FALSE, verbose = 0
+  equation = "mazur",
+  family = "beta",
+  chains = MCMC$chains,
+  iter = MCMC$iter,
+  warmup = MCMC$warmup,
+  cores = MCMC$cores,
+  seed = 7,
+  loo = FALSE,
+  verbose = 0
 )
 message(sprintf(
   "beta logk median = %.4f vs sltb MLE = %.4f (diff %.4f; truth %.4f) - analog, not asserted",
   brms_b$model$coefficients[["beta_k"]],
   tmb_s$model$coefficients[["beta_k"]],
-  abs(brms_b$model$coefficients[["beta_k"]] - tmb_s$model$coefficients[["beta_k"]]),
+  abs(
+    brms_b$model$coefficients[["beta_k"]] - tmb_s$model$coefficients[["beta_k"]]
+  ),
   log(0.02)
 ))
 
@@ -78,7 +98,9 @@ message("\n=== structural choice ===")
 sim_choice <- function() {
   logk_i <- log(0.02) + rnorm(N_ID, 0, 0.4)
   d <- expand.grid(
-    id = factor(seq_len(N_ID)), delay = c(1, 7, 30, 90, 180), rep = 1:4
+    id = factor(seq_len(N_ID)),
+    delay = c(1, 7, 30, 90, 180),
+    rep = 1:4
   )
   d$ss_amount <- 50
   d$ll_amount <- 100
@@ -92,12 +114,19 @@ tmb_c <- fit_dd_choice(dc, mode = "structural", equation = "mazur", verbose = 0)
 brms_c <- fit_dd_choice_brms(
   dc,
   equation = "mazur",
-  chains = MCMC$chains, iter = MCMC$iter, warmup = MCMC$warmup,
-  cores = MCMC$cores, seed = 7, loo = FALSE, verbose = 0
+  chains = MCMC$chains,
+  iter = MCMC$iter,
+  warmup = MCMC$warmup,
+  cores = MCMC$cores,
+  seed = 7,
+  loo = FALSE,
+  verbose = 0
 )
 results$choice <- compare_pars(
-  "choice_structural", brms_c$model$coefficients,
-  tmb_c$model$coefficients, tmb_c$model$se,
+  "choice_structural",
+  brms_c$model$coefficients,
+  tmb_c$model$coefficients,
+  tmb_c$model$se,
   list(beta_k = "beta_k", log_gamma = "log_gamma")
 )
 print(results$choice, row.names = FALSE, digits = 4)
@@ -108,7 +137,9 @@ out_path <- file.path("inst", "validation", "dd-brms-tmb-parity-results.csv")
 utils::write.csv(all_res, out_path, row.names = FALSE)
 message(sprintf(
   "\nParity gate: %d/%d asserted comparisons within 3 TMB SEs (results: %s)",
-  sum(all_res$pass), nrow(all_res), out_path
+  sum(all_res$pass),
+  nrow(all_res),
+  out_path
 ))
 if (n_fail > 0) {
   print(all_res[!all_res$pass, ], row.names = FALSE)

@@ -42,13 +42,16 @@
     expected <- paste0("b_logk_", .dd_brms_canon_coefname(fitted_cols))
   }
   found <- grep("^b_logk_", draws_cols, value = TRUE)
-  if (length(expected) != length(fitted_cols) ||
-    anyDuplicated(expected) > 0 ||
-    !setequal(expected, found)) {
+  if (
+    length(expected) != length(fitted_cols) ||
+      anyDuplicated(expected) > 0 ||
+      !setequal(expected, found)
+  ) {
     stop(
       "Internal error: cannot align b_logk_* posterior draws with the ",
       "fitted log-k design columns.\n  Design: ",
-      paste(fitted_cols, collapse = ", "), "\n  Draws:  ",
+      paste(fitted_cols, collapse = ", "),
+      "\n  Draws:  ",
       paste(found, collapse = ", "),
       call. = FALSE
     )
@@ -67,14 +70,18 @@
 #' @noRd
 .dd_brms_logk_standata_map <- function(brmsfit, X) {
   sdata_cols <- colnames(brms::standata(brmsfit)$X_logk)
-  if (!identical(
-    .dd_brms_canon_coefname(colnames(X)),
-    .dd_brms_canon_coefname(sdata_cols)
-  )) {
+  if (
+    !identical(
+      .dd_brms_canon_coefname(colnames(X)),
+      .dd_brms_canon_coefname(sdata_cols)
+    )
+  ) {
     stop(
       "Internal error: the brms design for log k does not match the fitted ",
-      "design matrix.\n  Fitted: ", paste(colnames(X), collapse = ", "),
-      "\n  brms:   ", paste(sdata_cols, collapse = ", "),
+      "design matrix.\n  Fitted: ",
+      paste(colnames(X), collapse = ", "),
+      "\n  brms:   ",
+      paste(sdata_cols, collapse = ", "),
       call. = FALSE
     )
   }
@@ -87,7 +94,9 @@
   if (is.na(seed)) {
     return(code)
   }
-  old_seed <- if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+  old_seed <- if (
+    exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  ) {
     get(".Random.seed", envir = globalenv())
   } else {
     NULL
@@ -108,7 +117,9 @@
 .dd_brms_mcmc_diagnostics <- function(brmsfit, max_treedepth = 10) {
   sm <- posterior::summarise_draws(
     posterior::as_draws_array(brmsfit),
-    "rhat", "ess_bulk", "ess_tail"
+    "rhat",
+    "ess_bulk",
+    "ess_tail"
   )
   np <- brms::nuts_params(brmsfit)
   n_div <- sum(np$Value[np$Parameter == "divergent__"], na.rm = TRUE)
@@ -130,16 +141,19 @@
 #' @noRd
 .dd_brms_converged <- function(diag) {
   isTRUE(
-    is.finite(diag$rhat_max) && diag$rhat_max < 1.01 &&
+    is.finite(diag$rhat_max) &&
+      diag$rhat_max < 1.01 &&
       diag$num_divergent == 0 &&
-      is.finite(diag$ess_bulk_min) && diag$ess_bulk_min >= 400
+      is.finite(diag$ess_bulk_min) &&
+      diag$ess_bulk_min >= 400
   )
 }
 
 #' Transform draws between report spaces (estimation scale = natural log)
 #' @noRd
 .dd_brms_transform_draws <- function(draws, to = "natural") {
-  switch(to,
+  switch(
+    to,
     natural = exp(draws),
     log10 = draws / log(10),
     log = draws,
@@ -261,14 +275,18 @@ fit_dd_brms <- function(
 
   validated <- .dd_validate_ip(
     data,
-    y_var = y_var, x_var = x_var, id_var = id_var,
+    y_var = y_var,
+    x_var = x_var,
+    id_var = id_var,
     ll = ll,
     extra_cols = unique(c(factors, continuous_covariates)),
     response_scale = response_scale
   )
   prep <- .dd_tmb_prepare_data(
     validated$data,
-    y_var = y_var, x_var = x_var, id_var = id_var,
+    y_var = y_var,
+    x_var = x_var,
+    id_var = id_var,
     extra_cols = unique(c(factors, continuous_covariates))
   )
   d <- prep$data
@@ -300,7 +318,8 @@ fit_dd_brms <- function(
   if (family == "beta") {
     if (boundary == "error" && n_boundary > 0) {
       stop(
-        n_boundary, " boundary response(s) (y = 0 or 1) present; ",
+        n_boundary,
+        " boundary response(s) (y = 0 or 1) present; ",
         "refusing to fit with boundary = \"error\". Use \"squeeze\" or \"zoib\".",
         call. = FALSE
       )
@@ -310,8 +329,11 @@ fit_dd_brms <- function(
       d$y <- (d$y * (n_y - 1) + 0.5) / n_y
       if (n_boundary > 0 && verbose >= 1) {
         message(
-          "Smithson-Verkuilen squeeze applied to all ", n_y,
-          " responses (", n_boundary, " were exactly 0 or 1)."
+          "Smithson-Verkuilen squeeze applied to all ",
+          n_y,
+          " responses (",
+          n_boundary,
+          " were exactly 0 or 1)."
         )
       }
     }
@@ -338,7 +360,9 @@ fit_dd_brms <- function(
 
   brms::validate_prior(
     merged_priors,
-    formula = spec$formula, data = d, family = spec$family
+    formula = spec$formula,
+    data = d,
+    family = spec$family
   )
 
   if (verbose >= 1 && !is.null(autoscale_info)) {
@@ -366,7 +390,8 @@ fit_dd_brms <- function(
 
   if (verbose >= 1) {
     message(
-      "Compiling and sampling via ", backend,
+      "Compiling and sampling via ",
+      backend,
       " (first call compiles the Stan model, typically 1-2 minutes; ",
       "pass file = to cache)."
     )
@@ -407,9 +432,17 @@ fit_dd_brms <- function(
     autoscale_info = autoscale_info,
     call = cl,
     mcmc_settings = list(
-      chains = chains, iter = iter, warmup = warmup, thin = thin,
-      seed = seed, backend = backend,
-      max_treedepth = if (!is.null(control$max_treedepth)) control$max_treedepth else 10
+      chains = chains,
+      iter = iter,
+      warmup = warmup,
+      thin = thin,
+      seed = seed,
+      backend = backend,
+      max_treedepth = if (!is.null(control$max_treedepth)) {
+        control$max_treedepth
+      } else {
+        10
+      }
     ),
     factors = factors,
     factor_interaction = factor_interaction,
@@ -426,8 +459,17 @@ fit_dd_brms <- function(
 #' Per-chain inits at prior centers (or a quiet TMB pre-fit)
 #' @noRd
 .dd_brms_build_inits <- function(
-  init, spec, data, chains, seed, autoscale_info, family,
-  factors, factor_interaction, continuous_covariates, equation
+  init,
+  spec,
+  data,
+  chains,
+  seed,
+  autoscale_info,
+  family,
+  factors,
+  factor_interaction,
+  continuous_covariates,
+  equation
 ) {
   if (is.list(init) || is.function(init)) {
     return(init)
@@ -452,7 +494,9 @@ fit_dd_brms <- function(
       {
         tmb_fit <- fit_dd_tmb(
           data,
-          y_var = "y", x_var = "x", id_var = "id",
+          y_var = "y",
+          x_var = "x",
+          id_var = "id",
           equation = equation,
           family = if (identical(family, "beta")) "sltb" else "gaussian",
           factors = factors,
@@ -469,8 +513,12 @@ fit_dd_brms <- function(
           logk = unname(coefs[names(coefs) == "beta_k"])[1],
           sd = exp(unname(coefs[["log_sigma_u"]]))
         )
-        if ("log_s" %in% names(coefs)) out$logs <- unname(coefs[["log_s"]])
-        if ("log_phi" %in% names(coefs)) out$phi <- exp(unname(coefs[["log_phi"]]))
+        if ("log_s" %in% names(coefs)) {
+          out$logs <- unname(coefs[["log_s"]])
+        }
+        if ("log_phi" %in% names(coefs)) {
+          out$phi <- exp(unname(coefs[["log_phi"]]))
+        }
         if ("log_sigma_e" %in% names(coefs)) {
           out$sigma <- exp(unname(coefs[["log_sigma_e"]]))
         }
@@ -479,7 +527,8 @@ fit_dd_brms <- function(
       error = function(e) {
         warning(
           "TMB pre-fit for init = \"tmb\" failed (",
-          conditionMessage(e), "); falling back to init = \"prior_center\".",
+          conditionMessage(e),
+          "); falling back to init = \"prior_center\".",
           call. = FALSE
         )
         NULL
@@ -500,8 +549,10 @@ fit_dd_brms <- function(
   K <- ncol(stats::model.matrix(stats::as.formula(rhs), data = data))
   n_id <- length(unique(data$id))
 
-  beta_k_center <- if (!is.null(centers$beta_k_vec) &&
-    length(centers$beta_k_vec) == K) {
+  beta_k_center <- if (
+    !is.null(centers$beta_k_vec) &&
+      length(centers$beta_k_vec) == K
+  ) {
     centers$beta_k_vec
   } else {
     c(logk_center, rep(0, K - 1))
@@ -530,9 +581,24 @@ fit_dd_brms <- function(
 #' Assemble the beezdiscounting_brms object
 #' @noRd
 .dd_brms_assemble_fit <- function(
-  brmsfit, spec, data, design, coercion_info, merged_priors, autoscale_info,
-  call, mcmc_settings, factors, factor_interaction, continuous_covariates,
-  family, boundary, response_scale, n_boundary, compute_loo, verbose
+  brmsfit,
+  spec,
+  data,
+  design,
+  coercion_info,
+  merged_priors,
+  autoscale_info,
+  call,
+  mcmc_settings,
+  factors,
+  factor_interaction,
+  continuous_covariates,
+  family,
+  boundary,
+  response_scale,
+  n_boundary,
+  compute_loo,
+  verbose
 ) {
   X <- design$X
 
@@ -560,7 +626,9 @@ fit_dd_brms <- function(
         n_subjects = length(unique(data$id)),
         n_random_effects = 1L,
         subject_levels = sort(unique(as.character(data$id))),
-        id_var = "id", x_var = "x", y_var = "y",
+        id_var = "id",
+        x_var = "x",
+        y_var = "y",
         response_scale = response_scale,
         factors = factors,
         factor_interaction = factor_interaction,
@@ -599,7 +667,8 @@ fit_dd_brms <- function(
   ln10 <- log(10)
   vc_rows <- list(data.frame(
     Component = "sigma_u (log10-k RE SD)",
-    Estimate = stats::median(as.numeric(draws[, "sd_id__logk_Intercept"])) / ln10,
+    Estimate = stats::median(as.numeric(draws[, "sd_id__logk_Intercept"])) /
+      ln10,
     Scale = "log10",
     stringsAsFactors = FALSE
   ))
@@ -652,7 +721,9 @@ fit_dd_brms <- function(
     warning(
       sprintf(
         "MCMC diagnostics flag potential non-convergence (rhat_max = %.4g, divergences = %d, min bulk ESS = %d).",
-        diag$rhat_max, diag$num_divergent, round(diag$ess_bulk_min)
+        diag$rhat_max,
+        diag$num_divergent,
+        round(diag$ess_bulk_min)
       ),
       call. = FALSE
     )
@@ -667,7 +738,11 @@ fit_dd_brms <- function(
 #' design row (the v1 fixed-effect design is between-subject by
 #' construction; within-subject designs return NULL with a warning).
 #' @noRd
-.dd_brms_subject_pars <- function(object, draws = NULL, probs = c(0.025, 0.975)) {
+.dd_brms_subject_pars <- function(
+  object,
+  draws = NULL,
+  probs = c(0.025, 0.975)
+) {
   if (is.null(draws)) {
     draws <- .dd_brms_draws_matrix(object)
   }
@@ -681,7 +756,8 @@ fit_dd_brms <- function(
     if (nrow(unique(rows)) > 1L) {
       warning(
         "Subject-level k undefined: the fixed-effect design varies within subject ",
-        ids[i], "; subject_pars skipped.",
+        ids[i],
+        "; subject_pars skipped.",
         call. = FALSE
       )
       return(NULL)
@@ -693,7 +769,8 @@ fit_dd_brms <- function(
   r_vars <- paste0("r_id__logk[", ids, ",Intercept]")
   missing <- setdiff(r_vars, colnames(draws))
   if (length(missing) > 0) {
-    stop("Internal error: random-effect draws not found: ",
+    stop(
+      "Internal error: random-effect draws not found: ",
       paste(missing, collapse = ", "),
       call. = FALSE
     )

@@ -24,7 +24,9 @@ default_dd_priors(
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
-  autoscale = !is.null(data)
+  autoscale = !is.null(data),
+  random_effects = k ~ 1,
+  covariance_structure = c("pdSymm", "pdDiag")
 )
 ```
 
@@ -58,6 +60,18 @@ default_dd_priors(
 - autoscale:
 
   Logical; defaults to `TRUE` when `data` is supplied.
+
+- random_effects:
+
+  `k ~ 1` (default) or `k + phi ~ 1`. The latter re-keys the beta
+  precision: phi becomes a predicted distributional parameter, so the
+  scalar `gamma(2, 0.1)` is replaced by a log-scale intercept prior, a
+  half-t precision-RE SD, and (for `"pdSymm"`) an LKJ correlation prior.
+
+- covariance_structure:
+
+  `(log k, log phi)` covariance for `k + phi ~ 1`: `"pdSymm"` (default,
+  correlated) or `"pdDiag"` (independent).
 
 ## Value
 

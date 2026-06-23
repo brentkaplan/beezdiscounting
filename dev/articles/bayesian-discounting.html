@@ -344,15 +344,27 @@ divergences, and bulk ESS &gt;= 400; components are in
 </ul>
 </div>
 <div class="section level2">
-<h2 id="v1-scope">v1 scope<a class="anchor" aria-label="anchor" href="#v1-scope"></a>
+<h2 id="random-effects">Random effects<a class="anchor" aria-label="anchor" href="#random-effects"></a>
 </h2>
-<p>Random effects are intercept-only on k (<code>k ~ 1</code>); the TMB
-tier’s <code>k + phi ~ 1</code> is planned via a distributional formula.
-<code><a href="../reference/get_dd_param_emms.html">get_dd_param_emms()</a></code> and <code><a href="../reference/get_dd_comparisons.html">get_dd_comparisons()</a></code>
-accept Bayesian indifference-point and structural choice fits (quantile
-credible intervals; <code>post.prob</code> in place of adjusted
-p-values). Both Bayesian fitters support between-subject designs on
-<code>log k</code> via
+<p>Random effects default to an intercept on k (<code>k ~ 1</code>). The
+beta family also takes <code>random_effects = k + phi ~ 1</code>, a
+per-subject precision random effect that mirrors
+<code>fit_dd_tmb(random_effects = k + phi ~ 1)</code>. Here
+<code>phi</code> becomes a predicted parameter on the log link, carrying
+a subject intercept that is correlated with the <code>log k</code>
+intercept (<code>covariance_structure = "pdSymm"</code>, the default) or
+independent (<code>"pdDiag"</code>). The
+<code>variance_components</code> then report both random-effect SDs and,
+for the correlated block, the <code>(k, phi)</code> correlation;
+<code>subject_pars</code> gain per-subject precision. Although the TMB
+tier floors each subject’s precision at 0.1 for these fits, the brms
+log-link random effect does not. The beta-vs-SLT-beta comparison
+therefore stays qualitative (see the SLT-beta vignette).</p>
+<p><code><a href="../reference/get_dd_param_emms.html">get_dd_param_emms()</a></code> and
+<code><a href="../reference/get_dd_comparisons.html">get_dd_comparisons()</a></code> accept Bayesian indifference-point and
+structural choice fits (quantile credible intervals;
+<code>post.prob</code> in place of adjusted p-values). Both Bayesian
+fitters support between-subject designs on <code>log k</code> via
 <code>factors</code>/<code>factor_interaction</code>/<code>continuous_covariates</code>,
 mirroring their TMB counterparts.</p>
 </div>

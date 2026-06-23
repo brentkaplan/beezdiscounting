@@ -262,10 +262,21 @@ get_dd_comparisons(fitc_grp)     # log10 contrasts + ratios, post.prob
   \>= 400; components are in `fit$mcmc_info`, and the full brms toolbox
   is available on `fit$brmsfit`.
 
-## v1 scope
+## Random effects
 
-Random effects are intercept-only on k (`k ~ 1`); the TMB tier’s
-`k + phi ~ 1` is planned via a distributional formula.
+Random effects default to an intercept on k (`k ~ 1`). The beta family
+also takes `random_effects = k + phi ~ 1`, a per-subject precision
+random effect that mirrors `fit_dd_tmb(random_effects = k + phi ~ 1)`.
+Here `phi` becomes a predicted parameter on the log link, carrying a
+subject intercept that is correlated with the `log k` intercept
+(`covariance_structure = "pdSymm"`, the default) or independent
+(`"pdDiag"`). The `variance_components` then report both random-effect
+SDs and, for the correlated block, the `(k, phi)` correlation;
+`subject_pars` gain per-subject precision. Although the TMB tier floors
+each subject’s precision at 0.1 for these fits, the brms log-link random
+effect does not. The beta-vs-SLT-beta comparison therefore stays
+qualitative (see the SLT-beta vignette).
+
 [`get_dd_param_emms()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_param_emms.md)
 and
 [`get_dd_comparisons()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_comparisons.md)

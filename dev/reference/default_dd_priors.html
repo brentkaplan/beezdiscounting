@@ -91,7 +91,9 @@ with <code>format(x, digits = 6, scientific = FALSE)</code>.</p>
 <span>  factors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  factor_interaction <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  continuous_covariates <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  autoscale <span class="op">=</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span></span>
+<span>  autoscale <span class="op">=</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span>,</span>
+<span>  random_effects <span class="op">=</span> <span class="va">k</span> <span class="op">~</span> <span class="fl">1</span>,</span>
+<span>  covariance_structure <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pdSymm"</span>, <span class="st">"pdDiag"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -127,6 +129,19 @@ warns).</p></dd>
 
 <dt id="arg-autoscale">autoscale<a class="anchor" aria-label="anchor" href="#arg-autoscale"></a></dt>
 <dd><p>Logical; defaults to <code>TRUE</code> when <code>data</code> is supplied.</p></dd>
+
+
+<dt id="arg-random-effects">random_effects<a class="anchor" aria-label="anchor" href="#arg-random-effects"></a></dt>
+<dd><p><code>k ~ 1</code> (default) or <code>k + phi ~ 1</code>. The latter
+re-keys the beta precision: phi becomes a predicted distributional
+parameter, so the scalar <code>gamma(2, 0.1)</code> is replaced by a log-scale
+intercept prior, a half-t precision-RE SD, and (for <code>"pdSymm"</code>) an LKJ
+correlation prior.</p></dd>
+
+
+<dt id="arg-covariance-structure">covariance_structure<a class="anchor" aria-label="anchor" href="#arg-covariance-structure"></a></dt>
+<dd><p><code>(log k, log phi)</code> covariance for <code>k + phi ~ 1</code>:
+<code>"pdSymm"</code> (default, correlated) or <code>"pdDiag"</code> (independent).</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -4,9 +4,10 @@ Fits the four discounting equations of
 [`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)
 (`"mazur"`, `"exponential"`, `"green-myerson"`, `"rachlin"`) as Bayesian
 nonlinear mixed-effects models, with the discount rate estimated on the
-natural-log scale (`logk`, subject random intercept; `k ~ 1`, the v1
-scope) and the shape exponent (`logs`) population-level for the
-two-parameter equations.
+natural-log scale (`logk`, subject random intercept; `k ~ 1` by default,
+or `k + phi ~ 1` to add a per-subject precision random effect) and the
+shape exponent (`logs`) population-level for the two-parameter
+equations.
 
 ## Usage
 
@@ -20,6 +21,7 @@ fit_dd_brms(
   family = c("beta", "gaussian"),
   boundary = c("squeeze", "zoib", "error"),
   random_effects = k ~ 1,
+  covariance_structure = c("pdSymm", "pdDiag"),
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
@@ -70,8 +72,17 @@ fit_dd_brms(
 
 - random_effects:
 
-  v1 supports `k ~ 1` only; `k + phi ~ 1` (supported by the TMB tier)
-  errors with the planned brms route.
+  `k ~ 1` (single random intercept on `log k`, the default) or
+  `k + phi ~ 1` (adds a per-subject precision random effect; beta family
+  only). The latter mirrors `fit_dd_tmb(random_effects = k + phi ~ 1)`:
+  phi becomes a predicted distributional parameter on the log link
+  carrying a subject random intercept.
+
+- covariance_structure:
+
+  For `k + phi ~ 1`, the `(log k, log phi)` covariance: `"pdSymm"`
+  (default; correlated, the TMB parity choice) or `"pdDiag"`
+  (independent). Ignored for `k ~ 1`.
 
 - factors, factor_interaction, continuous_covariates:
 
@@ -133,8 +144,9 @@ fit_dd_brms(
 An object of class `beezdiscounting_brms`: `model` (posterior
 medians/SDs on the estimation scale under TMB names `beta_k`/`log_s`,
 plus `variance_components`), `brmsfit`, `subject_pars` (`id`, `k`,
-`k_lower`, `k_upper`), `converged` (Rhat \< 1.01, no divergences, bulk
-ESS \>= 400), `mcmc_info`, `loo`, `data`, `param_info`, `priors`,
+`k_lower`, `k_upper`, plus `phi`/`phi_lower`/`phi_upper` for
+`k + phi ~ 1`), `converged` (Rhat \< 1.01, no divergences, bulk ESS \>=
+400), `mcmc_info`, `loo`, `data`, `param_info`, `priors`,
 `autoscale_info`.
 
 ## Details

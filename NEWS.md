@@ -65,6 +65,14 @@
 * New `default_dd_priors()` / `default_dd_choice_priors()`: inspectable
   defaults with delay-unit-aware `logk` anchoring (centers
   `k * median(delay) = 1`).
+* `fit_dd_brms(random_effects = k + phi ~ 1, family = "beta")` adds a
+  per-subject precision random effect, correlated with the `log k` intercept
+  (`covariance_structure = "pdSymm"`, the default) or independent
+  (`"pdDiag"`). `phi` becomes a predicted distributional parameter on the log
+  link; `variance_components` and `subject_pars` gain the precision-RE SD,
+  the `(k, phi)` correlation, and per-subject precision, mirroring
+  `fit_dd_tmb(random_effects = k + phi ~ 1)`. The TMB per-subject precision
+  floor (0.1) is not replicated by the brms log-link RE.
 * S3 methods mirror the TMB tier's contracts: the exact 8-column `tidy()`
   table (with `NA` `statistic`/`p.value`; estimates are posterior medians of
   report-space-transformed draws), `glance()` with `elpd_loo`/`looic` and

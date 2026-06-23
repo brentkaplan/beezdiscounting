@@ -94,6 +94,69 @@ message(sprintf(
   log(0.02)
 ))
 
+message(
+  "\n=== mazur / beta k + phi ~ 1 vs TMB sltb n_re = 2 (qualitative; logged) ==="
+)
+# simulate_ip() varies only logk_i; inject per-subject precision for this arm.
+sim_ip_phi <- function() {
+  logk_i <- log(0.02) + rnorm(N_ID, 0, 0.4)
+  phi_i <- exp(log(12) + rnorm(N_ID, 0, 0.5))
+  d <- expand.grid(id = factor(seq_len(N_ID)), x = DELAYS)
+  mu <- 1 / (1 + exp(logk_i[d$id]) * d$x)
+  d$y <- rbeta(nrow(d), mu * phi_i[d$id], (1 - mu) * phi_i[d$id])
+  d$y <- pmin(pmax(d$y, 0.001), 0.999)
+  d
+}
+d_phi <- sim_ip_phi()
+tmb_s2 <- fit_dd_tmb(
+  d_phi,
+  equation = "mazur",
+  family = "sltb",
+  random_effects = k + phi ~ 1,
+  covariance_structure = "pdSymm",
+  verbose = 0
+)
+brms_b2 <- fit_dd_brms(
+  d_phi,
+  equation = "mazur",
+  family = "beta",
+  random_effects = k + phi ~ 1,
+  chains = MCMC$chains,
+  iter = MCMC$iter,
+  warmup = MCMC$warmup,
+  cores = MCMC$cores,
+  seed = 7,
+  loo = FALSE,
+  verbose = 0
+)
+# Both tiers report the n_re = 2 variance components under the same labels.
+tmb_vc2 <- .dd_tmb_variance_components(tmb_s2)
+brms_vc2 <- brms_b2$model$variance_components
+vc_get <- function(vc, comp) {
+  v <- vc$Estimate[vc$Component == comp]
+  if (length(v)) v[1] else NA_real_
+}
+message(sprintf(
+  "sd_re[phi] (log10): brms %.4f vs TMB %.4f | rho(k,phi): brms %.4f vs TMB %.4f",
+  vc_get(brms_vc2, "sd_re[phi] (log10-phi RE SD)"),
+  vc_get(tmb_vc2, "sd_re[phi] (log10-phi RE SD)"),
+  vc_get(brms_vc2, "rho (k,phi)"),
+  vc_get(tmb_vc2, "rho (k,phi)")
+))
+message(sprintf(
+  "  log k: brms %.4f vs TMB %.4f (truth %.4f) | population phi: brms %.2f vs TMB %.2f",
+  brms_b2$model$coefficients[["beta_k"]],
+  tmb_s2$model$coefficients[["beta_k"]],
+  log(0.02),
+  vc_get(brms_vc2, "phi (precision)"),
+  vc_get(tmb_vc2, "phi (precision)")
+))
+message(
+  "  qualitative only: beta+squeeze vs SLT-beta likelihoods differ, and TMB ",
+  "floors each subject's phi at 0.1 (n_re = 2) while the brms log-link phi-RE ",
+  "does not."
+)
+
 message("\n=== structural choice ===")
 sim_choice <- function() {
   logk_i <- log(0.02) + rnorm(N_ID, 0, 0.4)

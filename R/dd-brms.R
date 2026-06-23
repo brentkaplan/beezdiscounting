@@ -167,7 +167,8 @@
 #' Fits the four discounting equations of [fit_dd_tmb()] (`"mazur"`,
 #' `"exponential"`, `"green-myerson"`, `"rachlin"`) as Bayesian nonlinear
 #' mixed-effects models, with the discount rate estimated on the natural-log
-#' scale (`logk`, subject random intercept; `k ~ 1`, the v1 scope) and the
+#' scale (`logk`, subject random intercept; `k ~ 1` by default, or
+#' `k + phi ~ 1` to add a per-subject precision random effect) and the
 #' shape exponent (`logs`) population-level for the two-parameter equations.
 #'
 #' `family = "beta"` (default) uses `Beta(link = "identity")` with the mean
@@ -189,8 +190,14 @@
 #' @param equation Discounting equation.
 #' @param family `"beta"` or `"gaussian"`; `"sltb"` errors with guidance.
 #' @param boundary Boundary handling for the beta family (see Details).
-#' @param random_effects v1 supports `k ~ 1` only; `k + phi ~ 1` (supported
-#'   by the TMB tier) errors with the planned brms route.
+#' @param random_effects `k ~ 1` (single random intercept on `log k`, the
+#'   default) or `k + phi ~ 1` (adds a per-subject precision random effect;
+#'   beta family only). The latter mirrors `fit_dd_tmb(random_effects =
+#'   k + phi ~ 1)`: phi becomes a predicted distributional parameter on the
+#'   log link carrying a subject random intercept.
+#' @param covariance_structure For `k + phi ~ 1`, the `(log k, log phi)`
+#'   covariance: `"pdSymm"` (default; correlated, the TMB parity choice) or
+#'   `"pdDiag"` (independent). Ignored for `k ~ 1`.
 #' @param factors,factor_interaction,continuous_covariates Fixed-effect
 #'   design on `logk`, as in [fit_dd_tmb()].
 #' @param ll,response_scale Response coercion, as in [fit_dd_tmb()].
@@ -212,7 +219,8 @@
 #' @return An object of class `beezdiscounting_brms`: `model` (posterior
 #'   medians/SDs on the estimation scale under TMB names `beta_k`/`log_s`,
 #'   plus `variance_components`), `brmsfit`, `subject_pars`
-#'   (`id`, `k`, `k_lower`, `k_upper`), `converged` (Rhat < 1.01, no
+#'   (`id`, `k`, `k_lower`, `k_upper`, plus `phi`/`phi_lower`/`phi_upper`
+#'   for `k + phi ~ 1`), `converged` (Rhat < 1.01, no
 #'   divergences, bulk ESS >= 400), `mcmc_info`, `loo`, `data`,
 #'   `param_info`, `priors`, `autoscale_info`.
 #'
@@ -227,6 +235,7 @@ fit_dd_brms <- function(
   family = c("beta", "gaussian"),
   boundary = c("squeeze", "zoib", "error"),
   random_effects = k ~ 1,
+  covariance_structure = c("pdSymm", "pdDiag"),
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
@@ -259,16 +268,25 @@ fit_dd_brms <- function(
   boundary <- match.arg(boundary)
   response_scale <- match.arg(response_scale)
 
-  # v1 random-effects scope: k ~ 1 only (the TMB tier's k + phi ~ 1 is a
-  # planned brms extension via lf(phi ~ 1 + (1|id))).
-  re <- .dd_normalize_re(random_effects, data = data)
+  # Random-effects scope: k ~ 1 (single intercept on log k) or k + phi ~ 1
+  # (2-D intercept on (log k, log phi), beta family only -- phi becomes a
+  # predicted distributional parameter via lf(phi ~ 1 + (1|id))). The 1-D vs
+  # 2-D shape and the pdSymm/pdDiag covariance come from .dd_normalize_re().
+  re <- .dd_normalize_re(
+    random_effects,
+    covariance_structure = covariance_structure,
+    data = data
+  )
   re_params <- re$blocks[[1]]$param
-  if (!identical(re_params, "k")) {
+  re_cov <- re$blocks[[1]]$pdmat_class
+  phi_re <- length(re_params) == 2L
+  if (phi_re && !identical(family, "beta")) {
     stop(
-      "v1 of the brms tier supports `random_effects = k ~ 1` only.\n",
-      "phi random effects (`k + phi ~ 1`) are planned via a distributional ",
-      "formula once the sltb-analog question is settled; use fit_dd_tmb() ",
-      "meanwhile.",
+      "phi random effects (`k + phi ~ 1`) require family = \"beta\": the ",
+      "precision parameter exists only for the beta family (the gaussian ",
+      "family has a residual SD, not a precision). Use ",
+      "fit_dd_tmb(family = \"gaussian\") for a gaussian k + phi fit, or set ",
+      "family = \"beta\".",
       call. = FALSE
     )
   }
@@ -310,7 +328,9 @@ fit_dd_brms <- function(
     factors = factors,
     factor_interaction = factor_interaction,
     continuous_covariates = continuous_covariates,
-    data = d
+    data = d,
+    phi_re = phi_re,
+    re_cov = re_cov
   )
 
   # Boundary handling (beta family only; gaussian models raw y).
@@ -353,7 +373,9 @@ fit_dd_brms <- function(
     factors = factors,
     factor_interaction = factor_interaction,
     continuous_covariates = continuous_covariates,
-    autoscale = isTRUE(autoscale_priors)
+    autoscale = isTRUE(autoscale_priors),
+    random_effects = random_effects,
+    covariance_structure = covariance_structure
   )
   merged_priors <- .dd_brms_merge_priors(prior, defaults)
   autoscale_info <- attr(defaults, "autoscale_info")
@@ -385,7 +407,9 @@ fit_dd_brms <- function(
     factors = factors,
     factor_interaction = factor_interaction,
     continuous_covariates = continuous_covariates,
-    equation = equation
+    equation = equation,
+    phi_re = phi_re,
+    re_cov = re_cov
   )
 
   if (verbose >= 1) {
@@ -469,7 +493,9 @@ fit_dd_brms <- function(
   factors,
   factor_interaction,
   continuous_covariates,
-  equation
+  equation,
+  phi_re = FALSE,
+  re_cov = "pdDiag"
 ) {
   if (is.list(init) || is.function(init)) {
     return(init)
@@ -499,6 +525,10 @@ fit_dd_brms <- function(
           id_var = "id",
           equation = equation,
           family = if (identical(family, "beta")) "sltb" else "gaussian",
+          # public fit_dd_tmb() selects the 2-RE prefit via random_effects, not
+          # n_re (which would be swallowed by ...).
+          random_effects = if (isTRUE(phi_re)) k + phi ~ 1 else k ~ 1,
+          covariance_structure = re_cov,
           factors = factors,
           factor_interaction = factor_interaction,
           continuous_covariates = continuous_covariates,
@@ -510,9 +540,13 @@ fit_dd_brms <- function(
           # coefficient centered at the TMB MLE, not just the intercept
           # (Codex 041-R2)
           beta_k_vec = unname(coefs[names(coefs) == "beta_k"]),
-          logk = unname(coefs[names(coefs) == "beta_k"])[1],
-          sd = exp(unname(coefs[["log_sigma_u"]]))
+          logk = unname(coefs[names(coefs) == "beta_k"])[1]
         )
+        # 1-RE exposes log_sigma_u; the 2-RE (k + phi) fit uses log_sd_re
+        # instead, and phi-RE inits are location-only, so only pull sd if present.
+        if ("log_sigma_u" %in% names(coefs)) {
+          out$sd <- exp(unname(coefs[["log_sigma_u"]]))
+        }
         if ("log_s" %in% names(coefs)) {
           out$logs <- unname(coefs[["log_s"]])
         }
@@ -560,6 +594,19 @@ fit_dd_brms <- function(
 
   jit <- function(n = 1) stats::rnorm(n, 0, 0.1)
   one_chain <- function() {
+    if (isTRUE(phi_re)) {
+      # k + phi ~ 1: center the locations (log k design + log-phi intercept) and
+      # let brms initialize the 2-D RE block's SD / correlation params. That
+      # block's Stan parameterization (sd_1 length 2 + L_1, or sd_1/sd_2 +
+      # z_1/z_2) is brms-version-sensitive, so we do not hand-shape it -- the
+      # locations are what keep the nonlinear mean off bad starting values.
+      out <- list(b_logk = as.array(beta_k_center + jit(K)))
+      if (spec$has_s) {
+        out$b_logs <- as.array(centers$logs + jit())
+      }
+      out$Intercept_phi <- log(centers$phi) + jit()
+      return(out)
+    }
     out <- list(
       b_logk = as.array(beta_k_center + jit(K)),
       sd_1 = as.array(abs(centers$sd + jit())),
@@ -624,7 +671,7 @@ fit_dd_brms <- function(
         has_phi = family == "beta",
         n_obs = nrow(data),
         n_subjects = length(unique(data$id)),
-        n_random_effects = 1L,
+        n_random_effects = if (isTRUE(spec$phi_re)) 2L else 1L,
         subject_levels = sort(unique(as.character(data$id))),
         id_var = "id",
         x_var = "x",
@@ -665,27 +712,66 @@ fit_dd_brms <- function(
   names(se) <- names_out
 
   ln10 <- log(10)
-  vc_rows <- list(data.frame(
-    Component = "sigma_u (log10-k RE SD)",
-    Estimate = stats::median(as.numeric(draws[, "sd_id__logk_Intercept"])) /
-      ln10,
-    Scale = "log10",
-    stringsAsFactors = FALSE
-  ))
-  if (family == "beta") {
-    vc_rows[[2]] <- data.frame(
+  if (isTRUE(spec$phi_re)) {
+    # 2-RE (k + phi ~ 1): mirror the TMB n_re == 2 variance_components -- both RE
+    # SDs on the log10 scale (the 1-RE sigma_u convention), the (k, phi)
+    # correlation (correlated block only), and the population precision (exp of
+    # the predicted-phi log intercept). Draw names verified via make_stancode().
+    vc_rows <- list(
+      data.frame(
+        Component = "sd_re[k] (log10-k RE SD)",
+        Estimate = stats::median(as.numeric(draws[, "sd_id__logk_Intercept"])) /
+          ln10,
+        Scale = "log10",
+        stringsAsFactors = FALSE
+      ),
+      data.frame(
+        Component = "sd_re[phi] (log10-phi RE SD)",
+        Estimate = stats::median(as.numeric(draws[, "sd_id__phi_Intercept"])) /
+          ln10,
+        Scale = "log10",
+        stringsAsFactors = FALSE
+      )
+    )
+    if (isTRUE(spec$re_correlated)) {
+      vc_rows[[length(vc_rows) + 1L]] <- data.frame(
+        Component = "rho (k,phi)",
+        Estimate = stats::median(as.numeric(
+          draws[, "cor_id__phi_Intercept__logk_Intercept"]
+        )),
+        Scale = "correlation",
+        stringsAsFactors = FALSE
+      )
+    }
+    vc_rows[[length(vc_rows) + 1L]] <- data.frame(
       Component = "phi (precision)",
-      Estimate = stats::median(as.numeric(draws[, "phi"])),
+      Estimate = exp(stats::median(as.numeric(draws[, "b_phi_Intercept"]))),
       Scale = "natural",
       stringsAsFactors = FALSE
     )
   } else {
-    vc_rows[[2]] <- data.frame(
-      Component = "sigma_e (Residual SD)",
-      Estimate = stats::median(as.numeric(draws[, "sigma"])),
-      Scale = "natural",
+    vc_rows <- list(data.frame(
+      Component = "sigma_u (log10-k RE SD)",
+      Estimate = stats::median(as.numeric(draws[, "sd_id__logk_Intercept"])) /
+        ln10,
+      Scale = "log10",
       stringsAsFactors = FALSE
-    )
+    ))
+    if (family == "beta") {
+      vc_rows[[2]] <- data.frame(
+        Component = "phi (precision)",
+        Estimate = stats::median(as.numeric(draws[, "phi"])),
+        Scale = "natural",
+        stringsAsFactors = FALSE
+      )
+    } else {
+      vc_rows[[2]] <- data.frame(
+        Component = "sigma_e (Residual SD)",
+        Estimate = stats::median(as.numeric(draws[, "sigma"])),
+        Scale = "natural",
+        stringsAsFactors = FALSE
+      )
+    }
   }
 
   obj$model <- list(
@@ -781,7 +867,7 @@ fit_dd_brms <- function(
   logk_i <- b %*% t(X_sub) + r
   k_i <- exp(matrix(as.numeric(logk_i), nrow = nrow(logk_i)))
 
-  data.frame(
+  out <- data.frame(
     id = ids,
     k = apply(k_i, 2, stats::median),
     k_lower = apply(k_i, 2, stats::quantile, probs = probs[1]),
@@ -789,4 +875,25 @@ fit_dd_brms <- function(
     row.names = NULL,
     stringsAsFactors = FALSE
   )
+
+  # 2-RE (k + phi ~ 1): per-subject precision phi_i = exp(b_phi_Intercept +
+  # r_id__phi[i]) per draw, mirroring the TMB tier's subject_pars$phi column.
+  if (isTRUE(object$param_info$n_random_effects == 2L)) {
+    b_phi <- as.numeric(draws[, "b_phi_Intercept"])
+    rphi_vars <- paste0("r_id__phi[", ids, ",Intercept]")
+    missing_phi <- setdiff(rphi_vars, colnames(draws))
+    if (length(missing_phi) > 0) {
+      stop(
+        "Internal error: phi random-effect draws not found: ",
+        paste(missing_phi, collapse = ", "),
+        call. = FALSE
+      )
+    }
+    phi_i <- exp(b_phi + as.matrix(draws[, rphi_vars, drop = FALSE]))
+    out$phi <- apply(phi_i, 2, stats::median)
+    out$phi_lower <- apply(phi_i, 2, stats::quantile, probs = probs[1])
+    out$phi_upper <- apply(phi_i, 2, stats::quantile, probs = probs[2])
+  }
+
+  out
 }

@@ -18,11 +18,13 @@ dd_smoke_data <- function(n_id = 8) {
 
 # --- validation (no sampling) ----------------------------------------------------
 
-test_that("fit_dd_brms rejects k + phi random effects in v1", {
+test_that("fit_dd_brms errors on gaussian + phi random effects", {
   d <- dd_smoke_data()
+  # phi random effects require the beta precision; the gaussian family has a
+  # residual SD, not a precision -- error before compilation with guidance.
   expect_error(
-    fit_dd_brms(d, random_effects = k + phi ~ 1),
-    "k \\+ phi|phi random effects"
+    fit_dd_brms(d, family = "gaussian", random_effects = k + phi ~ 1),
+    "beta|precision"
   )
 })
 
@@ -83,6 +85,108 @@ test_that("fit_dd_brms mazur/beta: object contract and recovery", {
   expect_identical(fit$mcmc_info$backend, "rstan")
   expect_identical(fit$loglik, NA_real_)
   expect_identical(fit$AIC, NA_real_)
+})
+
+# per-subject precision heterogeneity for the k + phi ~ 1 recovery smoke
+dd_phi_smoke_data <- function(n_id = 14) {
+  set.seed(57)
+  delays <- c(1, 7, 30, 90, 180, 365)
+  d <- expand.grid(id = factor(seq_len(n_id)), x = delays)
+  k_i <- exp(log(0.02) + rnorm(n_id, 0, 0.4))
+  phi_i <- exp(log(12) + rnorm(n_id, 0, 0.5)) # subject-specific precision
+  mu <- 1 / (1 + k_i[d$id] * d$x)
+  d$y <- stats::rbeta(nrow(d), mu * phi_i[d$id], (1 - mu) * phi_i[d$id])
+  d$y <- pmin(pmax(d$y, 1e-4), 1 - 1e-4)
+  d
+}
+
+test_that("fit_dd_brms mazur/beta k + phi ~ 1: 2-RE object contract", {
+  skip_on_cran()
+  skip_if_not(
+    identical(Sys.getenv("BEEZ_RUN_BRMS_TESTS"), "true"),
+    "Set BEEZ_RUN_BRMS_TESTS=true to run brms sampling tests"
+  )
+
+  d <- dd_phi_smoke_data()
+  fit <- fit_dd_brms(
+    d,
+    equation = "mazur",
+    family = "beta",
+    random_effects = k + phi ~ 1,
+    chains = 2,
+    iter = 1000,
+    warmup = 500,
+    cores = 2,
+    seed = 123,
+    loo = FALSE,
+    verbose = 0
+  )
+
+  expect_s3_class(fit, "beezdiscounting_brms")
+  expect_identical(fit$param_info$n_random_effects, 2L)
+  expect_lt(abs(fit$model$coefficients[["beta_k"]] - log(0.02)), 1)
+
+  # variance components mirror the TMB n_re == 2 reporting convention
+  vc <- fit$model$variance_components
+  expect_true(all(
+    c(
+      "sd_re[k] (log10-k RE SD)",
+      "sd_re[phi] (log10-phi RE SD)",
+      "rho (k,phi)",
+      "phi (precision)"
+    ) %in%
+      vc$Component
+  ))
+
+  # per-subject precision now reported alongside k
+  sp <- fit$subject_pars
+  expect_true(all(c("id", "k", "phi", "phi_lower", "phi_upper") %in% names(sp)))
+  expect_true(all(sp$phi > 0))
+
+  # S3 methods surface the 2-RE variance rows / count without special-casing
+  td <- tidy(fit)
+  expect_true(all(
+    c("sd_re[phi] (log10-phi RE SD)", "rho (k,phi)") %in% td$term
+  ))
+  expect_identical(glance(fit)$n_random_effects, 2L)
+  expect_output(print(summary(fit)), "Bayesian")
+
+  # residual/augment dispersion uses per-observation phi (no scalar phi draw
+  # exists for a 2-RE fit); ranef reports the precision RE alongside log k
+  au <- augment(fit)
+  expect_true(all(is.finite(au$.std_resid)))
+  expect_true(all(is.finite(residuals(fit, type = "pearson"))))
+  re <- ranef(fit)
+  expect_true(all(c("r_logk", "r_phi") %in% names(re)))
+})
+
+test_that("fit_dd_brms k + phi ~ 1 pdDiag omits the correlation row", {
+  skip_on_cran()
+  skip_if_not(
+    identical(Sys.getenv("BEEZ_RUN_BRMS_TESTS"), "true"),
+    "Set BEEZ_RUN_BRMS_TESTS=true to run brms sampling tests"
+  )
+
+  d <- dd_phi_smoke_data()
+  fit <- fit_dd_brms(
+    d,
+    equation = "mazur",
+    family = "beta",
+    random_effects = k + phi ~ 1,
+    covariance_structure = "pdDiag",
+    chains = 2,
+    iter = 1000,
+    warmup = 500,
+    cores = 2,
+    seed = 123,
+    loo = FALSE,
+    verbose = 0
+  )
+
+  expect_identical(fit$param_info$n_random_effects, 2L)
+  vc <- fit$model$variance_components
+  expect_true("sd_re[phi] (log10-phi RE SD)" %in% vc$Component)
+  expect_false("rho (k,phi)" %in% vc$Component)
 })
 
 choice_smoke_data <- function(n_id = 10) {

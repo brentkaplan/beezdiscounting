@@ -77,6 +77,15 @@ ranef.beezdiscounting_brms <- function(object, ...) {
   if (!is.null(sp)) {
     out$k <- sp$k[match(out$id, sp$id)]
   }
+  if (isTRUE(object$param_info$n_random_effects == 2L)) {
+    # k + phi ~ 1 also models a per-subject precision RE; report it alongside
+    # the log k deviate (and the natural-scale phi from subject_pars).
+    rphi <- paste0("r_id__phi[", ids, ",Intercept]")
+    out$r_phi <- unname(apply(draws[, rphi, drop = FALSE], 2, stats::median))
+    if (!is.null(sp) && !is.null(sp$phi)) {
+      out$phi <- sp$phi[match(out$id, sp$id)]
+    }
+  }
   out
 }
 
@@ -228,19 +237,33 @@ augment.beezdiscounting_brms <- function(x, ...) {
     if (is.null(epred_draws)) {
       epred_draws <- brms::posterior_epred(object$brmsfit, re_formula = NULL)
     }
-    phi_draws <- as.numeric(draws[, "phi"])
-    # phi recycles down the columns (draw-aligned: column length == n_draws)
-    if (nrow(epred_draws) != length(phi_draws)) {
-      stop(
-        "Internal error: epred draw count (",
-        nrow(epred_draws),
-        ") does not match phi draw count (",
-        length(phi_draws),
-        ").",
-        call. = FALSE
+    if (isTRUE(object$param_info$n_random_effects == 2L)) {
+      # k + phi ~ 1: phi is predicted, so it varies per observation. Use the
+      # per-draw, per-observation precision (log-link inverse, REs included),
+      # which is matrix-aligned with the epred draws -- there is no scalar
+      # `phi` draw for a 2-RE fit.
+      phi_mat <- brms::posterior_linpred(
+        object$brmsfit,
+        dpar = "phi",
+        transform = TRUE,
+        re_formula = NULL
       )
+      sd_draws <- sqrt(epred_draws * (1 - epred_draws) / (1 + phi_mat))
+    } else {
+      phi_draws <- as.numeric(draws[, "phi"])
+      # phi recycles down the columns (draw-aligned: column length == n_draws)
+      if (nrow(epred_draws) != length(phi_draws)) {
+        stop(
+          "Internal error: epred draw count (",
+          nrow(epred_draws),
+          ") does not match phi draw count (",
+          length(phi_draws),
+          ").",
+          call. = FALSE
+        )
+      }
+      sd_draws <- sqrt(epred_draws * (1 - epred_draws) / (1 + phi_draws))
     }
-    sd_draws <- sqrt(epred_draws * (1 - epred_draws) / (1 + phi_draws))
     apply(sd_draws, 2, stats::median)
   }
 }

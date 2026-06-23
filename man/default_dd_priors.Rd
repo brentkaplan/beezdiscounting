@@ -13,7 +13,9 @@ default_dd_priors(
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
-  autoscale = !is.null(data)
+  autoscale = !is.null(data),
+  random_effects = k ~ 1,
+  covariance_structure = c("pdSymm", "pdDiag")
 )
 }
 \arguments{
@@ -34,6 +36,15 @@ intercept-only design it is omitted (it would be unused, and brms
 warns).}
 
 \item{autoscale}{Logical; defaults to \code{TRUE} when \code{data} is supplied.}
+
+\item{random_effects}{\code{k ~ 1} (default) or \code{k + phi ~ 1}. The latter
+re-keys the beta precision: phi becomes a predicted distributional
+parameter, so the scalar \code{gamma(2, 0.1)} is replaced by a log-scale
+intercept prior, a half-t precision-RE SD, and (for \code{"pdSymm"}) an LKJ
+correlation prior.}
+
+\item{covariance_structure}{\verb{(log k, log phi)} covariance for \code{k + phi ~ 1}:
+\code{"pdSymm"} (default, correlated) or \code{"pdDiag"} (independent).}
 }
 \value{
 A \code{brmsprior} data frame, with \code{attr(, "autoscale_info")} when

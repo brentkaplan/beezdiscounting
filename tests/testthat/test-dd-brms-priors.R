@@ -76,6 +76,71 @@ test_that("logs prior exists only for two-parameter equations", {
   expect_identical(nrow(pri_mz[pri_mz$nlpar == "logs", ]), 0L)
 })
 
+# --- precision random effects: k + phi ~ 1 (TICKET-049) -----------------------
+
+test_that("phi random effects re-key the precision prior and add sd + cor rows", {
+  pri <- default_dd_priors(
+    "mazur",
+    family = "beta",
+    random_effects = k + phi ~ 1
+  )
+  # the scalar precision prior is gone: phi is now predicted on the log link
+  expect_identical(nrow(pri[pri$class == "phi", ]), 0L)
+  expect_identical(
+    prior_row(pri, "Intercept", dpar = "phi")$prior,
+    paste0("student_t(3, ", fmt6(log(20)), ", 1)")
+  )
+  expect_identical(
+    prior_row(pri, "sd", dpar = "phi")$prior,
+    "student_t(3, 0, 1)"
+  )
+  expect_identical(prior_row(pri, "cor", group = "id")$prior, "lkj(2)")
+})
+
+test_that("uncorrelated phi random effects omit the correlation prior", {
+  pri <- default_dd_priors(
+    "mazur",
+    family = "beta",
+    random_effects = k + phi ~ 1,
+    covariance_structure = "pdDiag"
+  )
+  expect_identical(nrow(pri[pri$class == "cor", ]), 0L)
+  expect_identical(
+    prior_row(pri, "sd", dpar = "phi")$prior,
+    "student_t(3, 0, 1)"
+  )
+})
+
+test_that("k ~ 1 keeps the scalar phi precision prior (unchanged)", {
+  pri <- default_dd_priors("mazur", family = "beta")
+  expect_identical(prior_row(pri, "phi")$prior, "gamma(2, 0.1)")
+  expect_identical(nrow(pri[pri$dpar == "phi", ]), 0L)
+})
+
+test_that("phi-RE priors validate against the k + phi ~ 1 model", {
+  d <- dd_priors_data()
+  spec <- beezdiscounting:::.dd_brms_formula(
+    equation = "mazur",
+    family = "beta",
+    phi_re = TRUE,
+    re_cov = "pdSymm"
+  )
+  pri <- default_dd_priors(
+    "mazur",
+    family = "beta",
+    random_effects = k + phi ~ 1,
+    data = d
+  )
+  expect_no_warning(expect_no_error(
+    brms::validate_prior(
+      pri,
+      formula = spec$formula,
+      data = d,
+      family = spec$family
+    )
+  ))
+})
+
 test_that("choice priors carry loggamma and optional b0", {
   pri <- default_dd_choice_priors("mazur")
   expect_identical(

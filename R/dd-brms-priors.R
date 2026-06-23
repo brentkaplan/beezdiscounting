@@ -40,6 +40,13 @@
 #'   intercept-only design it is omitted (it would be unused, and brms
 #'   warns).
 #' @param autoscale Logical; defaults to `TRUE` when `data` is supplied.
+#' @param random_effects `k ~ 1` (default) or `k + phi ~ 1`. The latter
+#'   re-keys the beta precision: phi becomes a predicted distributional
+#'   parameter, so the scalar `gamma(2, 0.1)` is replaced by a log-scale
+#'   intercept prior, a half-t precision-RE SD, and (for `"pdSymm"`) an LKJ
+#'   correlation prior.
+#' @param covariance_structure `(log k, log phi)` covariance for `k + phi ~ 1`:
+#'   `"pdSymm"` (default, correlated) or `"pdDiag"` (independent).
 #'
 #' @return A `brmsprior` data frame, with `attr(, "autoscale_info")` when
 #'   autoscaling was used.
@@ -53,11 +60,26 @@ default_dd_priors <- function(
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
-  autoscale = !is.null(data)
+  autoscale = !is.null(data),
+  random_effects = k ~ 1,
+  covariance_structure = c("pdSymm", "pdDiag")
 ) {
   .dd_brms_check_installed()
   equation <- match.arg(equation)
   family <- match.arg(family)
+  re <- .dd_normalize_re(
+    random_effects,
+    covariance_structure = covariance_structure
+  )
+  phi_re <- length(re$blocks[[1]]$param) == 2L
+  correlated <- phi_re && identical(re$blocks[[1]]$pdmat_class, "pdSymm")
+  if (phi_re && family != "beta") {
+    stop(
+      "phi random effects (`k + phi ~ 1`) require family = \"beta\" (the ",
+      "gaussian family has a residual SD, not a precision).",
+      call. = FALSE
+    )
+  }
   fmt <- .dd_brms_fmt_num
   has_s <- equation %in% c("green-myerson", "rachlin")
 
@@ -121,7 +143,33 @@ default_dd_priors <- function(
     )
   }
   if (family == "beta") {
-    rows <- c(rows, list(brms::set_prior("gamma(2, 0.1)", class = "phi")))
+    if (phi_re) {
+      # phi is predicted on the log link: a location prior on the (log)
+      # intercept (centered at log of the scalar default's prior mean, 20), a
+      # half-t SD on the precision RE, and -- when correlated -- an LKJ prior on
+      # the (log k, log phi) correlation.
+      rows <- c(
+        rows,
+        list(
+          brms::set_prior(
+            paste0("student_t(3, ", fmt(log(20)), ", 1)"),
+            class = "Intercept",
+            dpar = "phi"
+          ),
+          brms::set_prior("student_t(3, 0, 1)", class = "sd", dpar = "phi")
+        )
+      )
+      if (correlated) {
+        rows <- c(
+          rows,
+          list(
+            brms::set_prior("lkj(2)", class = "cor", group = "id")
+          )
+        )
+      }
+    } else {
+      rows <- c(rows, list(brms::set_prior("gamma(2, 0.1)", class = "phi")))
+    }
   } else {
     rows <- c(
       rows,

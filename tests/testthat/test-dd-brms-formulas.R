@@ -157,6 +157,62 @@ test_that("logk carries the subject random effect; logs is population-level", {
 })
 
 # ------------------------------------------------------------------------------
+# Precision random effects: k + phi ~ 1 (TICKET-049)
+# ------------------------------------------------------------------------------
+
+test_that("phi random effects add a correlated distributional block (pdSymm)", {
+  d <- dd_test_data()
+  spec <- beezdiscounting:::.dd_brms_formula(
+    equation = "mazur",
+    family = "beta",
+    phi_re = TRUE,
+    re_cov = "pdSymm"
+  )
+  # phi becomes a predicted parameter with a correlated (1 | i | id) intercept;
+  # logk shares the |i| tag so the (log k, log phi) REs form one 2-D block.
+  expect_true("phi" %in% names(spec$formula$pforms))
+  expect_match(squish(spec$formula$pforms$phi), "\\(1\\|i\\|id\\)")
+  expect_match(squish(spec$formula$pforms$logk), "\\(1\\|i\\|id\\)")
+  expect_identical(spec$family$link, "identity") # mu link unchanged
+
+  sdat <- brms::make_standata(spec$formula, data = d, family = spec$family)
+  expect_identical(as.integer(sdat$M_1), 2L) # one group block, 2 correlated REs
+  expect_identical(as.integer(sdat$NC_1), 1L) # one correlation
+
+  scode <- brms::make_stancode(spec$formula, data = d, family = spec$family)
+  expect_match(scode, "Intercept_phi") # phi predicted on its (log) link
+  expect_match(scode, "cholesky_factor_corr") # correlated block
+})
+
+test_that("uncorrelated phi random effects use separate blocks (pdDiag)", {
+  d <- dd_test_data()
+  spec <- beezdiscounting:::.dd_brms_formula(
+    equation = "mazur",
+    family = "beta",
+    phi_re = TRUE,
+    re_cov = "pdDiag"
+  )
+  expect_match(squish(spec$formula$pforms$phi), "\\(1\\|id\\)")
+  expect_false(grepl("\\|i\\|", squish(spec$formula$pforms$phi)))
+  expect_false(grepl("\\|i\\|", squish(spec$formula$pforms$logk)))
+
+  sdat <- brms::make_standata(spec$formula, data = d, family = spec$family)
+  expect_identical(as.integer(sdat$M_1), 1L) # two independent single-RE blocks
+  expect_identical(as.integer(sdat$M_2), 1L)
+})
+
+test_that("phi random effects require the beta family", {
+  expect_error(
+    beezdiscounting:::.dd_brms_formula(
+      equation = "mazur",
+      family = "gaussian",
+      phi_re = TRUE
+    ),
+    "beta|precision"
+  )
+})
+
+# ------------------------------------------------------------------------------
 # Choice (structural) model (design 2.7)
 # ------------------------------------------------------------------------------
 

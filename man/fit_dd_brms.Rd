@@ -13,6 +13,7 @@ fit_dd_brms(
   family = c("beta", "gaussian"),
   boundary = c("squeeze", "zoib", "error"),
   random_effects = k ~ 1,
+  covariance_structure = c("pdSymm", "pdDiag"),
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
@@ -49,8 +50,14 @@ fit_dd_brms(
 
 \item{boundary}{Boundary handling for the beta family (see Details).}
 
-\item{random_effects}{v1 supports \code{k ~ 1} only; \code{k + phi ~ 1} (supported
-by the TMB tier) errors with the planned brms route.}
+\item{random_effects}{\code{k ~ 1} (single random intercept on \verb{log k}, the
+default) or \code{k + phi ~ 1} (adds a per-subject precision random effect;
+beta family only). The latter mirrors \code{fit_dd_tmb(random_effects = k + phi ~ 1)}: phi becomes a predicted distributional parameter on the
+log link carrying a subject random intercept.}
+
+\item{covariance_structure}{For \code{k + phi ~ 1}, the \verb{(log k, log phi)}
+covariance: \code{"pdSymm"} (default; correlated, the TMB parity choice) or
+\code{"pdDiag"} (independent). Ignored for \code{k ~ 1}.}
 
 \item{factors, factor_interaction, continuous_covariates}{Fixed-effect
 design on \code{logk}, as in \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.}
@@ -82,7 +89,8 @@ fallback on failure; the beta family maps to the TMB sltb pre-fit),
 An object of class \code{beezdiscounting_brms}: \code{model} (posterior
 medians/SDs on the estimation scale under TMB names \code{beta_k}/\code{log_s},
 plus \code{variance_components}), \code{brmsfit}, \code{subject_pars}
-(\code{id}, \code{k}, \code{k_lower}, \code{k_upper}), \code{converged} (Rhat < 1.01, no
+(\code{id}, \code{k}, \code{k_lower}, \code{k_upper}, plus \code{phi}/\code{phi_lower}/\code{phi_upper}
+for \code{k + phi ~ 1}), \code{converged} (Rhat < 1.01, no
 divergences, bulk ESS >= 400), \code{mcmc_info}, \code{loo}, \code{data},
 \code{param_info}, \code{priors}, \code{autoscale_info}.
 }
@@ -90,7 +98,8 @@ divergences, bulk ESS >= 400), \code{mcmc_info}, \code{loo}, \code{data},
 Fits the four discounting equations of \code{\link[=fit_dd_tmb]{fit_dd_tmb()}} (\code{"mazur"},
 \code{"exponential"}, \code{"green-myerson"}, \code{"rachlin"}) as Bayesian nonlinear
 mixed-effects models, with the discount rate estimated on the natural-log
-scale (\code{logk}, subject random intercept; \code{k ~ 1}, the v1 scope) and the
+scale (\code{logk}, subject random intercept; \code{k ~ 1} by default, or
+\code{k + phi ~ 1} to add a per-subject precision random effect) and the
 shape exponent (\code{logs}) population-level for the two-parameter equations.
 }
 \details{

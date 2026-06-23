@@ -22,7 +22,8 @@
 #'
 #' The mean functions match `fit_dd_tmb()` exactly (`k = exp(logk)`,
 #' `s = exp(logs)`), with `logk` carrying the subject random intercept
-#' (`k ~ 1`, the v1 scope) and `logs` population-level. For
+#' (`k ~ 1` by default, or `k + phi ~ 1` for a precision RE via `phi_re`) and
+#' `logs` population-level. For
 #' `family = "beta"` the mean is linearly squished into
 #' `(1e-6, 1 - 1e-6)` -- the differentiable analog of the TMB sltb clamp --
 #' and brms's `Beta(link = "identity")` is used (mu is naturally in (0,1)
@@ -48,8 +49,14 @@
 #' @param factors,factor_interaction,continuous_covariates Fixed-effect
 #'   design on `logk` (as in `fit_dd_tmb()`); `logs` stays population-level.
 #' @param data Optional data frame for single-level-factor dropping.
-#' @return list(formula, family, nlpars, has_s, response_var, derived_cols,
-#'   equation, boundary).
+#' @param phi_re Add a per-subject precision random effect (the `k + phi ~ 1`
+#'   path; beta family only). phi becomes a predicted distributional parameter
+#'   (brms log link) carrying a subject random intercept.
+#' @param re_cov Covariance structure for the 2-D `(log k, log phi)` block when
+#'   `phi_re = TRUE`: `"pdSymm"` (correlated via a shared `|i|` tag, the TMB
+#'   parity choice) or `"pdDiag"` (independent).
+#' @return list(formula, family, nlpars, has_s, phi_re, re_correlated,
+#'   response_var, derived_cols, equation, boundary).
 #' @noRd
 .dd_brms_formula <- function(
   equation = c("mazur", "exponential", "green-myerson", "rachlin"),
@@ -58,7 +65,9 @@
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
-  data = NULL
+  data = NULL,
+  phi_re = FALSE,
+  re_cov = c("pdSymm", "pdDiag")
 ) {
   .dd_brms_check_installed()
   equation <- match.arg(equation)
@@ -72,6 +81,21 @@
   }
   family <- match.arg(family)
   boundary <- match.arg(boundary)
+  re_cov <- match.arg(re_cov)
+  if (isTRUE(phi_re) && family != "beta") {
+    stop(
+      "phi random effects (`k + phi ~ 1`) require family = \"beta\": the ",
+      "precision parameter exists only for the beta family (the gaussian ",
+      "family has a residual SD, not a precision). Use ",
+      "fit_dd_tmb(family = \"gaussian\") for a gaussian k + phi fit.",
+      call. = FALSE
+    )
+  }
+  # pdSymm shares the |i| tag so (log k, log phi) form one correlated block (the
+  # TMB parity choice); pdDiag keeps independent intercepts. Untouched when
+  # phi_re = FALSE, so the k ~ 1 formula is byte-identical to before.
+  re_correlated <- isTRUE(phi_re) && identical(re_cov, "pdSymm")
+  re_term <- if (re_correlated) "(1 | i | id)" else "(1 | id)"
 
   has_s <- equation %in% c("green-myerson", "rachlin")
   mu_str <- switch(
@@ -112,7 +136,7 @@
     "",
     paste(deparse(stats::as.formula(rhs), width.cutoff = 500), collapse = " ")
   )
-  pforms <- list(stats::as.formula(paste0("logk ~ ", rhs_core, " + (1 | id)")))
+  pforms <- list(stats::as.formula(paste0("logk ~ ", rhs_core, " + ", re_term)))
   if (has_s) {
     pforms <- c(pforms, list(stats::as.formula("logs ~ 1")))
   }
@@ -121,12 +145,21 @@
     brms::bf,
     c(list(stats::as.formula(paste("y ~", mu_str))), pforms, list(nl = TRUE))
   )
+  if (isTRUE(phi_re)) {
+    # phi becomes a predicted distributional parameter (brms applies its log
+    # link), with a subject random intercept correlated to log k via the shared
+    # |i| tag (pdSymm) or independent (pdDiag) -- the brms analog of the TMB
+    # 2-RE (log k, log phi) block.
+    bform <- bform + brms::lf(stats::as.formula(paste0("phi ~ 1 + ", re_term)))
+  }
 
   list(
     formula = bform,
     family = fam,
     nlpars = c("logk", if (has_s) "logs"),
     has_s = has_s,
+    phi_re = isTRUE(phi_re),
+    re_correlated = re_correlated,
     response_var = "y",
     derived_cols = if (equation == "rachlin") {
       c("xzero", "xsafe")

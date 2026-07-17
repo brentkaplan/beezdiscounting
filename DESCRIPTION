@@ -50,6 +50,7 @@ Suggests:
     knitr,
     loo,
     posterior,
+    pwr,
     rmarkdown,
     testthat (>= 3.0.0)
 LinkingTo:

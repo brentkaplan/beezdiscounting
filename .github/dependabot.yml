@@ -1,0 +1,52 @@
+# Dependabot configuration for beezdiscounting.
+#
+# Scope: GitHub Actions only.
+#
+# R package dependencies are deliberately absent. CRAN/renv is not a Dependabot
+# ecosystem, so Dependabot can never update DESCRIPTION or renv.lock -- adding a
+# block for them would silently do nothing. There is no Node toolchain in this
+# package, so no npm block either.
+#
+# target-branch: develop -- required here, not stylistic.
+#   Dependabot reads this file from the repository's default branch (master),
+#   but scans manifests on -- and opens pull requests against -- target-branch.
+#
+#   master carries exactly one workflow, rerun-on-failure.yaml, and that file
+#   contains no `uses:` entries at all -- so there is nothing on master for
+#   Dependabot to update. The full CI set (R-CMD-check, cran-everything,
+#   pkgdown, test-coverage, plus the cran-everything composite action) lives on
+#   develop, which is 164 commits ahead. Without target-branch, Dependabot would
+#   scan master and silently find no action dependencies.
+#
+#   Note that master and develop have genuinely diverged (1 commit on master vs
+#   164 on develop), so develop is not simply "ahead" -- master is not an
+#   ancestor of develop.
+#
+#   Trade-off: GitHub's documentation states that for a configuration to be used
+#   for security updates "you should not specify a target-branch"; security
+#   updates remain default-branch-only. So this block governs scheduled version
+#   updates only. That costs nothing here, since master has no action
+#   dependencies for a default-branch-scoped security update to act on.
+#   Dependabot security *alerts* are unaffected -- they are a repository-level
+#   setting, not driven by this file.
+#
+# Grouping: all GitHub Actions bumps arrive as a single "ci-actions" pull
+# request rather than one per action, which keeps the review surface to one CI
+# run instead of five.
+#
+# Not covered: the composite action at .github/actions/cran-everything/action.yml
+# on develop. For the github-actions ecosystem Dependabot scans .github/workflows
+# and only a root-level action.yml/action.yaml, so nested composite actions are
+# not updated. Its pins are currently r-lib/actions/*@v2 (up to date) -- check
+# them by hand when bumping a major.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+    groups:
+      ci-actions:
+        patterns:
+          - "*"

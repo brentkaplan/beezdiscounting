@@ -2,18 +2,22 @@
 % Please edit documentation in R/mcq.R
 \name{get_lookup_table}
 \alias{get_lookup_table}
-\title{Get internal lookup table for the 27-item MCQ}
+\title{Get internal lookup table for the 27- or 21-item MCQ}
 \usage{
-get_lookup_table()
+get_lookup_table(items = 27)
+}
+\arguments{
+\item{items}{Number of MCQ items (27 or 21); the default returns the
+Kirby, Petry, & Bickel (1999) 27-item design.}
 }
 \value{
-Data frame with the complete Kirby, Petry, & Bickel (1999) 27-item
-design: questionid, magnitude, kindiff, k_rank, ss_amount, ll_amount, and
-delay (days)
+Data frame with the complete item design: questionid, magnitude,
+kindiff, k_rank, ss_amount, ll_amount, and delay (days)
 }
 \description{
-Get internal lookup table for the 27-item MCQ
+Get internal lookup table for the 27- or 21-item MCQ
 }
 \examples{
 get_lookup_table()
+get_lookup_table(items = 21)
 }

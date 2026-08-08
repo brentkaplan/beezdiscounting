@@ -532,16 +532,115 @@ summarize_mcq <- function(res, na.rm = TRUE) {
 }
 
 
-#' Get internal lookup table for the 27-item MCQ
+#' Get internal lookup table for the 27- or 21-item MCQ
 #'
-#' @return Data frame with the complete Kirby, Petry, & Bickel (1999) 27-item
-#'   design: questionid, magnitude, kindiff, k_rank, ss_amount, ll_amount, and
-#'   delay (days)
+#' @param items Number of MCQ items (27 or 21); the default returns the
+#' Kirby, Petry, & Bickel (1999) 27-item design.
+#' @return Data frame with the complete item design: questionid, magnitude,
+#'   kindiff, k_rank, ss_amount, ll_amount, and delay (days)
 #' @export
 #'
-#' @examples get_lookup_table()
-get_lookup_table <- function() {
-  return(lookup)
+#' @examples
+#' get_lookup_table()
+#' get_lookup_table(items = 21)
+get_lookup_table <- function(items = 27) {
+  .mcq_registry(items)$table
+}
+
+
+#' Convert 27- or 21-item MCQ responses to a trial-level choice frame
+#'
+#' Reshapes long-form Monetary Choice Questionnaire (MCQ) responses into
+#' the per-trial smaller-sooner versus larger-later choice frame consumed by
+#' [fit_dd_choice()], joining each `questionid` to the canonical item design
+#' (immediate amount, delayed amount, delay) bundled in the lookup table (see
+#' [get_lookup_table()]) -- Kirby, Petry, & Bickel (1999) for the 27-item MCQ,
+#' or Kirby & Maraković (1996, Table 1) for the 21-item MCQ.
+#'
+#' @param responses Long-form data frame with one row per MCQ item per subject,
+#'   holding the columns named by `id_var`, `question_var`, and `response_var`.
+#'   `response` is `0` for the smaller-immediate reward (SIR/SS) and `1` for the
+#'   larger-delayed reward (LDR/LL) -- the same coding [fit_dd_choice()] expects,
+#'   so no recoding is applied.
+#' @param items Number of MCQ items: 27 (Kirby, Petry, & Bickel, 1999) or 21
+#'   (Kirby & Maraković, 1996). Default is 27.
+#' @param id_var,question_var,response_var Column names in `responses` for the
+#'   subject id, MCQ question id, and the binary choice. Defaults match the
+#'   bundled `mcq27` dataset (`"subjectid"`, `"questionid"`, `"response"`).
+#'
+#' @return A [tibble][tibble::tibble] with columns `id` (character), `ss_amount`,
+#'   `ll_amount`, `delay` (days), and `choice` (`0`/`1`, `1` = chose LL), in the
+#'   input row order. Ready to pass to [fit_dd_choice()].
+#'
+#' @details Unknown or non-coercible question ids raise an error rather than
+#'   silently producing unmatched rows. Ragged input is allowed -- subjects need
+#'   not have all items -- and `NA` responses are preserved (they are
+#'   complete-cased by [fit_dd_choice()]). For the strict scorer see
+#'   [score_mcq()].
+#'
+#' @seealso [fit_dd_choice()], [score_mcq()], [get_lookup_table()],
+#'   [mcq27_to_choice()]
+#' @export
+#'
+#' @examples
+#' ch <- mcq_to_choice(mcq27, items = 27)
+#' head(ch)
+#' # feeds directly into the structural choice model (requires TMB):
+#' # fit_dd_choice(ch, mode = "structural", equation = "mazur")
+mcq_to_choice <- function(responses,
+                          items = 27,
+                          id_var = "subjectid",
+                          question_var = "questionid",
+                          response_var = "response") {
+  reg <- .mcq_registry(items)
+
+  if (!is.data.frame(responses)) {
+    stop("`responses` must be a data frame.", call. = FALSE)
+  }
+  req <- c(id_var, question_var, response_var)
+  missing_cols <- req[!req %in% names(responses)]
+  if (length(missing_cols)) {
+    stop("Column(s) not found in `responses`: ",
+         paste(missing_cols, collapse = ", "), call. = FALSE)
+  }
+
+  id <- as.character(responses[[id_var]])
+
+  # Coerce the question id to a whole-number key (character/factor/numeric all
+  # normalize). A non-coercible, out-of-range, or fractional value (e.g. 1.5,
+  # which as.integer() would silently truncate to 1) is rejected, not mapped.
+  qnum <- suppressWarnings(as.numeric(as.character(responses[[question_var]])))
+  qid <- as.integer(qnum)
+  i <- match(qid, reg$table$questionid)
+  invalid <- is.na(i) | (!is.na(qnum) & qnum != qid)
+  if (any(invalid)) {
+    bad <- unique(as.character(responses[[question_var]][invalid]))
+    stop("Invalid questionid(s): ", paste(bad, collapse = ", "),
+         " (must be whole numbers in 1-", reg$items,
+         " present in the MCQ table).",
+         call. = FALSE)
+  }
+
+  # `response` already uses the choice coding (1 = LL); coerce via character so
+  # factor levels "0"/"1" map to the labels, not the underlying integer codes.
+  raw_choice <- responses[[response_var]]
+  choice <- suppressWarnings(as.numeric(as.character(raw_choice)))
+  # Flag values outside {0, 1}, or that became NA only through a failed coercion
+  # (e.g. "x"); a genuine NA in the input is preserved (complete-cased downstream).
+  coercion_failed <- is.na(choice) & !is.na(raw_choice)
+  bad_choice <- coercion_failed | (!is.na(choice) & !(choice %in% c(0, 1)))
+  if (any(bad_choice)) {
+    stop("`", response_var, "` must be 0/1 (1 = chose LL); ",
+         sum(bad_choice), " value(s) are not.", call. = FALSE)
+  }
+
+  tibble::tibble(
+    id = id,
+    ss_amount = reg$table$ss_amount[i],
+    ll_amount = reg$table$ll_amount[i],
+    delay = reg$table$delay[i],
+    choice = choice
+  )
 }
 
 
@@ -572,7 +671,8 @@ get_lookup_table <- function() {
 #'   complete-cased by [fit_dd_choice()]). For the strict 27-item scorer see
 #'   [score_mcq27()].
 #'
-#' @seealso [fit_dd_choice()], [score_mcq27()], [get_lookup_table()]
+#' @seealso [fit_dd_choice()], [score_mcq27()], [get_lookup_table()],
+#'   [mcq_to_choice()]
 #' @export
 #'
 #' @examples
@@ -584,52 +684,8 @@ mcq27_to_choice <- function(responses,
                             id_var = "subjectid",
                             question_var = "questionid",
                             response_var = "response") {
-  if (!is.data.frame(responses)) {
-    stop("`responses` must be a data frame.", call. = FALSE)
-  }
-  req <- c(id_var, question_var, response_var)
-  missing_cols <- req[!req %in% names(responses)]
-  if (length(missing_cols)) {
-    stop("Column(s) not found in `responses`: ",
-         paste(missing_cols, collapse = ", "), call. = FALSE)
-  }
-
-  id <- as.character(responses[[id_var]])
-
-  # Coerce the question id to a whole-number key (character/factor/numeric all
-  # normalize). A non-coercible, out-of-range, or fractional value (e.g. 1.5,
-  # which as.integer() would silently truncate to 1) is rejected, not mapped.
-  qnum <- suppressWarnings(as.numeric(as.character(responses[[question_var]])))
-  qid <- as.integer(qnum)
-  i <- match(qid, lookup$questionid)
-  invalid <- is.na(i) | (!is.na(qnum) & qnum != qid)
-  if (any(invalid)) {
-    bad <- unique(as.character(responses[[question_var]][invalid]))
-    stop("Invalid questionid(s): ", paste(bad, collapse = ", "),
-         " (must be whole numbers in 1-27 present in the MCQ27 table).",
-         call. = FALSE)
-  }
-
-  # `response` already uses the choice coding (1 = LL); coerce via character so
-  # factor levels "0"/"1" map to the labels, not the underlying integer codes.
-  raw_choice <- responses[[response_var]]
-  choice <- suppressWarnings(as.numeric(as.character(raw_choice)))
-  # Flag values outside {0, 1}, or that became NA only through a failed coercion
-  # (e.g. "x"); a genuine NA in the input is preserved (complete-cased downstream).
-  coercion_failed <- is.na(choice) & !is.na(raw_choice)
-  bad_choice <- coercion_failed | (!is.na(choice) & !(choice %in% c(0, 1)))
-  if (any(bad_choice)) {
-    stop("`", response_var, "` must be 0/1 (1 = chose LL); ",
-         sum(bad_choice), " value(s) are not.", call. = FALSE)
-  }
-
-  tibble::tibble(
-    id = id,
-    ss_amount = lookup$ss_amount[i],
-    ll_amount = lookup$ll_amount[i],
-    delay = lookup$delay[i],
-    choice = choice
-  )
+  mcq_to_choice(responses, items = 27, id_var = id_var,
+                question_var = question_var, response_var = response_var)
 }
 
 

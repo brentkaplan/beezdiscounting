@@ -722,30 +722,10 @@ mcq_to_choice <- function(responses,
 
 #' Convert 27-item MCQ responses to a trial-level choice frame
 #'
-#' Reshapes long-form 27-item Monetary Choice Questionnaire (MCQ) responses into
-#' the per-trial smaller-sooner versus larger-later choice frame consumed by
-#' [fit_dd_choice()], joining each `questionid` to the canonical Kirby, Petry, &
-#' Bickel (1999) item design (immediate amount, delayed amount, delay) bundled in
-#' the lookup table (see [get_lookup_table()]).
-#'
-#' @param responses Long-form data frame with one row per MCQ item per subject,
-#'   holding the columns named by `id_var`, `question_var`, and `response_var`.
-#'   `response` is `0` for the smaller-immediate reward (SIR/SS) and `1` for the
-#'   larger-delayed reward (LDR/LL) -- the same coding [fit_dd_choice()] expects,
-#'   so no recoding is applied.
+#' @inherit mcq_to_choice params return details description
 #' @param id_var,question_var,response_var Column names in `responses` for the
 #'   subject id, MCQ question id (1-27), and the binary choice. Defaults match the
 #'   bundled `mcq27` dataset (`"subjectid"`, `"questionid"`, `"response"`).
-#'
-#' @return A [tibble][tibble::tibble] with columns `id` (character), `ss_amount`,
-#'   `ll_amount`, `delay` (days), and `choice` (`0`/`1`, `1` = chose LL), in the
-#'   input row order. Ready to pass to [fit_dd_choice()].
-#'
-#' @details Unknown or non-coercible question ids raise an error rather than
-#'   silently producing unmatched rows. Ragged input is allowed -- subjects need
-#'   not have all 27 items -- and `NA` responses are preserved (they are
-#'   complete-cased by [fit_dd_choice()]). For the strict 27-item scorer see
-#'   [score_mcq27()].
 #'
 #' @seealso [fit_dd_choice()], [score_mcq27()], [get_lookup_table()],
 #'   [mcq_to_choice()]

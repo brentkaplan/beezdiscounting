@@ -28,18 +28,22 @@ A \link[tibble:tibble]{tibble} with columns \code{id} (character), \code{ss_amou
 input row order. Ready to pass to \code{\link[=fit_dd_choice]{fit_dd_choice()}}.
 }
 \description{
-Reshapes long-form 27-item Monetary Choice Questionnaire (MCQ) responses into
+Reshapes long-form Monetary Choice Questionnaire (MCQ) responses into
 the per-trial smaller-sooner versus larger-later choice frame consumed by
-\code{\link[=fit_dd_choice]{fit_dd_choice()}}, joining each \code{questionid} to the canonical Kirby, Petry, &
-Bickel (1999) item design (immediate amount, delayed amount, delay) bundled in
-the lookup table (see \code{\link[=get_lookup_table]{get_lookup_table()}}).
+\code{\link[=fit_dd_choice]{fit_dd_choice()}}, joining each \code{questionid} to the canonical item design
+(immediate amount, delayed amount, delay) bundled in the lookup table (see
+\code{\link[=get_lookup_table]{get_lookup_table()}}) -- Kirby, Petry, & Bickel (1999) for the 27-item MCQ,
+or Kirby & Maraković (1996, Table 1) for the 21-item MCQ.
 }
 \details{
 Unknown or non-coercible question ids raise an error rather than
-silently producing unmatched rows. Ragged input is allowed -- subjects need
-not have all 27 items -- and \code{NA} responses are preserved (they are
-complete-cased by \code{\link[=fit_dd_choice]{fit_dd_choice()}}). For the strict 27-item scorer see
-\code{\link[=score_mcq27]{score_mcq27()}}.
+silently producing unmatched rows. Question ids 1-21 are valid in both
+the 21- and 27-item designs, so passing the wrong \code{items} does not
+error -- it silently returns the wrong amounts/delays for those ids;
+make sure \code{items} matches the instrument actually administered. Ragged
+input is allowed -- subjects need not have all items -- and \code{NA}
+responses are preserved (they are complete-cased by \code{\link[=fit_dd_choice]{fit_dd_choice()}}).
+For the strict scorer see \code{\link[=score_mcq]{score_mcq()}}.
 }
 \examples{
 ch <- mcq27_to_choice(mcq27)

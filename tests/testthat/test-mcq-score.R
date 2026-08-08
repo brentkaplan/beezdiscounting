@@ -132,3 +132,15 @@ test_that("trans, round, and return_data work for 21 items", {
   expect_named(out, c("results", "data"))
   expect_equal(nrow(out$data), 21L)
 })
+
+test_that("bundled mcq21 dataset scores to its documented values", {
+  expect_equal(nrow(mcq21), 42L)
+  res <- score_mcq(mcq21, items = 21)
+  expect_equal(
+    res$overall_k[res$subjectid == 1],
+    sqrt(0.0055 * 0.0083),
+    tolerance = 1e-4
+  )
+  expect_equal(res$overall_k[res$subjectid == 2], 0.0007, tolerance = 1e-6)
+  expect_equal(res$overall_consistency, c(1, 1))
+})

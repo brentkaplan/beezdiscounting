@@ -11,7 +11,8 @@
 ##    use_data() re-save (which overwrites all of R/sysdata.rda) drops nothing.
 e <- new.env()
 load("R/sysdata.rda", envir = e)
-stopifnot(setequal(ls(e), "lookup"))
+## lookup21 (added later) also lives in sysdata; this script must not drop it.
+stopifnot("lookup" %in% ls(e), all(ls(e) %in% c("lookup", "lookup21")))
 lookup <- get("lookup", envir = e)
 base_cols <- c("questionid", "magnitude", "kindiff", "k_rank")
 stopifnot(all(base_cols %in% names(lookup)), nrow(lookup) == 27L)
@@ -64,14 +65,19 @@ if (max(rel_dif) > 1e-5) {
 message(sprintf("Eq.1 check OK: max relative diff = %.2e", max(rel_dif)))
 
 ## 6. Re-save sysdata.rda (use_data overwrites the whole file; lookup is its only object).
-usethis::use_data(lookup, internal = TRUE, overwrite = TRUE)
+if ("lookup21" %in% ls(e)) {
+  lookup21 <- get("lookup21", envir = e)
+  usethis::use_data(lookup, lookup21, internal = TRUE, overwrite = TRUE)
+} else {
+  usethis::use_data(lookup, internal = TRUE, overwrite = TRUE)
+}
 
 ## 7. Post-write verification: reload from disk and re-assert.
 e2 <- new.env()
 load("R/sysdata.rda", envir = e2)
 chk <- get("lookup", envir = e2)
 stopifnot(
-  setequal(ls(e2), "lookup"),
+  "lookup" %in% ls(e2), all(ls(e2) %in% c("lookup", "lookup21")),
   ncol(chk) == 7L,
   identical(chk$questionid, old$questionid),
   all(c("ss_amount", "ll_amount", "delay") %in% names(chk))

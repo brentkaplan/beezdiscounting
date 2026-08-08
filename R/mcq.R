@@ -163,7 +163,12 @@ score_mcq <- function(
     )
 
     if (return_data) {
-      dat$newresponse[dat$subjectid == i] <- dat_sub$response
+      # match on questionid within this subject's rows: dat_sub may be in a
+      # different row order than dat (e.g. inn() sorts by questionid), so a
+      # positional assignment here can write imputed values to the wrong
+      # original-order rows when the input is not already questionid-sorted.
+      idx <- which(dat$subjectid == i)
+      dat$newresponse[idx] <- dat_sub$response[match(qids, dat_sub$questionid)]
     }
   }
 

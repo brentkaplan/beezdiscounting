@@ -43,3 +43,45 @@ test_that("21-item INN with disagreeing neighbors leaves NA unless random", {
   res <- score_mcq(dat, items = 21, impute_method = "inn", return_data = TRUE)
   expect_true(is.na(res$data$newresponse[res$data$questionid == 10]))
 })
+
+test_that("21-item INN aligns newresponse by questionid on shuffled input", {
+  # inn() sorts its output by questionid; if the scorer assigned newresponse
+  # positionally, a shuffled (non-ascending) input would land imputed/original
+  # values on the wrong rows.
+  set.seed(2026)
+  dat <- data.frame(subjectid = 1, questionid = 1:21, response = 1)
+  dat$response[dat$questionid == 8] <- NA # neighbor qid 16 is 1 -> impute 1
+  shuffled <- dat[sample(nrow(dat)), ]
+  res <- score_mcq(
+    shuffled,
+    items = 21,
+    impute_method = "inn",
+    return_data = TRUE
+  )
+  out <- res$data
+  expect_true(all(
+    out$newresponse[out$questionid != 8] == out$response[out$questionid != 8]
+  ))
+  expect_equal(out$newresponse[out$questionid == 8], 1)
+})
+
+test_that("27-item INN aligns newresponse by questionid on shuffled input", {
+  set.seed(2026)
+  dat <- mcq27[mcq27$subjectid == 1, ]
+  # rank-1 group is questionids 13, 1, 9; make one NA, others agree
+  dat$response[dat$questionid %in% 13] <- NA
+  agree <- unique(dat$response[dat$questionid %in% c(1, 9)])
+  expect_length(agree, 1L)
+  shuffled <- dat[sample(nrow(dat)), ]
+  res <- score_mcq(
+    shuffled,
+    items = 27,
+    impute_method = "inn",
+    return_data = TRUE
+  )
+  out <- res$data
+  expect_true(all(
+    out$newresponse[out$questionid != 13] == out$response[out$questionid != 13]
+  ))
+  expect_equal(out$newresponse[out$questionid == 13], agree)
+})

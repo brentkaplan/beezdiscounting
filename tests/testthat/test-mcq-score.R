@@ -123,6 +123,54 @@ test_that("score_mcq validates per-subject question coverage and responses", {
   expect_error(score_mcq27(dup27), "not equal to 27")
 })
 
+test_that("score_mcq rejects fractional or non-coercible question ids", {
+  # as.integer(as.character()) alone would truncate 1.5 to the valid id 1
+  frac21 <- data.frame(subjectid = 1, questionid = c(1.5, 2:21), response = 1)
+  expect_error(score_mcq(frac21, items = 21), "not equal to 21")
+  bad_str21 <- data.frame(
+    subjectid = 1,
+    questionid = c("x", as.character(2:21)),
+    response = 1
+  )
+  expect_error(score_mcq(bad_str21, items = 21), "not equal to 21")
+
+  frac27 <- data.frame(subjectid = 1, questionid = c(1.5, 2:27), response = 1)
+  expect_error(score_mcq27(frac27), "not equal to 27")
+  bad_str27 <- data.frame(
+    subjectid = 1,
+    questionid = c("x", as.character(2:27)),
+    response = 1
+  )
+  expect_error(score_mcq27(bad_str27), "not equal to 27")
+})
+
+test_that("score_mcq normalizes character/factor 0/1 responses", {
+  dat_num <- data.frame(
+    subjectid = 1,
+    questionid = 1:21,
+    response = c(0, rep(1, 20))
+  )
+  dat_chr <- dat_num
+  dat_chr$response <- as.character(dat_chr$response)
+  dat_fac <- dat_num
+  dat_fac$response <- factor(dat_fac$response, levels = c(0, 1))
+
+  res_num <- score_mcq(dat_num, items = 21)
+  res_chr <- score_mcq(dat_chr, items = 21)
+  res_fac <- score_mcq(dat_fac, items = 21)
+  expect_equal(res_chr$overall_k, res_num$overall_k)
+  expect_equal(res_fac$overall_k, res_num$overall_k)
+
+  dat_yes <- dat_num
+  dat_yes$response <- as.character(dat_yes$response)
+  dat_yes$response[1] <- "yes"
+  expect_error(score_mcq(dat_yes, items = 21), "0, 1, or NA")
+
+  dat_two <- dat_num
+  dat_two$response[1] <- 2
+  expect_error(score_mcq(dat_two, items = 21), "0, 1, or NA")
+})
+
 test_that("trans, round, and return_data work for 21 items", {
   dat <- data.frame(subjectid = 1, questionid = 1:21, response = 1)
   res <- score_mcq(dat, items = 21, trans = "log")

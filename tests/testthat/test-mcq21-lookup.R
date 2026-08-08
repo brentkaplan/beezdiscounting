@@ -86,3 +86,10 @@ test_that("lookup (27-item) is untouched", {
   expect_equal(nrow(lk), 27L)
   expect_equal(lk$questionid[1:4], c(13, 1, 9, 20))
 })
+
+test_that(".mcq_registry rank_labels length matches the number of k_rank levels", {
+  reg27 <- .mcq_registry(27)
+  reg21 <- .mcq_registry(21)
+  expect_equal(length(reg27$rank_labels), length(unique(reg27$table$k_rank)))
+  expect_equal(length(reg21$rank_labels), length(unique(reg21$table$k_rank)))
+})

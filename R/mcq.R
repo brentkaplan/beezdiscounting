@@ -131,13 +131,17 @@ score_mcq <- function(
     dat_sub <- dat[dat$subjectid == i, ]
 
     # check for exact coverage of the registry's question ids: no
-    # duplicates, no unknowns, none missing (previously a length-only
-    # check that could silently mis-score malformed input)
-    qids <- suppressWarnings(as.integer(as.character(dat_sub$questionid)))
+    # duplicates, no unknowns, none missing, and no fractional/non-whole ids
+    # (as.integer(as.character()) alone would silently truncate e.g. 1.5 to
+    # the valid id 1, letting a malformed id slip past coverage validation)
+    qids_raw <- suppressWarnings(as.numeric(as.character(dat_sub$questionid)))
+    qids <- as.integer(qids_raw)
+    non_whole_qid <- is.na(qids_raw) | qids_raw != qids
     if (
       length(qids) != reg$items ||
         anyDuplicated(qids) ||
-        !setequal(qids[!is.na(qids)], reg$table$questionid)
+        any(non_whole_qid) ||
+        !setequal(qids[!non_whole_qid], reg$table$questionid)
     ) {
       stop(
         "Response set not equal to ",
@@ -147,9 +151,26 @@ score_mcq <- function(
         call. = FALSE
       )
     }
-    if (!all(dat_sub$response %in% c(0, 1, NA))) {
+    dat_sub$questionid <- qids
+
+    # normalize responses the same way mcq_to_choice() does: character/factor
+    # "0"/"1" score identically to numeric 0/1, and a value that fails
+    # coercion (e.g. "yes") is rejected rather than silently becoming NA and
+    # passing the domain check below. Numeric input is left as-is (not
+    # round-tripped through as.numeric(as.character())) so its storage type
+    # (e.g. integer) is preserved in `newresponse` when return_data = TRUE.
+    resp_raw <- dat_sub$response
+    if (is.numeric(resp_raw)) {
+      resp_num <- resp_raw
+      coercion_failed <- rep(FALSE, length(resp_raw))
+    } else {
+      resp_num <- suppressWarnings(as.numeric(as.character(resp_raw)))
+      coercion_failed <- is.na(resp_num) & !is.na(resp_raw)
+    }
+    if (any(coercion_failed) || !all(resp_num %in% c(0, 1, NA))) {
       stop("Responses must be 0, 1, or NA for subjectid: ", i, call. = FALSE)
     }
+    dat_sub$response <- resp_num
 
     if (impute_method %in% c("inn", "INN") & any(is.na(dat_sub$response))) {
       dat_sub <- inn(dat_sub, reg, random = random, verbose = verbose)
@@ -488,6 +509,22 @@ inn <- function(dat, reg, random, verbose) {
 prop_ss <- function(dat, items = 27) {
   reg <- .mcq_registry(items)
 
+  # warn (do not error -- prop_ss() has no ragged contract to protect) when
+  # the observed question ids don't exactly cover this design's canonical
+  # set: question ids 1-21 are valid in both the 21- and 27-item designs, so
+  # e.g. prop_ss(mcq21) with the default items = 27 would otherwise silently
+  # pool responses into the wrong rank table.
+  observed_qids <- suppressWarnings(as.integer(as.character(dat$questionid)))
+  if (!setequal(observed_qids[!is.na(observed_qids)], reg$table$questionid)) {
+    warning(
+      "Observed question ids do not exactly match the ", reg$items,
+      "-item MCQ design (items = ", reg$items, "). `items` must match the ",
+      "instrument actually administered -- a mismatch silently pools ",
+      "responses under the wrong k ranks.",
+      call. = FALSE
+    )
+  }
+
   # bring in lookup table (k_rank etc.); keep every row so all respondents pool
   dat <- merge(dat, reg$table, by.x = "questionid",
                by.y = "questionid", all.x = TRUE)
@@ -722,7 +759,12 @@ plot.prop_ss_output <- function(
     xlab = "k value rank",
     ylab = "Proportion of SS choices"
     ) {
-  labs_k <- .mcq_registry(attr(x, "mcq_items") %||% 27L)$rank_labels
+  # index (not append) the labels by the k_rank values actually present, so
+  # a missing rank (first or middle) can't shift labels onto the wrong
+  # remaining ranks -- factor(k_rank)'s levels are these same sorted values,
+  # in the same order.
+  levels_present <- sort(unique(x$k_rank))
+  labs_k <- .mcq_registry(attr(x, "mcq_items") %||% 27L)$rank_labels[levels_present]
   x |>
     dplyr::mutate(group = 1) |>
     ggplot2::ggplot(ggplot2::aes(x = factor(k_rank), y = prop_ss, group = group)) +

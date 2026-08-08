@@ -1,9 +1,9 @@
 ---
-title: "Scoring the 27-Item Monetary Choice Questionnaire"
+title: "Scoring the Monetary Choice Questionnaire (21- and 27-Item)"
 author: "Brent Kaplan"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Scoring the 27-Item Monetary Choice Questionnaire}
+  %\VignetteIndexEntry{Scoring the Monetary Choice Questionnaire (21- and 27-Item)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -166,11 +166,49 @@ The result (one row per trial with the smaller and larger amounts, the delay, an
 the binary choice) is ready for `fit_dd_choice()`. See the choice-modeling and TMB
 vignettes for that workflow.
 
+The MCQ has two published versions. Kirby and Marakovic (1996) introduced the
+original 21-item questionnaire: seven discount-rate ranks, three items per rank
+except rank 3 (two items, no large-magnitude item) and rank 4 (four items, two
+of them large), with delayed amounts of \$30--\$85. Kirby, Petry, and Bickel
+(1999) extended the design to 27 items across nine evenly populated ranks
+(three items each, one per magnitude), which is the version scored above. Both
+versions are scored with the same consistency-maximization logic.
+
+## Scoring the 21-item MCQ
+
+The original Monetary Choice Questionnaire (Kirby & Marakovic, 1996) has
+21 items over seven discount-rate ranks. `score_mcq()` scores it with the
+same consistency-maximization algorithm used for the 27-item version:
+
+```{r score-21}
+score_mcq(mcq21, items = 21)
+```
+
+Proportions of smaller-sooner choices by rank use the same tooling:
+
+```{r prop-ss-21}
+prop_ss(mcq21, items = 21)
+```
+
+Trial-level modeling works through the same bridge as the 27-item MCQ
+(see `vignette("choice-discounting")`):
+
+```{r to-choice-21}
+head(mcq_to_choice(mcq21, items = 21))
+```
+
+`score_mcq27()` remains available and is unchanged: it is now a thin wrapper
+around `score_mcq()`, and `score_mcq27(dat)` returns exactly
+`score_mcq(dat, items = 27)`.
+
 ## References
 
 - Kaplan, B. A., Amlung, M., Reed, D. D., Jarmolowicz, D. P., McKerchar, T. L., &
   Lemley, S. M. (2016). Automating scoring of delay discounting for the 21- and
   27-item monetary choice questionnaires. *The Behavior Analyst, 39*, 293--304.
+- Kirby, K. N., & Marakovic, N. N. (1996). Delay-discounting probabilistic
+  rewards: Rates decrease as amounts increase. *Psychonomic Bulletin & Review,
+  3*(1), 100--104.
 - Kirby, K. N., Petry, N. M., & Bickel, W. K. (1999). Heroin addicts have higher
   discount rates for delayed rewards than non-drug-using controls. *Journal of
   Experimental Psychology: General, 128*(1), 78--87.

@@ -13,8 +13,8 @@ An R package containing commonly used functions for analyzing behavioral
 economic discounting data.
 
 The package began as a set of scoring and curve-fitting tools. It
-supports scoring of the 27-Item Monetary Choice Questionnaire (see
-[Kaplan et al., 2016](https://doi.org/10.1007/s40614-016-0070-9)),
+supports scoring of the 21- and 27-Item Monetary Choice Questionnaires
+(see [Kaplan et al., 2016](https://doi.org/10.1007/s40614-016-0070-9)),
 calculating *k* values (and Area Under the Curve metrics) from
 indifference points using nonlinear regression (Mazur’s simple hyperbola
 and exponential), and scoring of the minute discounting task (see
@@ -39,7 +39,7 @@ question, then follow the vignette for a worked example:
 
 | Your data / question | Function(s) | Vignette |
 |----|----|----|
-| 27-Item Monetary Choice Questionnaire | `score_mcq27()` | [MCQ scoring](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.html) |
+| 21- or 27-Item Monetary Choice Questionnaire | `score_mcq()` (`score_mcq27()` for 27-item only) | [MCQ scoring](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.html) |
 | Indifference points, individual or aggregate (NLS) | `fit_dd()` / `results_dd()` | [Delay discounting basics](https://brentkaplan.github.io/beezdiscounting/articles/delay-discounting-basics.html) |
 | Indifference points, mixed-effects (borrows strength across subjects) | `fit_dd_tmb()` | [Mixed-effects with TMB](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html) |
 | Indifference points at exactly 0 or 1 | `fit_dd_tmb(family = "sltb")` | [Bounded error distributions](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.html) |
@@ -112,6 +112,13 @@ library(beezdiscounting)
 # Using the Package
 
 ## 27-item Monetary Choice Questionnaire Scoring Overview
+
+The walkthrough below uses the 27-item MCQ (Kirby, Petry, & Bickel,
+1999) via `score_mcq27()`. The original 21-item MCQ (Kirby & Marakovic,
+1996) is scored the same way with `score_mcq(dat, items = 21)`; see the
+[MCQ scoring
+vignette](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.html)
+for a 21-item example built on the bundled `mcq21` dataset.
 
 ### Example Dataset
 
@@ -1120,6 +1127,7 @@ To learn more about a function and what arguments it takes, type “?” in
 front of the function name.
 
 ``` r
+?score_mcq
 ?score_mcq27
 ```
 
@@ -1155,6 +1163,11 @@ front of the function name.
   nonsystematic delay-discounting data. *Experimental and Clinical
   Psychopharmacology, 16* (3), 264-274.
   <https://doi.org/10.1037/1064-1297.16.3.264>
+
+- Kirby, K. N., & Marakovic, N. N. (1996). Delay-discounting
+  probabilistic rewards: Rates decrease as amounts increase.
+  *Psychonomic Bulletin & Review, 3* (1), 100-104.
+  <https://doi.org/10.3758/BF03210748>
 
 - Kirby, K. N., Petry, N. M., & Bickel, W. K. (1999). Heroin addicts
   have higher discount rates for delayed rewards than non-drug-using
@@ -1200,5 +1213,6 @@ front of the function name.
 
 ------------------------------------------------------------------------
 
-<sub>Maintained by Brent Kaplan. For statistical consulting and R/software
-development in behavioral economics, see [codedbx](https://www.codedbx.com).</sub>
+<sub>Maintained by Brent Kaplan. For statistical consulting and
+R/software development in behavioral economics, see
+[codedbx](https://www.codedbx.com).</sub>

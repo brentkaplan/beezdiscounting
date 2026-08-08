@@ -1,5 +1,23 @@
 # beezdiscounting (development version)
 
+### 21-item MCQ support
+
+* New `score_mcq()` scores both the 27-item (Kirby, Petry, & Bickel, 1999)
+  and the original 21-item (Kirby & Marakovic, 1996) MCQ with the same
+  consistency-maximization algorithm; `score_mcq27()` is now a wrapper and
+  its output is unchanged. The 21-item item table (amounts, delays, k at
+  indifference, ranks) was transcribed from Kirby & Marakovic (1996,
+  Table 1) and cross-validated against the Kaplan et al. (2014) Excel
+  Automated Scorer, including its ladder-edge conventions.
+* `prop_ss()`, INN missing-data imputation (now defined over k-rank
+  neighbor groups, identical results for the 27-item version), the new
+  `mcq_to_choice()` (generalizing `mcq27_to_choice()`), and
+  `get_lookup_table()` all support `items = 21`.
+* New `mcq21` example dataset.
+* Stricter input validation in the scorer: duplicate, unknown, or missing
+  question ids and responses outside 0/1/NA now error instead of silently
+  producing invalid scores. `mcq_to_choice()` still accepts ragged input.
+
 ### New vignettes
 
 * `vignette("mcq27-scoring")`: scoring the 27-item Monetary Choice Questionnaire

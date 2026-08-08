@@ -1,4 +1,4 @@
-# Scoring the 27-Item Monetary Choice Questionnaire
+# Scoring the Monetary Choice Questionnaire (21- and 27-Item)
 
 ## The questionnaire
 
@@ -260,12 +260,89 @@ delay, and the binary choice) is ready for
 [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md).
 See the choice-modeling and TMB vignettes for that workflow.
 
+The MCQ has two published versions. Kirby and Marakovic (1996)
+introduced the original 21-item questionnaire: seven discount-rate
+ranks, three items per rank except rank 3 (two items, no large-magnitude
+item) and rank 4 (four items, two of them large), with delayed amounts
+of \$30–\$85. Kirby, Petry, and Bickel (1999) extended the design to 27
+items across nine evenly populated ranks (three items each, one per
+magnitude), which is the version scored above. Both versions are scored
+with the same consistency-maximization logic.
+
+## Scoring the 21-item MCQ
+
+The original Monetary Choice Questionnaire (Kirby & Marakovic, 1996) has
+21 items over seven discount-rate ranks.
+[`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md)
+scores it with the same consistency-maximization algorithm used for the
+27-item version:
+
+``` r
+
+score_mcq(mcq21, items = 21)
+#>   subjectid overall_k  small_k medium_k  large_k geomean_k overall_consistency
+#> 1         1  0.006756 0.006878 0.006996 0.004886  0.006172                   1
+#> 2         2  0.000700 0.000700 0.000700 0.000700  0.000700                   1
+#>   small_consistency medium_consistency large_consistency composite_consistency
+#> 1                 1                  1                 1                     1
+#> 2                 1                  1                 1                     1
+#>   overall_proportion small_proportion medium_proportion large_proportion
+#> 1           0.619048         0.571429          0.571429         0.714286
+#> 2           1.000000         1.000000          1.000000         1.000000
+#>   impute_method
+#> 1          none
+#> 2          none
+```
+
+Proportions of smaller-sooner choices by rank use the same tooling:
+
+``` r
+
+prop_ss(mcq21, items = 21)
+#> # A tibble: 7 × 2
+#>   k_rank prop_ss
+#>    <dbl>   <dbl>
+#> 1      1     0.5
+#> 2      2     0.5
+#> 3      3     0.5
+#> 4      4     0  
+#> 5      5     0  
+#> 6      6     0  
+#> 7      7     0
+```
+
+Trial-level modeling works through the same bridge as the 27-item MCQ
+(see
+[`vignette("choice-discounting")`](https://brentkaplan.github.io/beezdiscounting/articles/choice-discounting.md)):
+
+``` r
+
+head(mcq_to_choice(mcq21, items = 21))
+#> # A tibble: 6 × 5
+#>   id    ss_amount ll_amount delay choice
+#>   <chr>     <dbl>     <dbl> <dbl>  <dbl>
+#> 1 1            30        85    14      1
+#> 2 1            40        55    25      1
+#> 3 1            67        85    35      1
+#> 4 1            34        35    43      0
+#> 5 1            15        35    10      1
+#> 6 1            32        55    20      1
+```
+
+[`score_mcq27()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq27.md)
+remains available and is unchanged: it is now a thin wrapper around
+[`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md),
+and `score_mcq27(dat)` returns exactly `score_mcq(dat, items = 27)`.
+
 ## References
 
 - Kaplan, B. A., Amlung, M., Reed, D. D., Jarmolowicz, D. P.,
   McKerchar, T. L., & Lemley, S. M. (2016). Automating scoring of delay
   discounting for the 21- and 27-item monetary choice questionnaires.
   *The Behavior Analyst, 39*, 293–304.
+- Kirby, K. N., & Marakovic, N. N. (1996). Delay-discounting
+  probabilistic rewards: Rates decrease as amounts increase.
+  *Psychonomic Bulletin & Review, 3*(1), 100–104.
 - Kirby, K. N., Petry, N. M., & Bickel, W. K. (1999). Heroin addicts
   have higher discount rates for delayed rewards than non-drug-using
   controls. *Journal of Experimental Psychology: General, 128*(1),

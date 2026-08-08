@@ -2,6 +2,51 @@
 
 ## beezdiscounting (development version)
 
+#### 21-item MCQ support
+
+- New
+  [`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md)
+  scores both the 27-item (Kirby, Petry, & Bickel, 1999) and the
+  original 21-item (Kirby & Marakovic, 1996) MCQ with the same
+  consistency-maximization algorithm;
+  [`score_mcq27()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq27.md)
+  is now a wrapper and its output is unchanged. The 21-item item table
+  (amounts, delays, k at indifference, ranks) was transcribed from Kirby
+  & Marakovic (1996, Table 1) and cross-validated against the Kaplan et
+  al. (2014) Excel Automated Scorer, including its ladder-edge
+  conventions.
+- [`prop_ss()`](https://brentkaplan.github.io/beezdiscounting/reference/prop_ss.md),
+  INN missing-data imputation (now defined over k-rank neighbor groups,
+  identical results for the 27-item version), the new
+  [`mcq_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq_to_choice.md)
+  (generalizing
+  [`mcq27_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq27_to_choice.md)),
+  and
+  [`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md)
+  all support `items = 21`.
+- New `mcq21` example dataset.
+- Stricter input validation in the scorer: duplicate, unknown, missing,
+  or fractional/non-whole question ids and responses outside 0/1/NA now
+  error instead of silently producing invalid scores.
+  [`mcq_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq_to_choice.md)
+  still accepts ragged input.
+- Character, factor, and logical responses to
+  [`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md)/[`score_mcq27()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq27.md)
+  are now normalized and score identically to numeric 0/1 (previously
+  they either passed validation and then failed obscurely during
+  scoring, or errored).
+- New [`plot()`](https://rdrr.io/r/graphics/plot.default.html) method
+  for 21-item
+  [`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md)
+  output
+  ([`plot.score_mcq_output()`](https://brentkaplan.github.io/beezdiscounting/reference/plot.score_mcq_output.md)),
+  matching the existing 27-item plot method.
+- Internal (unexported)
+  [`inn()`](https://brentkaplan.github.io/beezdiscounting/reference/inn.md)
+  gained a `reg` parameter – `inn(dat, reg, random, verbose)` – to
+  support both MCQ versions. This is a breaking signature change for any
+  code calling `beezdiscounting:::inn()` directly.
+
 #### New vignettes
 
 - [`vignette("mcq27-scoring")`](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.md):

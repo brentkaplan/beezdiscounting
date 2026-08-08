@@ -109,7 +109,19 @@ to missing data. Default is FALSE.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Summary dataframe</p>
+    <p>If <code>return_data = FALSE</code> (default), a summary data frame with one
+row per subject. If <code>return_data = TRUE</code>, a list with <code>results</code> (that
+summary data frame) and <code>data</code> (the input data plus a <code>newresponse</code>
+column reflecting any imputation).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>The subject's data must satisfy a strict contract: exactly one
+row per canonical question id (27 of them; no duplicates, no unknown
+ids, none missing) and responses coded 0, 1, or <code>NA</code> (numeric, logical, or
+character/factor values that coerce to 0/1). Malformed input errors
+rather than silently mis-scoring. Contrast with <code><a href="mcq27_to_choice.html">mcq27_to_choice()</a></code>'s
+lenient, ragged contract, which accepts partial per-subject coverage.</p>
     </div>
 
     <div class="section level2">
@@ -138,7 +150,7 @@ to missing data. Default is FALSE.</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

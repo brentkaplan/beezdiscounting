@@ -534,9 +534,9 @@
         </dt>
         <dd>Extract timing metrics from 5.5 trial probability discounting from Qualtrics template</dd>
       </dl></div><div class="section level2">
-      <h2 id="-item-monetary-choice-questionnaire-mcq-">27-item Monetary Choice Questionnaire (MCQ)<a class="anchor" aria-label="anchor" href="#-item-monetary-choice-questionnaire-mcq-"></a></h2>
+      <h2 id="monetary-choice-questionnaire-mcq-and-item-">Monetary Choice Questionnaire (MCQ, 27- and 21-item)<a class="anchor" aria-label="anchor" href="#monetary-choice-questionnaire-mcq-and-item-"></a></h2>
 
-      <div class="section-desc"><p>Scoring, lookup, simulation, and reshaping for the 27-item MCQ.</p></div>
+      <div class="section-desc"><p>Scoring, lookup, simulation, and reshaping for the 27-item (Kirby, Petry, &amp; Bickel, 1999) and 21-item (Kirby &amp; Marakovic, 1996) MCQ.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -544,6 +544,13 @@
 
 
       <dl><dt>
+
+          <code><a href="score_mcq.html">score_mcq()</a></code>
+
+        </dt>
+        <dd>Score an MCQ (27- or 21-item)</dd>
+
+        <dt>
 
           <code><a href="score_mcq27.html">score_mcq27()</a></code>
 
@@ -569,7 +576,14 @@
           <code><a href="get_lookup_table.html">get_lookup_table()</a></code>
 
         </dt>
-        <dd>Get internal lookup table for the 27-item MCQ</dd>
+        <dd>Get internal lookup table for the 27- or 21-item MCQ</dd>
+
+        <dt>
+
+          <code><a href="mcq_to_choice.html">mcq_to_choice()</a></code>
+
+        </dt>
+        <dd>Convert 27- or 21-item MCQ responses to a trial-level choice frame</dd>
 
         <dt>
 
@@ -710,6 +724,13 @@
 
         <dt>
 
+          <code><a href="plot.score_mcq_output.html">plot(<i>&lt;score_mcq_output&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Plot MCQ Scores</dd>
+
+        <dt>
+
           <code><a href="plot_dd.html">plot_dd()</a></code>
 
         </dt>
@@ -744,6 +765,13 @@
 
         </dt>
         <dd>Example 27-item MCQ data</dd>
+
+        <dt>
+
+          <code><a href="mcq21.html">mcq21</a></code>
+
+        </dt>
+        <dd>Example 21-item MCQ data</dd>
 
         <dt>
 
@@ -791,7 +819,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

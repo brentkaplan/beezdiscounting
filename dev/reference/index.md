@@ -172,10 +172,13 @@ Scoring functions for probability-discounting tasks.
   : Extract timing metrics from 5.5 trial probability discounting from
   Qualtrics template
 
-## 27-item Monetary Choice Questionnaire (MCQ)
+## Monetary Choice Questionnaire (MCQ, 27- and 21-item)
 
-Scoring, lookup, simulation, and reshaping for the 27-item MCQ.
+Scoring, lookup, simulation, and reshaping for the 27-item (Kirby,
+Petry, & Bickel, 1999) and 21-item (Kirby & Marakovic, 1996) MCQ.
 
+- [`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md)
+  : Score an MCQ (27- or 21-item)
 - [`score_mcq27()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq27.md)
   : Score 27-item MCQ
 - [`summarize_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/summarize_mcq.md)
@@ -183,7 +186,9 @@ Scoring, lookup, simulation, and reshaping for the 27-item MCQ.
 - [`prop_ss()`](https://brentkaplan.github.io/beezdiscounting/reference/prop_ss.md)
   : Calculate proportion of SIR/SS responses at each k value
 - [`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md)
-  : Get internal lookup table for the 27-item MCQ
+  : Get internal lookup table for the 27- or 21-item MCQ
+- [`mcq_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq_to_choice.md)
+  : Convert 27- or 21-item MCQ responses to a trial-level choice frame
 - [`mcq27_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq27_to_choice.md)
   : Convert 27-item MCQ responses to a trial-level choice frame
 - [`generate_data_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/generate_data_mcq.md)
@@ -233,6 +238,8 @@ diagnostics – plus plotting for scored task outputs.
   : Plot Proportion of SIR/SS Choices by k Value
 - [`plot(`*`<score_mcq27_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.score_mcq27_output.md)
   : Plot MCQ-27 Scores
+- [`plot(`*`<score_mcq_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.score_mcq_output.md)
+  : Plot MCQ Scores
 - [`plot_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/plot_dd.md)
   : Plot Delay-Discounting Model
 - [`plot_qq(`*`<beezdiscounting_tmb>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot_qq.beezdiscounting.md)
@@ -247,6 +254,8 @@ Built-in datasets for examples and testing.
   : Delay Discounting Data
 - [`mcq27`](https://brentkaplan.github.io/beezdiscounting/reference/mcq27.md)
   : Example 27-item MCQ data
+- [`mcq21`](https://brentkaplan.github.io/beezdiscounting/reference/mcq21.md)
+  : Example 21-item MCQ data
 - [`five.fivetrial_dd`](https://brentkaplan.github.io/beezdiscounting/reference/five.fivetrial_dd.md)
   : Example Qualtrics output from the 5.5 trial delay discounting
   template.

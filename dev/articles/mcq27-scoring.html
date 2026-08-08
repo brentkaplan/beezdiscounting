@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Scoring the 27-Item Monetary Choice Questionnaire • beezdiscounting</title>
+<title>Scoring the Monetary Choice Questionnaire (21- and 27-Item) • beezdiscounting</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -18,7 +18,7 @@
 <link href="../deps/Fira_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Scoring the 27-Item Monetary Choice Questionnaire">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Scoring the Monetary Choice Questionnaire (21- and 27-Item)">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -81,7 +81,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Scoring the 27-Item Monetary Choice Questionnaire</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Scoring the Monetary Choice Questionnaire (21- and 27-Item)</h1>
                         <h4 data-toc-skip class="author">Brent
 Kaplan</h4>
             
@@ -328,6 +328,67 @@ trial-level frame those models expect:</p>
 the delay, and the binary choice) is ready for
 <code><a href="../reference/fit_dd_choice.html">fit_dd_choice()</a></code>. See the choice-modeling and TMB vignettes
 for that workflow.</p>
+<p>The MCQ has two published versions. Kirby and Marakovic (1996)
+introduced the original 21-item questionnaire: seven discount-rate
+ranks, three items per rank except rank 3 (two items, no large-magnitude
+item) and rank 4 (four items, two of them large), with delayed amounts
+of $30–$85. Kirby, Petry, and Bickel (1999) extended the design to 27
+items across nine evenly populated ranks (three items each, one per
+magnitude), which is the version scored above. Both versions are scored
+with the same consistency-maximization logic.</p>
+</div>
+<div class="section level2">
+<h2 id="scoring-the-21-item-mcq">Scoring the 21-item MCQ<a class="anchor" aria-label="anchor" href="#scoring-the-21-item-mcq"></a>
+</h2>
+<p>The original Monetary Choice Questionnaire (Kirby &amp; Marakovic,
+1996) has 21 items over seven discount-rate ranks.
+<code><a href="../reference/score_mcq.html">score_mcq()</a></code> scores it with the same
+consistency-maximization algorithm used for the 27-item version:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/score_mcq.html">score_mcq</a></span><span class="op">(</span><span class="va">mcq21</span>, items <span class="op">=</span> <span class="fl">21</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   subjectid overall_k  small_k medium_k  large_k geomean_k overall_consistency</span></span>
+<span><span class="co">#&gt; 1         1  0.006756 0.006878 0.006996 0.004886  0.006172                   1</span></span>
+<span><span class="co">#&gt; 2         2  0.000700 0.000700 0.000700 0.000700  0.000700                   1</span></span>
+<span><span class="co">#&gt;   small_consistency medium_consistency large_consistency composite_consistency</span></span>
+<span><span class="co">#&gt; 1                 1                  1                 1                     1</span></span>
+<span><span class="co">#&gt; 2                 1                  1                 1                     1</span></span>
+<span><span class="co">#&gt;   overall_proportion small_proportion medium_proportion large_proportion</span></span>
+<span><span class="co">#&gt; 1           0.619048         0.571429          0.571429         0.714286</span></span>
+<span><span class="co">#&gt; 2           1.000000         1.000000          1.000000         1.000000</span></span>
+<span><span class="co">#&gt;   impute_method</span></span>
+<span><span class="co">#&gt; 1          none</span></span>
+<span><span class="co">#&gt; 2          none</span></span></code></pre></div>
+<p>Proportions of smaller-sooner choices by rank use the same
+tooling:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/prop_ss.html">prop_ss</a></span><span class="op">(</span><span class="va">mcq21</span>, items <span class="op">=</span> <span class="fl">21</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 7 × 2</span></span></span>
+<span><span class="co">#&gt;   k_rank prop_ss</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>      1     0.5</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>      2     0.5</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>      3     0.5</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>      4     0  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>      5     0  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>      6     0  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span>      7     0</span></span></code></pre></div>
+<p>Trial-level modeling works through the same bridge as the 27-item MCQ
+(see <code><a href="../articles/choice-discounting.html">vignette("choice-discounting")</a></code>):</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/mcq_to_choice.html">mcq_to_choice</a></span><span class="op">(</span><span class="va">mcq21</span>, items <span class="op">=</span> <span class="fl">21</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 5</span></span></span>
+<span><span class="co">#&gt;   id    ss_amount ll_amount delay choice</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 1            30        85    14      1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 1            40        55    25      1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 1            67        85    35      1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 1            34        35    43      0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1            15        35    10      1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 1            32        55    20      1</span></span></code></pre></div>
+<p><code><a href="../reference/score_mcq27.html">score_mcq27()</a></code> remains available and is unchanged: it is
+now a thin wrapper around <code><a href="../reference/score_mcq.html">score_mcq()</a></code>, and
+<code>score_mcq27(dat)</code> returns exactly
+<code>score_mcq(dat, items = 27)</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
@@ -337,6 +398,9 @@ for that workflow.</p>
 McKerchar, T. L., &amp; Lemley, S. M. (2016). Automating scoring of
 delay discounting for the 21- and 27-item monetary choice
 questionnaires. <em>The Behavior Analyst, 39</em>, 293–304.</li>
+<li>Kirby, K. N., &amp; Marakovic, N. N. (1996). Delay-discounting
+probabilistic rewards: Rates decrease as amounts increase.
+<em>Psychonomic Bulletin &amp; Review, 3</em>(1), 100–104.</li>
 <li>Kirby, K. N., Petry, N. M., &amp; Bickel, W. K. (1999). Heroin
 addicts have higher discount rates for delayed rewards than
 non-drug-using controls. <em>Journal of Experimental Psychology:
@@ -361,7 +425,7 @@ imputation for the 21- and 27-item monetary choice questionnaires.
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

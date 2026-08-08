@@ -54,6 +54,17 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="beezdiscounting-development-version">beezdiscounting (development version)<a class="anchor" aria-label="anchor" href="#beezdiscounting-development-version"></a></h2>
 <div class="section level4">
+<h4 id="id_21-item-mcq-support-development-version">21-item MCQ support<a class="anchor" aria-label="anchor" href="#id_21-item-mcq-support-development-version"></a></h4>
+<ul><li>New <code><a href="../reference/score_mcq.html">score_mcq()</a></code> scores both the 27-item (Kirby, Petry, &amp; Bickel, 1999) and the original 21-item (Kirby &amp; Marakovic, 1996) MCQ with the same consistency-maximization algorithm; <code><a href="../reference/score_mcq27.html">score_mcq27()</a></code> is now a wrapper and its output is unchanged. The 21-item item table (amounts, delays, k at indifference, ranks) was transcribed from Kirby &amp; Marakovic (1996, Table 1) and cross-validated against the Kaplan et al. (2014) Excel Automated Scorer, including its ladder-edge conventions.</li>
+<li>
+<code><a href="../reference/prop_ss.html">prop_ss()</a></code>, INN missing-data imputation (now defined over k-rank neighbor groups, identical results for the 27-item version), the new <code><a href="../reference/mcq_to_choice.html">mcq_to_choice()</a></code> (generalizing <code><a href="../reference/mcq27_to_choice.html">mcq27_to_choice()</a></code>), and <code><a href="../reference/get_lookup_table.html">get_lookup_table()</a></code> all support <code>items = 21</code>.</li>
+<li>New <code>mcq21</code> example dataset.</li>
+<li>Stricter input validation in the scorer: duplicate, unknown, missing, or fractional/non-whole question ids and responses outside 0/1/NA now error instead of silently producing invalid scores. <code><a href="../reference/mcq_to_choice.html">mcq_to_choice()</a></code> still accepts ragged input.</li>
+<li>Character, factor, and logical responses to <code><a href="../reference/score_mcq.html">score_mcq()</a></code>/<code><a href="../reference/score_mcq27.html">score_mcq27()</a></code> are now normalized and score identically to numeric 0/1 (previously they either passed validation and then failed obscurely during scoring, or errored).</li>
+<li>New <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> method for 21-item <code><a href="../reference/score_mcq.html">score_mcq()</a></code> output (<code><a href="../reference/plot.score_mcq_output.html">plot.score_mcq_output()</a></code>), matching the existing 27-item plot method.</li>
+<li>Internal (unexported) <code><a href="../reference/inn.html">inn()</a></code> gained a <code>reg</code> parameter – <code>inn(dat, reg, random, verbose)</code> – to support both MCQ versions. This is a breaking signature change for any code calling <code>beezdiscounting:::inn()</code> directly.</li>
+</ul></div>
+<div class="section level4">
 <h4 id="new-vignettes-development-version">New vignettes<a class="anchor" aria-label="anchor" href="#new-vignettes-development-version"></a></h4>
 <ul><li>
 <code><a href="../articles/mcq27-scoring.html">vignette("mcq27-scoring")</a></code>: scoring the 27-item Monetary Choice Questionnaire (<code><a href="../reference/score_mcq27.html">score_mcq27()</a></code>, <code><a href="../reference/get_lookup_table.html">get_lookup_table()</a></code>, <code><a href="../reference/prop_ss.html">prop_ss()</a></code>, <code><a href="../reference/summarize_mcq.html">summarize_mcq()</a></code>, <code><a href="../reference/mcq27_to_choice.html">mcq27_to_choice()</a></code>, and the wide/long converters).</li>
@@ -211,7 +222,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

@@ -6,14 +6,19 @@ al. (2023)
 ## Usage
 
 ``` r
-inn(dat, random, verbose)
+inn(dat, reg, random, verbose)
 ```
 
 ## Arguments
 
 - dat:
 
-  A single subject's 27-item MCQ data in long form
+  A single subject's MCQ data in long form
+
+- reg:
+
+  Registry list from
+  [`.mcq_registry()`](https://brentkaplan.github.io/beezdiscounting/reference/dot-mcq_registry.md)
 
 - random:
 

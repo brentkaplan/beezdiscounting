@@ -54,7 +54,20 @@ score_mcq27(
 
 ## Value
 
-Summary dataframe
+If `return_data = FALSE` (default), a summary data frame with one row
+per subject. If `return_data = TRUE`, a list with `results` (that
+summary data frame) and `data` (the input data plus a `newresponse`
+column reflecting any imputation).
+
+## Details
+
+The subject's data must satisfy a strict contract: exactly one row per
+canonical question id (27 of them; no duplicates, no unknown ids, none
+missing) and responses coded 0, 1, or `NA` (numeric, logical, or
+character/factor values that coerce to 0/1). Malformed input errors
+rather than silently mis-scoring. Contrast with
+[`mcq27_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq27_to_choice.md)'s
+lenient, ragged contract, which accepts partial per-subject coverage.
 
 ## Examples
 

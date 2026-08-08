@@ -1,13 +1,14 @@
 # Convert 27-item MCQ responses to a trial-level choice frame
 
-Reshapes long-form 27-item Monetary Choice Questionnaire (MCQ) responses
-into the per-trial smaller-sooner versus larger-later choice frame
-consumed by
+Reshapes long-form Monetary Choice Questionnaire (MCQ) responses into
+the per-trial smaller-sooner versus larger-later choice frame consumed
+by
 [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md),
-joining each `questionid` to the canonical Kirby, Petry, & Bickel (1999)
-item design (immediate amount, delayed amount, delay) bundled in the
-lookup table (see
-[`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md)).
+joining each `questionid` to the canonical item design (immediate
+amount, delayed amount, delay) bundled in the lookup table (see
+[`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md))
+– Kirby, Petry, & Bickel (1999) for the 27-item MCQ, or Kirby &
+Maraković (1996, Table 1) for the 21-item MCQ.
 
 ## Usage
 
@@ -48,18 +49,22 @@ pass to
 ## Details
 
 Unknown or non-coercible question ids raise an error rather than
-silently producing unmatched rows. Ragged input is allowed – subjects
-need not have all 27 items – and `NA` responses are preserved (they are
-complete-cased by
+silently producing unmatched rows. Question ids 1-21 are valid in both
+the 21- and 27-item designs, so passing the wrong `items` does not error
+– it silently returns the wrong amounts/delays for those ids; make sure
+`items` matches the instrument actually administered. Ragged input is
+allowed – subjects need not have all items – and `NA` responses are
+preserved (they are complete-cased by
 [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md)).
-For the strict 27-item scorer see
-[`score_mcq27()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq27.md).
+For the strict scorer see
+[`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md).
 
 ## See also
 
 [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md),
 [`score_mcq27()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq27.md),
-[`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md)
+[`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md),
+[`mcq_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq_to_choice.md)
 
 ## Examples
 

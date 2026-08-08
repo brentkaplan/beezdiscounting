@@ -12,7 +12,10 @@ summarize_mcq(res, na.rm = TRUE)
 
 - res:
 
-  Dataframe with MCQ results (output from the `calc_mcq` function)
+  Dataframe with MCQ results (output from
+  [`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md)
+  or
+  [`score_mcq27()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq27.md))
 
 - na.rm:
 

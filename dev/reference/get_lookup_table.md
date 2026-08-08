@@ -1,18 +1,24 @@
-# Get internal lookup table for the 27-item MCQ
+# Get internal lookup table for the 27- or 21-item MCQ
 
-Get internal lookup table for the 27-item MCQ
+Get internal lookup table for the 27- or 21-item MCQ
 
 ## Usage
 
 ``` r
-get_lookup_table()
+get_lookup_table(items = 27)
 ```
+
+## Arguments
+
+- items:
+
+  Number of MCQ items (27 or 21); the default returns the Kirby, Petry,
+  & Bickel (1999) 27-item design.
 
 ## Value
 
-Data frame with the complete Kirby, Petry, & Bickel (1999) 27-item
-design: questionid, magnitude, kindiff, k_rank, ss_amount, ll_amount,
-and delay (days)
+Data frame with the complete item design: questionid, magnitude,
+kindiff, k_rank, ss_amount, ll_amount, and delay (days)
 
 ## Examples
 
@@ -46,4 +52,27 @@ get_lookup_table()
 #> 25         11         S 0.246753247 0.25000        11        30     7
 #> 26         27         M 0.250000000 0.25000        20        55     7
 #> 27          4         L 0.248847926 0.25000        31        85     7
+get_lookup_table(items = 21)
+#>    questionid magnitude kindiff k_rank ss_amount ll_amount delay
+#> 1           4         S  0.0007      1        34        35    43
+#> 2          15         M  0.0007      1        53        55    55
+#> 3           7         L  0.0007      1        83        85    35
+#> 4          20         S  0.0032      2        27        30    35
+#> 5           9         M  0.0032      2        48        55    45
+#> 6          12         L  0.0031      2        65        75    50
+#> 7           8         S  0.0057      3        21        30    75
+#> 8          16         M  0.0055      3        47        60    50
+#> 9          14         S  0.0083      4        30        35    20
+#> 10         10         M  0.0089      4        40        65    70
+#> 11          3         L  0.0077      4        67        85    35
+#> 12         18         L  0.0086      4        50        80    70
+#> 13         11         S  0.0160      5        25        35    25
+#> 14          2         M  0.0150      5        40        55    25
+#> 15         19         L  0.0159      5        45        70    35
+#> 16         21         S  0.0250      6        16        30    35
+#> 17          6         M  0.0359      6        32        55    20
+#> 18         17         L  0.0375      6        40        70    20
+#> 19          5         S  0.1333      7        15        35    10
+#> 20         13         M  0.1292      7        24        55    10
+#> 21          1         L  0.1310      7        30        85    14
 ```

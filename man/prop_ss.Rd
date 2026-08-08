@@ -4,11 +4,13 @@
 \alias{prop_ss}
 \title{Calculate proportion of SIR/SS responses at each k value}
 \usage{
-prop_ss(dat)
+prop_ss(dat, items = 27)
 }
 \arguments{
 \item{dat}{Dataframe (longform) with subjectid, questionid, and response
 (0 for SIR/SS and 1 for LDR/LL)}
+
+\item{items}{Number of MCQ items (27 or 21)}
 }
 \value{
 Dataframe with proportion of SIR/SS responses at each k rank
@@ -18,4 +20,6 @@ Calculate proportion of SIR/SS responses at each k value
 }
 \examples{
 prop_ss(mcq27)
+dat21 <- data.frame(subjectid = 1, questionid = 1:21, response = 1)
+prop_ss(dat21, items = 21)
 }

@@ -471,15 +471,20 @@ inn <- function(dat, reg, random, verbose) {
 #'
 #' @param dat Dataframe (longform) with subjectid, questionid, and response
 #' (0 for SIR/SS and 1 for LDR/LL)
+#' @param items Number of MCQ items (27 or 21)
 #'
 #' @return Dataframe with proportion of SIR/SS responses at each k rank
 #' @export
 #'
-#' @examples prop_ss(mcq27)
-prop_ss <- function(dat) {
+#' @examples
+#' prop_ss(mcq27)
+#' dat21 <- data.frame(subjectid = 1, questionid = 1:21, response = 1)
+#' prop_ss(dat21, items = 21)
+prop_ss <- function(dat, items = 27) {
+  reg <- .mcq_registry(items)
 
   # bring in lookup table (k_rank etc.); keep every row so all respondents pool
-  dat <- merge(dat, lookup, by.x = "questionid",
+  dat <- merge(dat, reg$table, by.x = "questionid",
                by.y = "questionid", all.x = TRUE)
 
   if (any(is.na(dat$response))) {
@@ -491,10 +496,15 @@ prop_ss <- function(dat) {
     dplyr::ungroup() |>
     dplyr::mutate(prop_ss = ifelse(is.nan(prop_ss), NA_real_, round(prop_ss, 2)))
 
+  if (reg$items != 27L) {
+    attr(prop_ss_tbl, "mcq_items") <- 21L
+  }
+
   class(prop_ss_tbl) <- c("prop_ss_output", class(prop_ss_tbl))
   return(prop_ss_tbl)
 
 }
+
 
 #' Provide a summary of the results from the MCQ output table.
 #'
@@ -651,6 +661,7 @@ plot.prop_ss_output <- function(
     xlab = "k value rank",
     ylab = "Proportion of SS choices"
     ) {
+  labs_k <- .mcq_registry(attr(x, "mcq_items") %||% 27L)$rank_labels
   x |>
     dplyr::mutate(group = 1) |>
     ggplot2::ggplot(ggplot2::aes(x = factor(k_rank), y = prop_ss, group = group)) +
@@ -664,11 +675,7 @@ plot.prop_ss_output <- function(
          x = xlab,
          y = ylab) +
     ggplot2::theme_minimal() +
-    ggplot2::scale_x_discrete(labels = c(
-      "0.00016", "0.0004", "0.001",
-      "0.0025", "0.006", "0.016",
-      "0.041", "0.1", "0.25")
-    )
+    ggplot2::scale_x_discrete(labels = labs_k)
 }
 
 

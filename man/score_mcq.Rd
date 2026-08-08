@@ -40,10 +40,21 @@ imputed responses. Default is FALSE.}
 to missing data. Default is FALSE.}
 }
 \value{
-Summary dataframe
+If \code{return_data = FALSE} (default), a summary data frame with one
+row per subject. If \code{return_data = TRUE}, a list with \code{results} (that
+summary data frame) and \code{data} (the input data plus a \code{newresponse}
+column reflecting any imputation).
 }
 \description{
 Score an MCQ (27- or 21-item)
+}
+\details{
+Each subject's data must satisfy a strict contract: exactly one
+row per canonical question id (\code{items} of them; no duplicates, no unknown
+ids, none missing) and responses coded 0, 1, or \code{NA} (numeric, or
+character/factor values that coerce to 0/1). Malformed input errors
+rather than silently mis-scoring. Contrast with \code{\link[=mcq_to_choice]{mcq_to_choice()}}'s
+lenient, ragged contract, which accepts partial per-subject coverage.
 }
 \examples{
 score_mcq(mcq27, items = 27)

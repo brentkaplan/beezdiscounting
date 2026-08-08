@@ -7,7 +7,8 @@
 summarize_mcq(res, na.rm = TRUE)
 }
 \arguments{
-\item{res}{Dataframe with MCQ results (output from the \code{calc_mcq} function)}
+\item{res}{Dataframe with MCQ results (output from \code{score_mcq()} or
+\code{score_mcq27()})}
 
 \item{na.rm}{Boolean whether to remove NAs from the calculation}
 }

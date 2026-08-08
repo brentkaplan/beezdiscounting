@@ -72,7 +72,16 @@
 #' @param trans Transformation to apply to k values: "none", "log", or "ln".
 #' Default is "none"
 #'
-#' @return Summary dataframe
+#' @return If `return_data = FALSE` (default), a summary data frame with one
+#' row per subject. If `return_data = TRUE`, a list with `results` (that
+#' summary data frame) and `data` (the input data plus a `newresponse`
+#' column reflecting any imputation).
+#' @details Each subject's data must satisfy a strict contract: exactly one
+#' row per canonical question id (`items` of them; no duplicates, no unknown
+#' ids, none missing) and responses coded 0, 1, or `NA` (numeric, or
+#' character/factor values that coerce to 0/1). Malformed input errors
+#' rather than silently mis-scoring. Contrast with [mcq_to_choice()]'s
+#' lenient, ragged contract, which accepts partial per-subject coverage.
 #' @export
 #'
 #' @examples
@@ -244,7 +253,16 @@ score_mcq <- function(
 #' @param trans Transformation to apply to k values: "none", "log", or "ln".
 #' Default is "none"
 #'
-#' @return Summary dataframe
+#' @return If `return_data = FALSE` (default), a summary data frame with one
+#' row per subject. If `return_data = TRUE`, a list with `results` (that
+#' summary data frame) and `data` (the input data plus a `newresponse`
+#' column reflecting any imputation).
+#' @details The subject's data must satisfy a strict contract: exactly one
+#' row per canonical question id (27 of them; no duplicates, no unknown
+#' ids, none missing) and responses coded 0, 1, or `NA` (numeric, or
+#' character/factor values that coerce to 0/1). Malformed input errors
+#' rather than silently mis-scoring. Contrast with [mcq27_to_choice()]'s
+#' lenient, ragged contract, which accepts partial per-subject coverage.
 #' @export
 #'
 #' @examples
@@ -499,6 +517,12 @@ inn <- function(dat, reg, random, verbose) {
 #' (0 for SIR/SS and 1 for LDR/LL)
 #' @param items Number of MCQ items (27 or 21)
 #'
+#' @details `items` must match the instrument actually administered.
+#' Question ids 1-21 are valid in both the 21- and 27-item designs, so
+#' passing the wrong `items` does not error -- it silently pools responses
+#' into the wrong k-rank rows. If the observed question ids do not exactly
+#' match the requested design, `prop_ss()` warns.
+#'
 #' @return Dataframe with proportion of SIR/SS responses at each k rank
 #' @export
 #'
@@ -550,7 +574,8 @@ prop_ss <- function(dat, items = 27) {
 
 #' Provide a summary of the results from the MCQ output table.
 #'
-#' @param res Dataframe with MCQ results (output from the `calc_mcq` function)
+#' @param res Dataframe with MCQ results (output from `score_mcq()` or
+#' `score_mcq27()`)
 #' @param na.rm Boolean whether to remove NAs from the calculation
 #'
 #' @return Dataframe with summary statistics
@@ -615,10 +640,13 @@ get_lookup_table <- function(items = 27) {
 #'   input row order. Ready to pass to [fit_dd_choice()].
 #'
 #' @details Unknown or non-coercible question ids raise an error rather than
-#'   silently producing unmatched rows. Ragged input is allowed -- subjects need
-#'   not have all items -- and `NA` responses are preserved (they are
-#'   complete-cased by [fit_dd_choice()]). For the strict scorer see
-#'   [score_mcq()].
+#'   silently producing unmatched rows. Question ids 1-21 are valid in both
+#'   the 21- and 27-item designs, so passing the wrong `items` does not
+#'   error -- it silently returns the wrong amounts/delays for those ids;
+#'   make sure `items` matches the instrument actually administered. Ragged
+#'   input is allowed -- subjects need not have all items -- and `NA`
+#'   responses are preserved (they are complete-cased by [fit_dd_choice()]).
+#'   For the strict scorer see [score_mcq()].
 #'
 #' @seealso [fit_dd_choice()], [score_mcq()], [get_lookup_table()],
 #'   [mcq27_to_choice()]

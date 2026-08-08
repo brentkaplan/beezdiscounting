@@ -24,6 +24,7 @@ hex-beezdiscounting.png
 ^src/symbols\.rds$
 ^\.vscode$
 ^\.claude$
+^\.superpowers$
 ^personal_tests$
 \.DS_Store$
 ^\.Rhistory$

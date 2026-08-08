@@ -138,13 +138,17 @@ reference:
       - ans_pd
       - timing_pd
 
-  - title: 27-item Monetary Choice Questionnaire (MCQ)
-    desc: Scoring, lookup, simulation, and reshaping for the 27-item MCQ.
+  - title: Monetary Choice Questionnaire (MCQ, 27- and 21-item)
+    desc: >
+      Scoring, lookup, simulation, and reshaping for the 27-item (Kirby,
+      Petry, & Bickel, 1999) and 21-item (Kirby & Marakovic, 1996) MCQ.
     contents:
+      - score_mcq
       - score_mcq27
       - summarize_mcq
       - prop_ss
       - get_lookup_table
+      - mcq_to_choice
       - mcq27_to_choice
       - generate_data_mcq
       - wide_to_long_mcq
@@ -174,6 +178,7 @@ reference:
     contents:
       - dd_ip
       - mcq27
+      - mcq21
       - five.fivetrial_dd
       - five.fivetrial_pd
 

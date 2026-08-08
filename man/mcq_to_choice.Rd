@@ -41,10 +41,13 @@ or Kirby & Maraković (1996, Table 1) for the 21-item MCQ.
 }
 \details{
 Unknown or non-coercible question ids raise an error rather than
-silently producing unmatched rows. Ragged input is allowed -- subjects need
-not have all items -- and \code{NA} responses are preserved (they are
-complete-cased by \code{\link[=fit_dd_choice]{fit_dd_choice()}}). For the strict scorer see
-\code{\link[=score_mcq]{score_mcq()}}.
+silently producing unmatched rows. Question ids 1-21 are valid in both
+the 21- and 27-item designs, so passing the wrong \code{items} does not
+error -- it silently returns the wrong amounts/delays for those ids;
+make sure \code{items} matches the instrument actually administered. Ragged
+input is allowed -- subjects need not have all items -- and \code{NA}
+responses are preserved (they are complete-cased by \code{\link[=fit_dd_choice]{fit_dd_choice()}}).
+For the strict scorer see \code{\link[=score_mcq]{score_mcq()}}.
 }
 \examples{
 ch <- mcq_to_choice(mcq27, items = 27)

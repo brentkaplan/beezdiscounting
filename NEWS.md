@@ -14,9 +14,20 @@
   `mcq_to_choice()` (generalizing `mcq27_to_choice()`), and
   `get_lookup_table()` all support `items = 21`.
 * New `mcq21` example dataset.
-* Stricter input validation in the scorer: duplicate, unknown, or missing
-  question ids and responses outside 0/1/NA now error instead of silently
-  producing invalid scores. `mcq_to_choice()` still accepts ragged input.
+* Stricter input validation in the scorer: duplicate, unknown, missing, or
+  fractional/non-whole question ids and responses outside 0/1/NA now error
+  instead of silently producing invalid scores. `mcq_to_choice()` still
+  accepts ragged input.
+* Character and factor `"0"`/`"1"` responses to `score_mcq()`/`score_mcq27()`
+  are now normalized and score identically to numeric 0/1 (previously they
+  either passed validation and then failed obscurely during scoring, or
+  errored).
+* New `plot()` method for 21-item `score_mcq()` output
+  (`plot.score_mcq_output()`), matching the existing 27-item plot method.
+* Internal (unexported) `inn()` gained a `reg` parameter --
+  `inn(dat, reg, random, verbose)` -- to support both MCQ versions. This is
+  a breaking signature change for any code calling
+  `beezdiscounting:::inn()` directly.
 
 ### New vignettes
 

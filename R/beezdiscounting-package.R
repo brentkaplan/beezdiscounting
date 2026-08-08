@@ -48,6 +48,7 @@ utils::globalVariables(c(
     "etheta50",
     "ep50",
     "lookup",
+    "lookup21",
     "k_rank",
     "Statistic",
     "overall_k",

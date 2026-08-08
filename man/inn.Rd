@@ -5,10 +5,12 @@
 \title{Calculates item nearest neighbor imputation approach discussed by
 Yeh et al. (2023)}
 \usage{
-inn(dat, random, verbose)
+inn(dat, reg, random, verbose)
 }
 \arguments{
-\item{dat}{A single subject's 27-item MCQ data in long form}
+\item{dat}{A single subject's MCQ data in long form}
+
+\item{reg}{Registry list from \code{.mcq_registry()}}
 
 \item{random}{Boolean whether to insert a random draw (0 or 1) for NAs}
 

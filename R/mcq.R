@@ -1,7 +1,65 @@
-#' Score 27-item MCQ
+#' Internal MCQ version registry
+#'
+#' @param items Number of MCQ items (27 or 21)
+#' @return List with the version's design table (in ladder order), items,
+#'   per-magnitude item count, overall ladder edge k, and k-rank labels.
+#' @details Edge conventions mirror the Kaplan et al. (2014) Excel scorers:
+#'   overall ladders append 0.25 (27-item) / 0.1333 (21-item) past the
+#'   steepest item; magnitude ladders repeat their last kindiff.
+#' @keywords internal
+.mcq_registry <- function(items) {
+  if (
+    length(items) != 1L ||
+      !is.numeric(items) ||
+      is.na(items) ||
+      items != trunc(items) ||
+      !items %in% c(27, 21)
+  ) {
+    stop("`items` must be 27 or 21.", call. = FALSE)
+  }
+  if (items == 27) {
+    list(
+      items = 27L,
+      table = lookup,
+      n_mag = 9L,
+      edge_k = 0.25,
+      rank_labels = c(
+        "0.00016",
+        "0.0004",
+        "0.001",
+        "0.0025",
+        "0.006",
+        "0.016",
+        "0.041",
+        "0.1",
+        "0.25"
+      )
+    )
+  } else {
+    list(
+      items = 21L,
+      table = lookup21,
+      n_mag = 7L,
+      edge_k = 0.1333,
+      rank_labels = c(
+        "0.0007",
+        "0.0032",
+        "0.0056",
+        "0.0084",
+        "0.016",
+        "0.033",
+        "0.13"
+      )
+    )
+  }
+}
+
+#' Score an MCQ (27- or 21-item)
 #'
 #' @param dat Dataframe (longform) with subjectid, questionid, and response
 #' (0 for SIR/SS and 1 for LDR/LL)
+#' @param items Number of MCQ items: 27 (Kirby, Petry, & Bickel, 1999) or 21
+#' (Kirby & Marakovic, 1996). Default is 27.
 #' @param impute_method One of: "none", "ggm", "GGM", "inn", "INN"
 #' @param round Numeric specifying number of decimal places
 #' (passed to `base::round()`)
@@ -18,11 +76,20 @@
 #' @export
 #'
 #' @examples
-#' score_mcq27(mcq27)
-score_mcq27 <- function(dat = dat, impute_method = "none",
-                        round = 6, random = FALSE,
-                        trans = "none",
-                        return_data = FALSE, verbose = FALSE) {
+#' score_mcq(mcq27, items = 27)
+#' dat21 <- data.frame(subjectid = 1, questionid = 1:21, response = 1)
+#' score_mcq(dat21, items = 21)
+score_mcq <- function(
+  dat = dat,
+  items = 27,
+  impute_method = "none",
+  round = 6,
+  random = FALSE,
+  trans = "none",
+  return_data = FALSE,
+  verbose = FALSE
+) {
+  reg <- .mcq_registry(items)
 
   if (!impute_method %in% c("none", "ggm", "GGM", "inn", "INN")) {
     stop("Impute method must be one of none, ggm, GGM, inn, INN")
@@ -59,29 +126,45 @@ score_mcq27 <- function(dat = dat, impute_method = "none",
     impute_method = rep(NA, length = nids)
   )
 
-
   for (i in unique(dat$subjectid)) {
-
     # filter one subject
     dat_sub <- dat[dat$subjectid == i, ]
 
-    # check for 27 items
-    if (!length(dat_sub$response) == 27) stop(paste0("Response length
-                                                      not equal to 27
-                                                      for subjectid: ", i))
-
-    if (impute_method %in% c("inn", "INN") & any(is.na(dat_sub$response))) {
-      dat_sub <- inn(dat_sub, random = random, verbose = verbose)
+    # check for exact coverage of the registry's question ids: no
+    # duplicates, no unknowns, none missing (previously a length-only
+    # check that could silently mis-score malformed input)
+    qids <- suppressWarnings(as.integer(as.character(dat_sub$questionid)))
+    if (
+      length(qids) != reg$items ||
+        anyDuplicated(qids) ||
+        !setequal(qids[!is.na(qids)], reg$table$questionid)
+    ) {
+      stop(
+        "Response set not equal to ",
+        reg$items,
+        " unique question ids for subjectid: ",
+        i,
+        call. = FALSE
+      )
+    }
+    if (!all(dat_sub$response %in% c(0, 1, NA))) {
+      stop("Responses must be 0, 1, or NA for subjectid: ", i, call. = FALSE)
     }
 
-    dfout[dfout$subjectid %in% i, 2:(ncol(dfout)-1)] <- score_one_mcq27(dat_sub,
-                                                                      impute_method,
-                                                                      round = round)
+    if (impute_method %in% c("inn", "INN") & any(is.na(dat_sub$response))) {
+      dat_sub <- inn(dat_sub, reg, random = random, verbose = verbose)
+    }
+
+    dfout[dfout$subjectid %in% i, 2:(ncol(dfout) - 1)] <- score_one_mcq(
+      dat_sub,
+      reg,
+      impute_method,
+      round = round
+    )
 
     if (return_data) {
       dat$newresponse[dat$subjectid == i] <- dat_sub$response
     }
-
   }
 
   dfout$impute_method <- if (!(impute_method %in% c("inn", "INN") & random)) {
@@ -93,42 +176,86 @@ score_mcq27 <- function(dat = dat, impute_method = "none",
   if (trans == "log") {
     dfout <- dfout |>
       dplyr::mutate(dplyr::across(overall_k:geomean_k, ~ log10(.x))) |>
-      dplyr::rename_with(~ paste0("log10_", .x, recycle0 = TRUE),
-                  overall_k:geomean_k)
+      dplyr::rename_with(
+        ~ paste0("log10_", .x, recycle0 = TRUE),
+        overall_k:geomean_k
+      )
   } else if (trans == "ln") {
     dfout <- dfout |>
       dplyr::mutate(dplyr::across(overall_k:geomean_k, ~ log(.x))) |>
-      dplyr::rename_with(~ paste0("ln_", .x, recycle0 = TRUE),
-                  overall_k:geomean_k)
+      dplyr::rename_with(
+        ~ paste0("ln_", .x, recycle0 = TRUE),
+        overall_k:geomean_k
+      )
   }
 
-  class(dfout) <- c("score_mcq27_output", class(dfout))
+  class(dfout) <- if (reg$items == 27L) {
+    c("score_mcq27_output", class(dfout))
+  } else {
+    c("score_mcq_output", class(dfout))
+  }
 
   if (!return_data) {
     return(dfout)
   } else {
-    return(list("results" = dfout,
-                "data" = dat))
+    return(list("results" = dfout, "data" = dat))
   }
-
-
 }
 
-#' Score one subject's 27-item MCQ
+#' Score 27-item MCQ
 #'
-#' @param dat One subject's 27 items from the MCQ
+#' @param dat Dataframe (longform) with subjectid, questionid, and response
+#' (0 for SIR/SS and 1 for LDR/LL)
+#' @param impute_method One of: "none", "ggm", "GGM", "inn", "INN"
+#' @param round Numeric specifying number of decimal places
+#' (passed to `base::round()`)
+#' @param random Boolean whether to insert a random draw (0 or 1) for NAs.
+#' Default is FALSE
+#' @param return_data Boolean whether to return the original data and new
+#' imputed responses. Default is FALSE.
+#' @param verbose Boolean whether to print subject and question ids pertaining
+#' to missing data. Default is FALSE.
+#' @param trans Transformation to apply to k values: "none", "log", or "ln".
+#' Default is "none"
+#'
+#' @return Summary dataframe
+#' @export
+#'
+#' @examples
+#' score_mcq27(mcq27)
+score_mcq27 <- function(
+  dat = dat,
+  impute_method = "none",
+  round = 6,
+  random = FALSE,
+  trans = "none",
+  return_data = FALSE,
+  verbose = FALSE
+) {
+  score_mcq(
+    dat,
+    items = 27,
+    impute_method = impute_method,
+    round = round,
+    random = random,
+    trans = trans,
+    return_data = return_data,
+    verbose = verbose
+  )
+}
+
+#' Score one subject's MCQ (27- or 21-item)
+#'
+#' @param dat One subject's items from the MCQ
+#' @param reg Registry list from `.mcq_registry()`
 #' @param impute_method One of: "none", "ggm", "GGM", "inn", "INN"
 #' @param round Numeric specifying number of decimal places
 #' (passed to `base::round()`)
 #'
-#' @return Vector with scored 27-item MCQ metrics
+#' @return Vector with scored MCQ metrics
 #' @importFrom psych geometric.mean
 #' @keywords internal
-#'
-#' @examples
-#' beezdiscounting:::score_one_mcq27(mcq27[mcq27$subjectid %in% 1, ])
-score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
-
+score_one_mcq <- function(dat, reg, impute_method = "none", round = 6) {
   # magnitudes
   mag <- c("S", "M", "L")
   mags <- c("small", "medium", "large")
@@ -150,19 +277,25 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
     "large_proportion" = NA
   )
 
-  # bring in lookup table
-  dat <- merge(dat, lookup, by.x = "questionid",
-               by.y = "questionid", all.x = TRUE)
+  # bring in registry's design table
+  dat <- merge(
+    dat,
+    reg$table,
+    by = "questionid",
+    all.x = TRUE
+  )
   # order df
-  dat <- dat[match(lookup$questionid, dat$questionid), ]
+  dat <- dat[match(reg$table$questionid, dat$questionid), ]
 
   ## overall
   # calculate consistency scores
-  lngth <- 28
+  lngth <- reg$items + 1L
   cons <- vector(length = lngth)
   for (j in 1:lngth) {
     # first sorted question id equals sum of ll (1s)
-    if (j == 1) cons[j] <- sum(dat$response[j:length(dat$response)])
+    if (j == 1) {
+      cons[j] <- sum(dat$response[j:length(dat$response)])
+    }
     # very last k value bin equals sum of ss (0s)
     if (j == lngth) {
       cons[j] <- sum(dat$response[1:j - 1] == 0)
@@ -175,7 +308,7 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
   }
 
   # populate consistency
-  dfout["overall_consistency"] <- max(cons) / 27
+  dfout["overall_consistency"] <- max(cons) / reg$items
   # find index where max consistency occurs
   consmaxi <- which(cons == max(cons))
   consmaxi <- sort(rbind(consmaxi, (consmaxi - 1)))
@@ -184,24 +317,29 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
     consmaxi[which(consmaxi == 0)] <- 1
   }
   if (length(consmaxi) != 0) {
-    kval <- gtools::running(c(lookup$kindiff, .25)[consmaxi],
-                            fun = psych::geometric.mean, width = 2, by = 2)
+    kval <- gtools::running(
+      c(reg$table$kindiff, reg$edge_k)[consmaxi],
+      fun = psych::geometric.mean,
+      width = 2,
+      by = 2
+    )
     dfout["overall_k"] <- psych::geometric.mean(kval)
   } else {
     dfout["overall_k"] <- NA
   }
 
-  dfout["overall_proportion"] <- cons[1] / 27
+  dfout["overall_proportion"] <- cons[1] / reg$items
 
   for (k in 1:3) {
-
     dat_mag <- dat[dat$magnitude == mag[k], ]
     # calculate consistency scores
-    lngth <- 10
+    lngth <- reg$n_mag + 1L
     cons <- vector(length = lngth)
     for (j in 1:lngth) {
       # first sorted question id equals sum of ll (1s)
-      if (j == 1) cons[j] <- sum(dat_mag$response[j:length(dat_mag$response)])
+      if (j == 1) {
+        cons[j] <- sum(dat_mag$response[j:length(dat_mag$response)])
+      }
       # very last k value bin equals sum of ss (0s)
       if (j == lngth) {
         cons[j] <- sum(dat_mag$response[1:j - 1] == 0)
@@ -213,7 +351,7 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
         sum(dat_mag$response[j:length(dat_mag$response)])
     }
 
-    dfout[paste0(mags[k], "_consistency")] <- max(cons) / 9
+    dfout[paste0(mags[k], "_consistency")] <- max(cons) / reg$n_mag
     # find index where max consistency occurs
     consmaxi <- which(cons == max(cons))
     consmaxi <- sort(rbind(consmaxi, (consmaxi - 1)))
@@ -222,36 +360,60 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
       consmaxi[which(consmaxi == 0)] <- 1
     }
     if (length(consmaxi) != 0) {
-      kval <- gtools::running(c(subset(lookup, magnitude == mag[k])$kindiff,
-                                subset(lookup, magnitude == mag[k])$kindiff[10])[consmaxi],
-                              fun = psych::geometric.mean, width = 2, by = 2)
+      # explicit last-k repeat == Excel scorer edge; for 27 numerically
+      # identical to the old kindiff[10]=NA + geometric.mean(na.rm=TRUE)
+      # behavior (verified exhaustively over all 512 per-magnitude patterns)
+      km <- reg$table$kindiff[reg$table$magnitude == mag[k]]
+      kval <- gtools::running(
+        c(km, km[reg$n_mag])[consmaxi],
+        fun = psych::geometric.mean,
+        width = 2,
+        by = 2
+      )
       dfout[paste0(mags[k], "_k")] <- psych::geometric.mean(kval)
     } else {
       dfout[paste0(mags[k], "_k")] <- NA
     }
-    dfout[paste0(mags[k], "_proportion")] <- cons[1] / 9
-
-
+    dfout[paste0(mags[k], "_proportion")] <- cons[1] / reg$n_mag
   }
 
-  dfout["geomean_k"] <- psych::geometric.mean(dfout[c("small_k",
-                                                      "medium_k",
-                                                      "large_k")],
-                              na.rm = if (impute_method %in% c("ggm", "GGM")) TRUE else FALSE)
-  dfout["composite_consistency"] <- sum(dfout[c("small_consistency",
-                                             "medium_consistency",
-                                             "large_consistency")]) / 3
+  dfout["geomean_k"] <- psych::geometric.mean(
+    dfout[c("small_k", "medium_k", "large_k")],
+    na.rm = if (impute_method %in% c("ggm", "GGM")) TRUE else FALSE
+  )
+  dfout["composite_consistency"] <- sum(dfout[c(
+    "small_consistency",
+    "medium_consistency",
+    "large_consistency"
+  )]) /
+    3
 
   dfout <- round(dfout, digits = round)
 
   return(dfout)
+}
 
+#' Score one subject's 27-item MCQ
+#'
+#' @param dat One subject's 27 items from the MCQ
+#' @param impute_method One of: "none", "ggm", "GGM", "inn", "INN"
+#' @param round Numeric specifying number of decimal places
+#' (passed to `base::round()`)
+#'
+#' @return Vector with scored 27-item MCQ metrics
+#' @keywords internal
+#'
+#' @examples
+#' beezdiscounting:::score_one_mcq27(mcq27[mcq27$subjectid %in% 1, ])
+score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
+  score_one_mcq(dat, .mcq_registry(27), impute_method, round)
 }
 
 #' Calculates item nearest neighbor imputation approach discussed by
 #' Yeh et al. (2023)
 #'
-#' @param dat A single subject's 27-item MCQ data in long form
+#' @param dat A single subject's MCQ data in long form
+#' @param reg Registry list from `.mcq_registry()`
 #' @param random Boolean whether to insert a random draw (0 or 1) for NAs
 #' @param verbose Boolean whether to print subject and question ids pertaining
 #' to missing data
@@ -259,27 +421,40 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
 #' @return An imputed data set to be scored
 #'
 #' @keywords internal
-inn <- function(dat, random, verbose) {
-  dat <- merge(dat, lookup,
-    by.x = "questionid",
-    by.y = "questionid", all.x = TRUE
-  )
-  dat <- dat[match(lookup$questionid, dat$questionid), ]
-  if (verbose) print(paste("NA found for id:", unique(dat$subjectid)))
-  split_dfs <- suppressWarnings(split(dat, (0:nrow(dat) %/% 3))[-10])
+inn <- function(dat, reg, random, verbose) {
+  dat <- merge(dat, reg$table, by = "questionid", all.x = TRUE)
+  dat <- dat[match(reg$table$questionid, dat$questionid), ]
+  if (verbose) {
+    print(paste("NA found for id:", unique(dat$subjectid)))
+  }
+  ## Yeh et al. (2023) nearest neighbors = items sharing a k rank. For the
+  ## 27-item MCQ these are the historical consecutive triples; for the
+  ## 21-item MCQ group sizes vary (3,3,2,4,3,3,3). Upstream validation in
+  ## score_mcq() guarantees canonical questionid coverage, so no NA ranks.
+  split_dfs <- split(dat, factor(dat$k_rank, levels = unique(dat$k_rank)))
 
   for (i in seq_along(split_dfs)) {
     if (!any(is.na(split_dfs[[i]]$response))) {
       next()
     } else {
       naqids <- split_dfs[[i]]$questionid[which(is.na(split_dfs[[i]]$response))]
-      if (verbose) print(paste0(c("NAs for questionids: ", naqids), collapse = " "))
-      if (length(unique(split_dfs[[i]]$response[!(split_dfs[[i]]$questionid %in% naqids)])) == 1) {
+      if (verbose) {
+        print(paste0(c("NAs for questionids: ", naqids), collapse = " "))
+      }
+      if (
+        length(unique(split_dfs[[i]]$response[
+          !(split_dfs[[i]]$questionid %in% naqids)
+        ])) ==
+          1
+      ) {
         # if all non-na values are the same, replace with that non-na number
-        dat$response[dat$questionid %in% naqids] <- unique(split_dfs[[i]]$response[!(split_dfs[[i]]$questionid %in% naqids)])
+        dat$response[dat$questionid %in% naqids] <- unique(split_dfs[[
+          i
+        ]]$response[!(split_dfs[[i]]$questionid %in% naqids)])
       } else {
         if (random) {
-          dat$response[dat$questionid %in% naqids] <- sample(0:1,
+          dat$response[dat$questionid %in% naqids] <- sample(
+            0:1,
             length(naqids),
             replace = TRUE
           )
@@ -287,7 +462,8 @@ inn <- function(dat, random, verbose) {
       }
     }
   }
-  return(dat[order(as.numeric(dat$questionid)), c(2, 1, 3)])
+  dat <- dat[order(as.numeric(dat$questionid)), ]
+  dat[, c("subjectid", "questionid", "response")]
 }
 
 
@@ -496,27 +672,26 @@ plot.prop_ss_output <- function(
 }
 
 
-#' Plot MCQ-27 Scores
+#' Plot MCQ scores (internal implementation)
 #'
-#' This function creates a plot of the MCQ-27 scores for
-#' different metrics (small_k, medium_k, large_k, geomean_k, overall_k).
-#' The function handles different logarithmic transformations of the k-values
-#' and adjusts the y-axis label accordingly.
+#' Shared boxplot implementation for `plot.score_mcq27_output()` and
+#' `plot.score_mcq_output()`.
 #'
-#' @param x A data frame returned by the `score_mcq27` function.
-#' @param ... Additional arguments passed to methods.
-#' @param xlab Label for the x-axis. Default is "Metric".
-#' @param alpha Transparency of the points in the plot. Default is 0.3.
+#' @param x A data frame returned by `score_mcq()`, `score_mcq27()`.
+#' @param xlab Label for the x-axis.
+#' @param alpha Transparency of the points in the plot.
 #'
-#' @return A ggplot object showing the boxplot of MCQ-27 scores.
-#' @export
-#'
-#' @examples plot(score_mcq27(mcq27))
-plot.score_mcq27_output <- function(x, ..., xlab = "Metric", alpha = 0.3) {
+#' @return A ggplot object showing the boxplot of MCQ scores.
+#' @keywords internal
+.plot_score_mcq <- function(x, xlab = "Metric", alpha = 0.3) {
   target_levels <- c("small_k", "medium_k", "large_k", "geomean_k", "overall_k")
   tmp <- x |>
     dplyr::select(dplyr::contains(c("id", "_k"))) |>
-    tidyr::pivot_longer(cols = dplyr::contains("_k"), names_to = "metric", values_to = "value")
+    tidyr::pivot_longer(
+      cols = dplyr::contains("_k"),
+      names_to = "metric",
+      values_to = "value"
+    )
 
   if (any(grepl("log10", tmp$metric))) {
     tmp <- tmp |>
@@ -549,4 +724,46 @@ plot.score_mcq27_output <- function(x, ..., xlab = "Metric", alpha = 0.3) {
     )
 
   return(bplot)
+}
+
+#' Plot MCQ-27 Scores
+#'
+#' This function creates a plot of the MCQ-27 scores for
+#' different metrics (small_k, medium_k, large_k, geomean_k, overall_k).
+#' The function handles different logarithmic transformations of the k-values
+#' and adjusts the y-axis label accordingly.
+#'
+#' @param x A data frame returned by the `score_mcq27` function.
+#' @param ... Additional arguments passed to methods.
+#' @param xlab Label for the x-axis. Default is "Metric".
+#' @param alpha Transparency of the points in the plot. Default is 0.3.
+#'
+#' @return A ggplot object showing the boxplot of MCQ-27 scores.
+#' @export
+#'
+#' @examples plot(score_mcq27(mcq27))
+plot.score_mcq27_output <- function(x, ..., xlab = "Metric", alpha = 0.3) {
+  .plot_score_mcq(x, xlab = xlab, alpha = alpha)
+}
+
+#' Plot MCQ Scores
+#'
+#' This function creates a plot of MCQ scores for
+#' different metrics (small_k, medium_k, large_k, geomean_k, overall_k).
+#' The function handles different logarithmic transformations of the k-values
+#' and adjusts the y-axis label accordingly.
+#'
+#' @param x A data frame returned by the `score_mcq` function.
+#' @param ... Additional arguments passed to methods.
+#' @param xlab Label for the x-axis. Default is "Metric".
+#' @param alpha Transparency of the points in the plot. Default is 0.3.
+#'
+#' @return A ggplot object showing the boxplot of MCQ scores.
+#' @export
+#'
+#' @examples
+#' dat21 <- data.frame(subjectid = 1:5, questionid = rep(1:21, 5), response = 1)
+#' plot(score_mcq(dat21, items = 21))
+plot.score_mcq_output <- function(x, ..., xlab = "Metric", alpha = 0.3) {
+  .plot_score_mcq(x, xlab = xlab, alpha = alpha)
 }

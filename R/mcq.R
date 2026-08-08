@@ -78,7 +78,7 @@
 #' column reflecting any imputation).
 #' @details Each subject's data must satisfy a strict contract: exactly one
 #' row per canonical question id (`items` of them; no duplicates, no unknown
-#' ids, none missing) and responses coded 0, 1, or `NA` (numeric, or
+#' ids, none missing) and responses coded 0, 1, or `NA` (numeric, logical, or
 #' character/factor values that coerce to 0/1). Malformed input errors
 #' rather than silently mis-scoring. Contrast with [mcq_to_choice()]'s
 #' lenient, ragged contract, which accepts partial per-subject coverage.
@@ -168,9 +168,15 @@ score_mcq <- function(
     # passing the domain check below. Numeric input is left as-is (not
     # round-tripped through as.numeric(as.character())) so its storage type
     # (e.g. integer) is preserved in `newresponse` when return_data = TRUE.
+    # Logical input (TRUE/FALSE/NA) is converted explicitly via as.numeric()
+    # rather than falling into the character branch below, where
+    # as.numeric(as.character(TRUE)) is NA.
     resp_raw <- dat_sub$response
     if (is.numeric(resp_raw)) {
       resp_num <- resp_raw
+      coercion_failed <- rep(FALSE, length(resp_raw))
+    } else if (is.logical(resp_raw)) {
+      resp_num <- as.numeric(resp_raw)
       coercion_failed <- rep(FALSE, length(resp_raw))
     } else {
       resp_num <- suppressWarnings(as.numeric(as.character(resp_raw)))
@@ -259,7 +265,7 @@ score_mcq <- function(
 #' column reflecting any imputation).
 #' @details The subject's data must satisfy a strict contract: exactly one
 #' row per canonical question id (27 of them; no duplicates, no unknown
-#' ids, none missing) and responses coded 0, 1, or `NA` (numeric, or
+#' ids, none missing) and responses coded 0, 1, or `NA` (numeric, logical, or
 #' character/factor values that coerce to 0/1). Malformed input errors
 #' rather than silently mis-scoring. Contrast with [mcq27_to_choice()]'s
 #' lenient, ragged contract, which accepts partial per-subject coverage.

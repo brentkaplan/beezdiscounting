@@ -192,3 +192,38 @@ test_that("bundled mcq21 dataset scores to its documented values", {
   expect_equal(res$overall_k[res$subjectid == 2], 0.0007, tolerance = 1e-6)
   expect_equal(res$overall_consistency, c(1, 1))
 })
+
+test_that("score_mcq scores logical responses identically to numeric 0/1 (21-item)", {
+  dat_num <- data.frame(
+    subjectid = 1,
+    questionid = 1:21,
+    response = c(0, rep(1, 20))
+  )
+  dat_log <- dat_num
+  dat_log$response <- as.logical(dat_log$response)
+
+  expect_identical(score_mcq(dat_log, items = 21), score_mcq(dat_num, items = 21))
+})
+
+test_that("score_mcq scores logical responses identically to numeric 0/1 (27-item)", {
+  dat_log27 <- mcq27
+  dat_log27$response <- as.logical(dat_log27$response)
+
+  expect_identical(score_mcq27(dat_log27), score_mcq27(mcq27))
+})
+
+test_that("logical NA responses behave like numeric NA responses", {
+  dat_num_na <- data.frame(
+    subjectid = 1,
+    questionid = 1:21,
+    response = c(0, rep(1, 20))
+  )
+  dat_num_na$response[2] <- NA
+  dat_log_na <- dat_num_na
+  dat_log_na$response <- as.logical(dat_log_na$response)
+
+  expect_identical(
+    score_mcq(dat_log_na, items = 21, impute_method = "none"),
+    score_mcq(dat_num_na, items = 21, impute_method = "none")
+  )
+})

@@ -51,7 +51,7 @@ Score an MCQ (27- or 21-item)
 \details{
 Each subject's data must satisfy a strict contract: exactly one
 row per canonical question id (\code{items} of them; no duplicates, no unknown
-ids, none missing) and responses coded 0, 1, or \code{NA} (numeric, or
+ids, none missing) and responses coded 0, 1, or \code{NA} (numeric, logical, or
 character/factor values that coerce to 0/1). Malformed input errors
 rather than silently mis-scoring. Contrast with \code{\link[=mcq_to_choice]{mcq_to_choice()}}'s
 lenient, ragged contract, which accepts partial per-subject coverage.

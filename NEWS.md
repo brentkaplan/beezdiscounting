@@ -18,7 +18,7 @@
   fractional/non-whole question ids and responses outside 0/1/NA now error
   instead of silently producing invalid scores. `mcq_to_choice()` still
   accepts ragged input.
-* Character and factor `"0"`/`"1"` responses to `score_mcq()`/`score_mcq27()`
+* Character, factor, and logical responses to `score_mcq()`/`score_mcq27()`
   are now normalized and score identically to numeric 0/1 (previously they
   either passed validation and then failed obscurely during scoring, or
   errored).

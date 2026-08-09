@@ -2,22 +2,34 @@
 % Please edit documentation in R/mcq.R
 \name{get_lookup_table}
 \alias{get_lookup_table}
-\title{Get internal lookup table for the 27- or 21-item MCQ}
+\title{Get an internal instrument design table}
 \usage{
-get_lookup_table(items = 27)
+get_lookup_table(items = NULL, instrument = NULL)
 }
 \arguments{
-\item{items}{Number of MCQ items (27 or 21); the default returns the
-Kirby, Petry, & Bickel (1999) 27-item design.}
+\item{items}{\strong{Deprecated.} Number of MCQ items (27 or 21), kept as a
+back-compatible alias for \code{instrument = "mcq27"} / \code{"mcq21"}
+(including positional calls like \code{get_lookup_table(21)}). Use
+\code{instrument} in new code; \code{items} cannot address the PDQ.}
+
+\item{instrument}{Instrument key: \code{"mcq27"} (Kirby, Petry, & Bickel,
+1999), \code{"mcq21"} (Kirby & Marakovic, 1996), or \code{"pdq"} (Madden,
+Petry, & Johnson, 2009). Supply \code{items} or \code{instrument}, not both.
+The default (neither) returns the 27-item MCQ design.}
 }
 \value{
-Data frame with the complete item design: questionid, magnitude,
-kindiff, k_rank, ss_amount, ll_amount, and delay (days)
+Data frame with the complete item design. MCQ tables:
+questionid, magnitude, kindiff, k_rank, ss_amount, ll_amount, delay
+(days). PDQ table: questionid, block, h_rank, overall_rank (the
+item's position in the pooled overall ladder used by the
+\code{overall_h} extension in \code{\link[=score_pdq]{score_pdq()}}), sc_amount, lu_amount,
+prob, theta (odds against), hindiff.
 }
 \description{
-Get internal lookup table for the 27- or 21-item MCQ
+Get an internal instrument design table
 }
 \examples{
 get_lookup_table()
 get_lookup_table(items = 21)
+get_lookup_table(instrument = "pdq")
 }

@@ -405,3 +405,101 @@ plot.prop_sc_output <- function(
     ggplot2::labs(title = title, x = xlab, y = ylab) +
     ggplot2::theme_minimal()
 }
+
+
+#' Convert PDQ responses to a trial-level choice frame
+#'
+#' Reshapes long-form Probability Discounting Questionnaire (PDQ) responses
+#' into a per-trial certain-versus-risky choice frame, joining each
+#' `questionid` to the canonical item design (certain amount, probabilistic
+#' amount, probability, and odds against `theta = (1 - p)/p`) from
+#' Madden, Petry, & Johnson (2009; see [get_lookup_table()]).
+#'
+#' @param responses Long-form data frame with one row per PDQ item per
+#'   subject, holding the columns named by `id_var`, `question_var`, and
+#'   `response_var`. `response` is `0` for the smaller guaranteed reward and
+#'   `1` for the larger risky reward.
+#' @param id_var,question_var,response_var Column names in `responses` for
+#'   the subject id, PDQ question id (1-30), and the binary choice. Defaults
+#'   match the bundled `pdq` dataset (`"subjectid"`, `"questionid"`,
+#'   `"response"`).
+#'
+#' @return A [tibble][tibble::tibble] with columns `id` (character),
+#'   `sc_amount`, `lu_amount`, `prob`, `theta` (odds against winning), and
+#'   `choice` (`0`/`1`, `1` = chose the risky reward), in the input row
+#'   order.
+#'
+#' @details Unknown or non-coercible question ids raise an error rather
+#'   than silently producing unmatched rows. Ragged input is allowed --
+#'   subjects need not have all items -- and `NA` responses are preserved.
+#'   For the strict scorer see [score_pdq()].
+#'
+#' @seealso [score_pdq()], [get_lookup_table()], [mcq_to_choice()]
+#' @export
+#'
+#' @examples
+#' ch <- pdq_to_choice(pdq)
+#' head(ch)
+pdq_to_choice <- function(
+  responses,
+  id_var = "subjectid",
+  question_var = "questionid",
+  response_var = "response"
+) {
+  reg <- .instrument_registry("pdq")
+
+  if (!is.data.frame(responses)) {
+    stop("`responses` must be a data frame.", call. = FALSE)
+  }
+  req <- c(id_var, question_var, response_var)
+  missing_cols <- req[!req %in% names(responses)]
+  if (length(missing_cols)) {
+    stop(
+      "Column(s) not found in `responses`: ",
+      paste(missing_cols, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  id <- as.character(responses[[id_var]])
+
+  qnum <- suppressWarnings(as.numeric(as.character(responses[[question_var]])))
+  qid <- as.integer(qnum)
+  i <- match(qid, reg$table$questionid)
+  invalid <- is.na(i) | (!is.na(qnum) & qnum != qid)
+  if (any(invalid)) {
+    bad <- unique(as.character(responses[[question_var]][invalid]))
+    stop(
+      "Invalid questionid(s): ",
+      paste(bad, collapse = ", "),
+      " (must be whole numbers in 1-",
+      reg$items,
+      " present in the PDQ table).",
+      call. = FALSE
+    )
+  }
+
+  raw_choice <- responses[[response_var]]
+  choice <- suppressWarnings(as.numeric(as.character(raw_choice)))
+  coercion_failed <- is.na(choice) & !is.na(raw_choice)
+  bad_choice <- coercion_failed | (!is.na(choice) & !(choice %in% c(0, 1)))
+  if (any(bad_choice)) {
+    stop(
+      "`",
+      response_var,
+      "` must be 0/1 (1 = chose the risky reward); ",
+      sum(bad_choice),
+      " value(s) are not.",
+      call. = FALSE
+    )
+  }
+
+  tibble::tibble(
+    id = id,
+    sc_amount = reg$table$sc_amount[i],
+    lu_amount = reg$table$lu_amount[i],
+    prob = reg$table$prob[i],
+    theta = reg$table$theta[i],
+    choice = choice
+  )
+}

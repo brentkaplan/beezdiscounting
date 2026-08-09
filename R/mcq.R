@@ -480,19 +480,36 @@ summarize_mcq <- function(res, na.rm = TRUE) {
 }
 
 
-#' Get internal lookup table for the 27- or 21-item MCQ
+#' Get an internal instrument design table
 #'
-#' @param items Number of MCQ items (27 or 21); the default returns the
-#' Kirby, Petry, & Bickel (1999) 27-item design.
-#' @return Data frame with the complete item design: questionid, magnitude,
-#'   kindiff, k_rank, ss_amount, ll_amount, and delay (days)
+#' @param items **Deprecated.** Number of MCQ items (27 or 21), kept as a
+#'   back-compatible alias for `instrument = "mcq27"` / `"mcq21"`
+#'   (including positional calls like `get_lookup_table(21)`). Use
+#'   `instrument` in new code; `items` cannot address the PDQ.
+#' @param instrument Instrument key: `"mcq27"` (Kirby, Petry, & Bickel,
+#'   1999), `"mcq21"` (Kirby & Marakovic, 1996), or `"pdq"` (Madden,
+#'   Petry, & Johnson, 2009). Supply `items` or `instrument`, not both.
+#'   The default (neither) returns the 27-item MCQ design.
+#' @return Data frame with the complete item design. MCQ tables:
+#'   questionid, magnitude, kindiff, k_rank, ss_amount, ll_amount, delay
+#'   (days). PDQ table: questionid, block, h_rank, overall_rank (the
+#'   item's position in the pooled overall ladder used by the
+#'   `overall_h` extension in [score_pdq()]), sc_amount, lu_amount,
+#'   prob, theta (odds against), hindiff.
 #' @export
 #'
 #' @examples
 #' get_lookup_table()
 #' get_lookup_table(items = 21)
-get_lookup_table <- function(items = 27) {
-  .mcq_registry(items)$table
+#' get_lookup_table(instrument = "pdq")
+get_lookup_table <- function(items = NULL, instrument = NULL) {
+  if (!is.null(items) && !is.null(instrument)) {
+    stop("Supply `items` or `instrument`, not both.", call. = FALSE)
+  }
+  if (!is.null(instrument)) {
+    return(.instrument_registry(instrument)$table)
+  }
+  .mcq_registry(items %||% 27)$table
 }
 
 

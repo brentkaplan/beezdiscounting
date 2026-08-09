@@ -234,3 +234,20 @@ test_that("trans, round, return_data, and multi-subject input work", {
   p <- plot(res)
   expect_s3_class(p, "ggplot")
 })
+
+test_that("bundled pdq dataset scores to its documented values", {
+  expect_equal(nrow(pdq), 60L)
+  res <- score_pdq(pdq)
+  expect_equal(res$block1_h[res$subjectid == 1], 1.2155706233, tolerance = 1e-6)
+  expect_equal(
+    res$geomean_h[res$subjectid == 1],
+    1.2247448714,
+    tolerance = 1e-6
+  )
+  expect_equal(res$overall_h[res$subjectid == 1], sqrt(1.5), tolerance = 1e-6)
+  expect_equal(res$block1_h[res$subjectid == 2], 1 / 3, tolerance = 1e-6)
+  expect_equal(res$block2_h[res$subjectid == 2], 27 / 82, tolerance = 1e-6)
+  expect_equal(res$overall_h[res$subjectid == 2], 27 / 82, tolerance = 1e-6)
+  expect_equal(res$composite_consistency, c(1, 1))
+  expect_equal(res$overall_consistency, c(1, 1))
+})

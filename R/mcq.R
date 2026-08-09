@@ -1,59 +1,3 @@
-#' Internal MCQ version registry
-#'
-#' @param items Number of MCQ items (27 or 21)
-#' @return List with the version's design table (in ladder order), items,
-#'   per-magnitude item count, overall ladder edge k, and k-rank labels.
-#' @details Edge conventions mirror the Kaplan et al. (2014) Excel scorers:
-#'   overall ladders append 0.25 (27-item) / 0.1333 (21-item) past the
-#'   steepest item; magnitude ladders repeat their last kindiff.
-#' @keywords internal
-.mcq_registry <- function(items) {
-  if (
-    length(items) != 1L ||
-      !is.numeric(items) ||
-      is.na(items) ||
-      items != trunc(items) ||
-      !items %in% c(27, 21)
-  ) {
-    stop("`items` must be 27 or 21.", call. = FALSE)
-  }
-  if (items == 27) {
-    list(
-      items = 27L,
-      table = lookup,
-      n_mag = 9L,
-      edge_k = 0.25,
-      rank_labels = c(
-        "0.00016",
-        "0.0004",
-        "0.001",
-        "0.0025",
-        "0.006",
-        "0.016",
-        "0.041",
-        "0.1",
-        "0.25"
-      )
-    )
-  } else {
-    list(
-      items = 21L,
-      table = lookup21,
-      n_mag = 7L,
-      edge_k = 0.1333,
-      rank_labels = c(
-        "0.0007",
-        "0.0032",
-        "0.0056",
-        "0.0084",
-        "0.016",
-        "0.033",
-        "0.13"
-      )
-    )
-  }
-}
-
 #' Score an MCQ (27- or 21-item)
 #'
 #' @param dat Dataframe (longform) with subjectid, questionid, and response
@@ -338,93 +282,19 @@ score_one_mcq <- function(dat, reg, impute_method = "none", round = 6) {
   dat <- dat[match(reg$table$questionid, dat$questionid), ]
 
   ## overall
-  # calculate consistency scores
-  lngth <- reg$items + 1L
-  cons <- vector(length = lngth)
-  for (j in 1:lngth) {
-    # first sorted question id equals sum of ll (1s)
-    if (j == 1) {
-      cons[j] <- sum(dat$response[j:length(dat$response)])
-    }
-    # very last k value bin equals sum of ss (0s)
-    if (j == lngth) {
-      cons[j] <- sum(dat$response[1:j - 1] == 0)
-      break()
-    }
-    # for each question id in between, sum number of 0s before and
-    # sum number of 1s at and after the current question id
-    cons[j] <- sum(dat$response[1:j - 1] == 0) +
-      sum(dat$response[j:length(dat$response)])
-  }
-
-  # populate consistency
-  dfout["overall_consistency"] <- max(cons) / reg$items
-  # find index where max consistency occurs
-  consmaxi <- which(cons == max(cons))
-  consmaxi <- sort(rbind(consmaxi, (consmaxi - 1)))
-  # if the highest consistency is at the first index, replace 0 index with 1
-  if (0 %in% consmaxi) {
-    consmaxi[which(consmaxi == 0)] <- 1
-  }
-  if (length(consmaxi) != 0) {
-    kval <- gtools::running(
-      c(reg$table$kindiff, reg$edge_k)[consmaxi],
-      fun = psych::geometric.mean,
-      width = 2,
-      by = 2
-    )
-    dfout["overall_k"] <- psych::geometric.mean(kval)
-  } else {
-    dfout["overall_k"] <- NA
-  }
-
-  dfout["overall_proportion"] <- cons[1] / reg$items
+  overall <- .score_ladder(dat$response, reg$table[[reg$value_col]], reg$edge_k)
+  dfout["overall_k"] <- overall$value
+  dfout["overall_consistency"] <- overall$consistency
+  dfout["overall_proportion"] <- overall$proportion
 
   for (k in 1:3) {
     dat_mag <- dat[dat$magnitude == mag[k], ]
-    # calculate consistency scores
-    lngth <- reg$n_mag + 1L
-    cons <- vector(length = lngth)
-    for (j in 1:lngth) {
-      # first sorted question id equals sum of ll (1s)
-      if (j == 1) {
-        cons[j] <- sum(dat_mag$response[j:length(dat_mag$response)])
-      }
-      # very last k value bin equals sum of ss (0s)
-      if (j == lngth) {
-        cons[j] <- sum(dat_mag$response[1:j - 1] == 0)
-        break()
-      }
-      # for each question id in between, sum number of 0s before and
-      # sum number of 1s at and after the current question id
-      cons[j] <- sum(dat_mag$response[1:j - 1] == 0) +
-        sum(dat_mag$response[j:length(dat_mag$response)])
-    }
-
-    dfout[paste0(mags[k], "_consistency")] <- max(cons) / reg$n_mag
-    # find index where max consistency occurs
-    consmaxi <- which(cons == max(cons))
-    consmaxi <- sort(rbind(consmaxi, (consmaxi - 1)))
-    # if the highest consistency is at the first index, replace 0 index with 1
-    if (0 %in% consmaxi) {
-      consmaxi[which(consmaxi == 0)] <- 1
-    }
-    if (length(consmaxi) != 0) {
-      # explicit last-k repeat == Excel scorer edge; for 27 numerically
-      # identical to the old kindiff[10]=NA + geometric.mean(na.rm=TRUE)
-      # behavior (verified exhaustively over all 512 per-magnitude patterns)
-      km <- reg$table$kindiff[reg$table$magnitude == mag[k]]
-      kval <- gtools::running(
-        c(km, km[reg$n_mag])[consmaxi],
-        fun = psych::geometric.mean,
-        width = 2,
-        by = 2
-      )
-      dfout[paste0(mags[k], "_k")] <- psych::geometric.mean(kval)
-    } else {
-      dfout[paste0(mags[k], "_k")] <- NA
-    }
-    dfout[paste0(mags[k], "_proportion")] <- cons[1] / reg$n_mag
+    # explicit last-k repeat == Excel scorer edge (see .score_ladder docs)
+    km <- reg$table[[reg$value_col]][reg$table$magnitude == mag[k]]
+    res <- .score_ladder(dat_mag$response, km, km[reg$n_mag])
+    dfout[paste0(mags[k], "_k")] <- res$value
+    dfout[paste0(mags[k], "_consistency")] <- res$consistency
+    dfout[paste0(mags[k], "_proportion")] <- res$proportion
   }
 
   dfout["geomean_k"] <- psych::geometric.mean(
@@ -463,7 +333,7 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
 #' Yeh et al. (2023)
 #'
 #' @param dat A single subject's MCQ data in long form
-#' @param reg Registry list from `.mcq_registry()`
+#' @param reg Registry list from `.instrument_registry()` / `.mcq_registry()`
 #' @param random Boolean whether to insert a random draw (0 or 1) for NAs
 #' @param verbose Boolean whether to print subject and question ids pertaining
 #' to missing data
@@ -477,11 +347,16 @@ inn <- function(dat, reg, random, verbose) {
   if (verbose) {
     print(paste("NA found for id:", unique(dat$subjectid)))
   }
-  ## Yeh et al. (2023) nearest neighbors = items sharing a k rank. For the
-  ## 27-item MCQ these are the historical consecutive triples; for the
-  ## 21-item MCQ group sizes vary (3,3,2,4,3,3,3). Upstream validation in
-  ## score_mcq() guarantees canonical questionid coverage, so no NA ranks.
-  split_dfs <- split(dat, factor(dat$k_rank, levels = unique(dat$k_rank)))
+  ## Yeh et al. (2023) nearest neighbors = items sharing a rank on the
+  ## instrument's ladder. For the 27-item MCQ these are the historical
+  ## consecutive k_rank triples; for the 21-item MCQ group sizes vary
+  ## (3,3,2,4,3,3,3); for the PDQ each h_rank group holds one item per
+  ## block. Upstream validation in score_mcq() guarantees canonical
+  ## questionid coverage, so no NA ranks.
+  split_dfs <- split(
+    dat,
+    factor(dat[[reg$rank_col]], levels = unique(dat[[reg$rank_col]]))
+  )
 
   for (i in seq_along(split_dfs)) {
     if (!any(is.na(split_dfs[[i]]$response))) {

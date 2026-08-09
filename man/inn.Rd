@@ -10,7 +10,7 @@ inn(dat, reg, random, verbose)
 \arguments{
 \item{dat}{A single subject's MCQ data in long form}
 
-\item{reg}{Registry list from \code{.mcq_registry()}}
+\item{reg}{Registry list from \code{.instrument_registry()} / \code{.mcq_registry()}}
 
 \item{random}{Boolean whether to insert a random draw (0 or 1) for NAs}
 

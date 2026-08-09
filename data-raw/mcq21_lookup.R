@@ -9,8 +9,12 @@
 
 e <- new.env()
 load("R/sysdata.rda", envir = e)
-## `lookup` must exist; `lookup21` may exist from a prior run (rerunnable).
-stopifnot("lookup" %in% ls(e), all(ls(e) %in% c("lookup", "lookup21")))
+## `lookup` must exist; `lookup21`/`lookup_pdq` may exist from a prior run
+## (rerunnable).
+stopifnot(
+  "lookup" %in% ls(e),
+  all(ls(e) %in% c("lookup", "lookup21", "lookup_pdq"))
+)
 lookup <- get("lookup", envir = e)
 stopifnot(nrow(lookup) == 27L)
 
@@ -181,13 +185,27 @@ stopifnot(
     0.05
 )
 
-usethis::use_data(lookup, lookup21, internal = TRUE, overwrite = TRUE)
+## use_data() overwrites all of R/sysdata.rda, so re-save lookup_pdq too when
+## a prior run has already added it.
+if ("lookup_pdq" %in% ls(e)) {
+  lookup_pdq <- get("lookup_pdq", envir = e)
+  usethis::use_data(
+    lookup,
+    lookup21,
+    lookup_pdq,
+    internal = TRUE,
+    overwrite = TRUE
+  )
+} else {
+  usethis::use_data(lookup, lookup21, internal = TRUE, overwrite = TRUE)
+}
 
 ## Post-write verification.
 e2 <- new.env()
 load("R/sysdata.rda", envir = e2)
+expected <- c("lookup", "lookup21", if ("lookup_pdq" %in% ls(e)) "lookup_pdq")
 stopifnot(
-  setequal(ls(e2), c("lookup", "lookup21")),
+  setequal(ls(e2), expected),
   identical(get("lookup", envir = e2), lookup),
   identical(get("lookup21", envir = e2), lookup21)
 )

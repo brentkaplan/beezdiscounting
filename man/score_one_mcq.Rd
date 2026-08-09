@@ -9,7 +9,7 @@ score_one_mcq(dat, reg, impute_method = "none", round = 6)
 \arguments{
 \item{dat}{One subject's items from the MCQ}
 
-\item{reg}{Registry list from \code{.mcq_registry()}}
+\item{reg}{Registry list from \code{.instrument_registry()} / \code{.mcq_registry()}}
 
 \item{impute_method}{One of: "none", "ggm", "GGM", "inn", "INN"}
 

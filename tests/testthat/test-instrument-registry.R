@@ -139,4 +139,8 @@ test_that(".score_ladder handles the documented edges", {
   expect_true(is.na(na_out$value))
   expect_true(is.na(na_out$consistency))
   expect_true(is.na(na_out$proportion))
+  # resp and vals must describe the same ladder -- otherwise the scorer
+  # indexes past the intended ladder and returns a plausible wrong number
+  expect_error(sl(rep(1, 10), vals[1:5], vals[5]))
+  expect_error(sl(rep(1, 5), vals, vals[10]))
 })

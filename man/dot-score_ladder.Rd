@@ -11,7 +11,8 @@
 delayed/risky option). Any \code{NA} makes all three outputs \code{NA} --
 impute upstream.}
 
-\item{vals}{Ascending indifference values (k or h), one per item.}
+\item{vals}{Ascending indifference values (k or h), one per item; must be
+the same length as \code{resp}.}
 
 \item{edge}{Value appended past the steepest item (the overall-ladder
 edge constant, or \code{vals[length(vals)]} for the repeat-last convention).}

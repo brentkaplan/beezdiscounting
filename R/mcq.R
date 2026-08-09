@@ -241,7 +241,7 @@ score_mcq27 <- function(
 #' Score one subject's MCQ (27- or 21-item)
 #'
 #' @param dat One subject's items from the MCQ
-#' @param reg Registry list from `.mcq_registry()`
+#' @param reg Registry list from `.instrument_registry()` / `.mcq_registry()`
 #' @param impute_method One of: "none", "ggm", "GGM", "inn", "INN"
 #' @param round Numeric specifying number of decimal places
 #' (passed to `base::round()`)

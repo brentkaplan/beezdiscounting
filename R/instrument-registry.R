@@ -123,13 +123,17 @@
 #' @param resp 0/1/NA responses in ladder order (1 = chose the larger
 #'   delayed/risky option). Any `NA` makes all three outputs `NA` --
 #'   impute upstream.
-#' @param vals Ascending indifference values (k or h), one per item.
+#' @param vals Ascending indifference values (k or h), one per item; must be
+#'   the same length as `resp`.
 #' @param edge Value appended past the steepest item (the overall-ladder
 #'   edge constant, or `vals[length(vals)]` for the repeat-last convention).
 #' @return `list(value, consistency, proportion)`.
 #' @importFrom psych geometric.mean
 #' @keywords internal
 .score_ladder <- function(resp, vals, edge) {
+  # the old inline code coupled these structurally; the extracted signature
+  # does not, and a mismatch silently indexes past the intended ladder
+  stopifnot(length(resp) == length(vals))
   n <- length(resp)
   lngth <- n + 1L
   cons <- vector(length = lngth)

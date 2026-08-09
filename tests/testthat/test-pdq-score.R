@@ -36,6 +36,15 @@ test_that("score_pdq reproduces Gray et al. (2016) lookups exhaustively (public 
       lk[[paste0("Block", b, "h")]][o],
       tolerance = 1e-6
     )
+    # expect_equal() on a vector compares the MEAN relative difference, so a
+    # single badly scored pattern can hide inside 1024 correct ones; bound
+    # the worst element too (actual max deviation is ~1e-8 per block)
+    expect_lt(
+      max(abs(
+        res[[paste0("block", b, "_h")]] - lk[[paste0("Block", b, "h")]][o]
+      )),
+      5e-8
+    )
     expect_equal(
       res[[paste0("block", b, "_consistency")]],
       lk[[paste0("Block", b, "Cons")]][o],
@@ -193,14 +202,12 @@ test_that("score_pdq ggm composites drop NA blocks; none propagates NA", {
   # ggm: composites average the remaining blocks (27/82 and 1/3)
   res_ggm <- score_pdq(dat, impute_method = "ggm")
   expect_true(is.na(res_ggm$block1_h))
-  expect_equal(res_ggm$mean_h, (27 / 82 + 1 / 3) / 2, tolerance = 1e-6)
-  # compared against the rounded target: the default round = 6 quantizes
-  # geomean_h at 0.331295, which is 1.2e-6 relative from the exact value
-  expect_equal(
-    res_ggm$geomean_h,
-    round(sqrt(27 / 82 * 1 / 3), 6),
-    tolerance = 1e-9
-  )
+  # anchored at round = 12 so the composites are checked against their exact
+  # targets rather than against the default round = 6 quantization (which
+  # sits ~1e-6 relative away and would make a 1e-6 tolerance a coin flip)
+  res_ggm12 <- score_pdq(dat, impute_method = "ggm", round = 12)
+  expect_equal(res_ggm12$mean_h, (27 / 82 + 1 / 3) / 2, tolerance = 1e-9)
+  expect_equal(res_ggm12$geomean_h, sqrt(27 / 82 * 1 / 3), tolerance = 1e-9)
   # uppercase alias
   res_up <- score_pdq(dat, impute_method = "GGM")
   expect_equal(res_up$mean_h, res_ggm$mean_h)

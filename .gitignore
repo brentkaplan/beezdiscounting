@@ -36,6 +36,10 @@ src/*.so
 src/*.dll
 revdep/
 
+# Stray graphics device output from non-interactive test runs #
+###########
+tests/testthat/Rplots.pdf
+
 # Claude Code — personal config, never committed #
 ###########
 CLAUDE.md

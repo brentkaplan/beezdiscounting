@@ -309,3 +309,99 @@ plot.score_pdq_output <- function(x, ..., xlab = "Metric", alpha = 0.3) {
     param = "h"
   )
 }
+
+#' Calculate proportion of guaranteed choices at each PDQ h rank
+#'
+#' The PDQ analog of [prop_ss()]: pools all subjects' responses and
+#' reports, for each of the 10 h ranks (one item per block per rank), the
+#' proportion choosing the smaller guaranteed reward. `1 - prop_sc` is the
+#' risky-choice proportion at that rank.
+#'
+#' @param dat Dataframe (longform) with subjectid, questionid (1-30), and
+#' response (0 for the guaranteed reward and 1 for the risky reward)
+#'
+#' @return Dataframe with proportion of guaranteed choices at each h rank
+#' @export
+#'
+#' @examples
+#' prop_sc(pdq)
+prop_sc <- function(dat) {
+  reg <- .instrument_registry("pdq")
+
+  # Normalize ids the way score_pdq() does: a fractional id (1.5) or a
+  # non-coercible id ("x") counts as a mismatch rather than being
+  # truncated/dropped before the set comparison -- either would otherwise
+  # slip past the warning while still producing an unmatched NA-rank row
+  # in the merge below.
+  qids_raw <- suppressWarnings(as.numeric(as.character(dat$questionid)))
+  qids_int <- as.integer(qids_raw)
+  bad_qid <- (is.na(qids_raw) & !is.na(dat$questionid)) |
+    (!is.na(qids_raw) & qids_raw != qids_int)
+  if (
+    any(bad_qid) ||
+      !setequal(qids_int[!is.na(qids_int) & !bad_qid], reg$table$questionid)
+  ) {
+    warning(
+      "Observed question ids do not exactly match the 30-item PDQ design.",
+      call. = FALSE
+    )
+  }
+
+  dat <- merge(dat, reg$table, by = "questionid", all.x = TRUE)
+
+  if (any(is.na(dat$response))) {
+    warning("Missing data found and ignored. Consider imputing missing data.")
+  }
+
+  prop_sc_tbl <- dplyr::group_by(dat, h_rank) |>
+    dplyr::summarise(prop_sc = mean(response == 0, na.rm = TRUE)) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(
+      prop_sc = ifelse(is.nan(prop_sc), NA_real_, round(prop_sc, 2))
+    )
+
+  class(prop_sc_tbl) <- c("prop_sc_output", class(prop_sc_tbl))
+  return(prop_sc_tbl)
+}
+
+#' Plot Proportion of Guaranteed Choices by h Rank
+#'
+#' @param x Output from the `prop_sc` function
+#' @param ... Additional arguments passed to `ggplot2::geom_point()`
+#' @param pt_shape Shape of the points in the plot. Default is 21.
+#' @param pt_fill Fill color of the points in the plot. Default is "white".
+#' @param pt_size Size of the points in the plot. Default is 3.
+#' @param title Title of the plot.
+#' @param xlab Label for the x-axis. Default is "h value rank".
+#' @param ylab Label for the y-axis.
+#'
+#' @return A ggplot object.
+#' @export
+#'
+#' @examples plot(prop_sc(pdq))
+plot.prop_sc_output <- function(
+  x,
+  ...,
+  pt_shape = 21,
+  pt_fill = "white",
+  pt_size = 3,
+  title = "Proportion of guaranteed choices by h rank",
+  xlab = "h value rank",
+  ylab = "Proportion of guaranteed choices"
+) {
+  x |>
+    dplyr::mutate(group = 1) |>
+    ggplot2::ggplot(ggplot2::aes(
+      x = factor(h_rank),
+      y = prop_sc,
+      group = group
+    )) +
+    ggplot2::geom_line() +
+    ggplot2::geom_point(
+      shape = pt_shape,
+      fill = pt_fill,
+      size = pt_size
+    ) +
+    ggplot2::labs(title = title, x = xlab, y = ylab) +
+    ggplot2::theme_minimal()
+}

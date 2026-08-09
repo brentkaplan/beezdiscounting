@@ -52,6 +52,7 @@ utils::globalVariables(c(
     "lookup_pdq",
     "k_rank",
     "h_rank",
+    "prop_sc",
     "Statistic",
     "overall_k",
     "overall_h",

@@ -676,6 +676,7 @@ plot.prop_ss_output <- function(
     ggplot2::ggplot(ggplot2::aes(x = factor(k_rank), y = prop_ss, group = group)) +
     ggplot2::geom_line() +
     ggplot2::geom_point(
+      ...,
       shape = pt_shape,
       fill = pt_fill,
       size = pt_size

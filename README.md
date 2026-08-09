@@ -15,8 +15,9 @@ economic discounting data.
 The package began as a set of scoring and curve-fitting tools. It
 supports scoring of the 21- and 27-Item Monetary Choice Questionnaires
 (see [Kaplan et al., 2016](https://doi.org/10.1007/s40614-016-0070-9))
-and the 30-item Probability Discounting Questionnaire, calculating *k*
-values (and Area Under the Curve metrics) from indifference points using
+and the 30-item Probability Discounting Questionnaire (see [Madden et
+al., 2009](https://doi.org/10.1037/a0016806)), calculating *k* values
+(and Area Under the Curve metrics) from indifference points using
 nonlinear regression (Mazur’s simple hyperbola and exponential), and
 scoring of the minute discounting task (see [Koffarnus & Bickel,
 2014](https://doi.org/10.1037/a0035973)) using the Qualtrics 5-trial

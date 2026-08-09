@@ -46,6 +46,9 @@ subjects below 80% consistency on any block.
 
 ## Proportions by h rank
 
+`prop_sc()` reports the proportion choosing the *guaranteed* reward at
+each h rank -- the complement of the risky choice ratio above.
+
 ```{r prop-sc}
 prop_sc(pdq)
 plot(prop_sc(pdq))

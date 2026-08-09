@@ -329,10 +329,8 @@ prop_sc <- function(dat) {
   reg <- .instrument_registry("pdq")
 
   # Normalize ids the way score_pdq() does: a fractional id (1.5) or a
-  # non-coercible id ("x") counts as a mismatch rather than being
-  # truncated/dropped before the set comparison -- either would otherwise
-  # slip past the warning while still producing an unmatched NA-rank row
-  # in the merge below.
+  # non-coercible id ("x") is treated as a mismatch rather than being
+  # truncated or dropped before the set comparison below.
   qids_raw <- suppressWarnings(as.numeric(as.character(dat$questionid)))
   qids_int <- as.integer(qids_raw)
   bad_qid <- (is.na(qids_raw) & !is.na(dat$questionid)) |
@@ -398,6 +396,7 @@ plot.prop_sc_output <- function(
     )) +
     ggplot2::geom_line() +
     ggplot2::geom_point(
+      ...,
       shape = pt_shape,
       fill = pt_fill,
       size = pt_size

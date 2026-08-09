@@ -2,22 +2,34 @@
 % Please edit documentation in R/mcq.R
 \name{.plot_score_mcq}
 \alias{.plot_score_mcq}
-\title{Plot MCQ scores (internal implementation)}
+\title{Plot questionnaire scores (internal implementation)}
 \usage{
-.plot_score_mcq(x, xlab = "Metric", alpha = 0.3)
+.plot_score_mcq(
+  x,
+  xlab = "Metric",
+  alpha = 0.3,
+  target_levels = c("small_k", "medium_k", "large_k", "geomean_k", "overall_k"),
+  param = "k"
+)
 }
 \arguments{
-\item{x}{A data frame returned by \code{score_mcq()}, \code{score_mcq27()}.}
+\item{x}{A data frame returned by \code{score_mcq()}, \code{score_mcq27()}, or
+\code{score_pdq()}.}
 
 \item{xlab}{Label for the x-axis.}
 
 \item{alpha}{Transparency of the points in the plot.}
+
+\item{target_levels}{Metric column names, in display order.}
+
+\item{param}{Parameter letter used in column suffixes and the y label
+("k" or "h").}
 }
 \value{
-A ggplot object showing the boxplot of MCQ scores.
+A ggplot object showing the boxplot of scores.
 }
 \description{
-Shared boxplot implementation for \code{plot.score_mcq27_output()} and
-\code{plot.score_mcq_output()}.
+Shared boxplot implementation for \code{plot.score_mcq27_output()},
+\code{plot.score_mcq_output()}, and \code{plot.score_pdq_output()}.
 }
 \keyword{internal}

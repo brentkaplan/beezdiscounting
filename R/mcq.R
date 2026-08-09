@@ -671,23 +671,33 @@ plot.prop_ss_output <- function(
 }
 
 
-#' Plot MCQ scores (internal implementation)
+#' Plot questionnaire scores (internal implementation)
 #'
-#' Shared boxplot implementation for `plot.score_mcq27_output()` and
-#' `plot.score_mcq_output()`.
+#' Shared boxplot implementation for `plot.score_mcq27_output()`,
+#' `plot.score_mcq_output()`, and `plot.score_pdq_output()`.
 #'
-#' @param x A data frame returned by `score_mcq()`, `score_mcq27()`.
+#' @param x A data frame returned by `score_mcq()`, `score_mcq27()`, or
+#'   `score_pdq()`.
 #' @param xlab Label for the x-axis.
 #' @param alpha Transparency of the points in the plot.
+#' @param target_levels Metric column names, in display order.
+#' @param param Parameter letter used in column suffixes and the y label
+#'   ("k" or "h").
 #'
-#' @return A ggplot object showing the boxplot of MCQ scores.
+#' @return A ggplot object showing the boxplot of scores.
 #' @keywords internal
-.plot_score_mcq <- function(x, xlab = "Metric", alpha = 0.3) {
-  target_levels <- c("small_k", "medium_k", "large_k", "geomean_k", "overall_k")
+.plot_score_mcq <- function(
+  x,
+  xlab = "Metric",
+  alpha = 0.3,
+  target_levels = c("small_k", "medium_k", "large_k", "geomean_k", "overall_k"),
+  param = "k"
+) {
+  suffix <- paste0("_", param)
   tmp <- x |>
-    dplyr::select(dplyr::contains(c("id", "_k"))) |>
+    dplyr::select(dplyr::contains(c("id", suffix))) |>
     tidyr::pivot_longer(
-      cols = dplyr::contains("_k"),
+      cols = dplyr::contains(suffix),
       names_to = "metric",
       values_to = "value"
     )
@@ -698,18 +708,18 @@ plot.prop_ss_output <- function(
         metric = gsub("log10_", "", metric),
         metric = factor(metric, levels = target_levels)
       )
-    ylab = "Log10(k) value"
+    ylab = paste0("Log10(", param, ") value")
   } else if (any(grepl("ln", tmp$metric))) {
     tmp <- tmp |>
       dplyr::mutate(
         metric = gsub("ln_", "", metric),
         metric = factor(metric, levels = target_levels)
       )
-    ylab <- "Ln(k) value"
+    ylab <- paste0("Ln(", param, ") value")
   } else {
     tmp <- tmp |>
       dplyr::mutate(metric = factor(metric, levels = target_levels))
-    ylab <- "k value"
+    ylab <- paste0(param, " value")
   }
 
   bplot <- tmp %>%

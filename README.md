@@ -14,14 +14,15 @@ economic discounting data.
 
 The package began as a set of scoring and curve-fitting tools. It
 supports scoring of the 21- and 27-Item Monetary Choice Questionnaires
-(see [Kaplan et al., 2016](https://doi.org/10.1007/s40614-016-0070-9)),
-calculating *k* values (and Area Under the Curve metrics) from
-indifference points using nonlinear regression (Mazur’s simple hyperbola
-and exponential), and scoring of the minute discounting task (see
-[Koffarnus & Bickel, 2014](https://doi.org/10.1037/a0035973)) using the
-Qualtrics 5-trial discounting template (see the [Qualtrics Minute
-Discounting User Guide](https://doi.org/10.13140/RG.2.2.26495.79527)),
-which is also available as a .qsf file in this package.
+(see [Kaplan et al., 2016](https://doi.org/10.1007/s40614-016-0070-9))
+and the 30-item Probability Discounting Questionnaire, calculating *k*
+values (and Area Under the Curve metrics) from indifference points using
+nonlinear regression (Mazur’s simple hyperbola and exponential), and
+scoring of the minute discounting task (see [Koffarnus & Bickel,
+2014](https://doi.org/10.1037/a0035973)) using the Qualtrics 5-trial
+discounting template (see the [Qualtrics Minute Discounting User
+Guide](https://doi.org/10.13140/RG.2.2.26495.79527)), which is also
+available as a .qsf file in this package.
 
 It now also fits discounting *models*: a mixed-effects (hierarchical)
 tier via Template Model Builder (`fit_dd_tmb()`), a trial-level choice
@@ -40,6 +41,7 @@ question, then follow the vignette for a worked example:
 | Your data / question | Function(s) | Vignette |
 |----|----|----|
 | 21- or 27-Item Monetary Choice Questionnaire | `score_mcq()` (`score_mcq27()` for 27-item only) | [MCQ scoring](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.html) |
+| 30-item Probability Discounting Questionnaire | `score_pdq()` | [PDQ scoring](https://brentkaplan.github.io/beezdiscounting/articles/pdq-scoring.html) |
 | Indifference points, individual or aggregate (NLS) | `fit_dd()` / `results_dd()` | [Delay discounting basics](https://brentkaplan.github.io/beezdiscounting/articles/delay-discounting-basics.html) |
 | Indifference points, mixed-effects (borrows strength across subjects) | `fit_dd_tmb()` | [Mixed-effects with TMB](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html) |
 | Indifference points at exactly 0 or 1 | `fit_dd_tmb(family = "sltb")` | [Bounded error distributions](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.html) |

@@ -1,5 +1,26 @@
 # beezdiscounting (development version)
 
+### Probability Discounting Questionnaire (PDQ)
+
+* New `score_pdq()` scores the 30-item PDQ (Madden, Petry, & Johnson,
+  2009): per-block h under the hyperbolic odds-against model, consistency,
+  and risky choice ratios, with the same strict input validation and
+  imputation options as `score_mcq()`. The implementation reproduces the
+  Gray et al. (2016) scoring-syntax lookup tables exactly for all 3 x 1024
+  response patterns (verified in the test suite). An `overall_h` from a
+  pooled 30-item ladder is also reported as a documented beezdiscounting
+  extension (the published scoring defines no overall ladder; `mean_h` is
+  Gray et al.'s recommended composite).
+* New `prop_sc()` (guaranteed-choice proportions by h rank) and
+  `pdq_to_choice()` (trial-level choice frame including the odds against
+  winning, `theta`), plus a bundled `pdq` example dataset and a
+  "Scoring the Probability Discounting Questionnaire" vignette.
+* `get_lookup_table()` gains an `instrument` argument
+  (`"mcq27"`, `"mcq21"`, `"pdq"`); `items` remains as a back-compatible
+  alias. Internally the MCQ registry is now instrument-keyed and the
+  ladder-scoring core is shared across instruments; 27- and 21-item MCQ
+  results are unchanged (pinned by golden-fixture regression tests).
+
 ### 21-item MCQ support
 
 * New `score_mcq()` scores both the 27-item (Kirby, Petry, & Bickel, 1999)

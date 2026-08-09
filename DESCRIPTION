@@ -7,7 +7,9 @@ Authors@R:
            comment = c(ORCID = "0000-0002-3758-6776"))
 Description: Facilitates some of the analyses performed in studies of
     behavioral economic discounting. The package supports scoring of the 21- and 27-Item
-    Monetary Choice Questionnaires (see Kaplan et al., 2016; <doi:10.1007/s40614-016-0070-9>), calculating k
+    Monetary Choice Questionnaires (see Kaplan et al., 2016; <doi:10.1007/s40614-016-0070-9>),
+    scoring of the 30-Item Probability Discounting Questionnaire
+    (see Madden et al., 2009; <doi:10.1037/a0016806>), calculating k
     values (Mazur's simple hyperbolic and exponential) using nonlinear regression, calculating
     various Area Under the Curve (AUC) measures, plotting regression curves for both fit-to-group and
     two-stage approaches, checking for unsystematic discounting

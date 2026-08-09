@@ -25,7 +25,8 @@ home:
   description: >
     R package for behavioral economic discounting analysis. Scores delay and
     probability discounting tasks, fits hyperbolic and exponential discount
-    functions, scores the 27-Item Monetary Choice Questionnaire (MCQ), computes
+    functions, scores the 27- and 21-item Monetary Choice Questionnaire (MCQ)
+    and the 30-item Probability Discounting Questionnaire (PDQ), computes
     AUC and systematicity measures, and fits TMB-based SLT-beta mixed-effects
     discounting models for bounded indifference-point data.
   strip_header: false
@@ -41,6 +42,8 @@ navbar:
         - text: Getting started
         - text: Scoring the 27-item MCQ
           href: articles/mcq27-scoring.html
+        - text: Scoring the Probability Discounting Questionnaire
+          href: articles/pdq-scoring.html
         - text: Indifference points, k, and AUC
           href: articles/delay-discounting-basics.html
         - text: The 5.5-trial task
@@ -138,6 +141,16 @@ reference:
       - ans_pd
       - timing_pd
 
+  - title: Probability Discounting Questionnaire (PDQ)
+    desc: >
+      Scoring, lookup, and reshaping for the 30-item PDQ (Madden, Petry, &
+      Johnson, 2009), scored per block with the Gray et al. (2016)
+      consistency-maximization conventions.
+    contents:
+      - score_pdq
+      - prop_sc
+      - pdq_to_choice
+
   - title: Monetary Choice Questionnaire (MCQ, 27- and 21-item)
     desc: >
       Scoring, lookup, simulation, and reshaping for the 27-item (Kirby,
@@ -179,6 +192,7 @@ reference:
       - dd_ip
       - mcq27
       - mcq21
+      - pdq
       - five.fivetrial_dd
       - five.fivetrial_pd
 
@@ -193,6 +207,7 @@ reference:
     contents:
       - inn
       - score_one_mcq27
+      - score_one_pdq
 
 authors:
   Brent Kaplan:

@@ -8,7 +8,7 @@
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Facilitates some of the analyses performed in studies of behavioral economic discounting. The package supports scoring of the 27-Item Monetary Choice Questionnaire (see Kaplan et al., 2016; \doi{10.1007/s40614-016-0070-9}), calculating k values (Mazur's simple hyperbolic and exponential) using nonlinear regression, calculating various Area Under the Curve (AUC) measures, plotting regression curves for both fit-to-group and two-stage approaches, checking for unsystematic discounting (Johnson & Bickel, 2008; \doi{10.1037/1064-1297.16.3.264}) and scoring of the minute discounting task (see Koffarnus & Bickel, 2014; \doi{10.1037/a0035973}) using the Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide; \doi{10.13140/RG.2.2.26495.79527}), which is also available as a .qsf file in this package. The package also fits mixed-effects (hierarchical) discounting models with a scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1 (Kim, Kaplan, Koffarnus, and Franck, 2025; \href{https://arxiv.org/abs/2509.13167}{arXiv:2509.13167}).
+Facilitates some of the analyses performed in studies of behavioral economic discounting. The package supports scoring of the 21- and 27-Item Monetary Choice Questionnaires (see Kaplan et al., 2016; \doi{10.1007/s40614-016-0070-9}), scoring of the 30-Item Probability Discounting Questionnaire (see Madden et al., 2009; \doi{10.1037/a0016806}), calculating k values (Mazur's simple hyperbolic and exponential) using nonlinear regression, calculating various Area Under the Curve (AUC) measures, plotting regression curves for both fit-to-group and two-stage approaches, checking for unsystematic discounting (Johnson & Bickel, 2008; \doi{10.1037/1064-1297.16.3.264}) and scoring of the minute discounting task (see Koffarnus & Bickel, 2014; \doi{10.1037/a0035973}) using the Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide; \doi{10.13140/RG.2.2.26495.79527}), which is also available as a .qsf file in this package. The package also fits mixed-effects (hierarchical) discounting models with a scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1 (Kim, Kaplan, Koffarnus, and Franck, 2025; \href{https://arxiv.org/abs/2509.13167}{arXiv:2509.13167}).
 }
 \seealso{
 Useful links:
@@ -21,11 +21,6 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: Brent A. Kaplan \email{bkaplan.ku@gmail.com} (\href{https://orcid.org/0000-0002-3758-6776}{ORCID}) [copyright holder]
-
-Authors:
-\itemize{
-  \item Brent A. Kaplan \email{bkaplan.ku@gmail.com} (\href{https://orcid.org/0000-0002-3758-6776}{ORCID}) [copyright holder]
-}
 
 }
 \keyword{internal}

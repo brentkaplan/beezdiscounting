@@ -131,7 +131,7 @@ score_mcq <- function(
     }
     dat_sub$response <- resp_num
 
-    if (impute_method %in% c("inn", "INN") & any(is.na(dat_sub$response))) {
+    if (impute_method %in% c("inn", "INN") && any(is.na(dat_sub$response))) {
       dat_sub <- inn(dat_sub, reg, random = random, verbose = verbose)
     }
 
@@ -152,7 +152,7 @@ score_mcq <- function(
     }
   }
 
-  dfout$impute_method <- if (!(impute_method %in% c("inn", "INN") & random)) {
+  dfout$impute_method <- if (!(impute_method %in% c("inn", "INN") && random)) {
     impute_method
   } else {
     "INN with random"

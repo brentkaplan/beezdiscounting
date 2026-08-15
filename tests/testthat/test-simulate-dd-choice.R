@@ -44,3 +44,28 @@ describe("simulate_dd_choice (descriptive)", {
     expect_equal(emp[1, 2] / sqrt(emp[1, 1] * emp[2, 2]), -0.4, tolerance = 0.2)
   })
 })
+
+describe("simulate_dd_choice() RNG hygiene", {
+  it("restores the caller's RNG state when seed is supplied", {
+    skip_on_cran()
+    set.seed(999)
+    before <- get(".Random.seed", envir = globalenv())
+    invisible(simulate_dd_choice(n_subjects = 6, seed = 1))
+    expect_identical(get(".Random.seed", envir = globalenv()), before)
+
+    set.seed(999)
+    expected <- runif(1)
+    set.seed(999)
+    invisible(simulate_dd_choice(n_subjects = 6, seed = 1))
+    expect_identical(runif(1), expected)
+  })
+
+  it("simulated output for a given seed is unchanged by the RNG-restore fix", {
+    sim <- simulate_dd_choice(n_subjects = 6, seed = 1)
+    # Value computed BEFORE the RNG-restore fix (from git HEAD's
+    # simulate_dd_choice(), which called set.seed(seed) without saving/
+    # restoring the caller's state) -- pinned so the fix cannot alter
+    # simulated output.
+    expect_identical(sim$choice[1:6], c(0L, 0L, 1L, 1L, 0L, 0L))
+  })
+})

@@ -28,7 +28,8 @@
 #' @param return_truth Logical. If `TRUE` and `mode = "descriptive"`, the
 #'   returned tibble carries two attributes: `subject_slopes` (n_subjects x 2
 #'   matrix of realized `b_i` values) and `Sigma` (the 2x2 covariance matrix).
-#' @param seed Optional integer seed for reproducibility.
+#' @param seed Optional integer seed for reproducibility. The caller's RNG
+#'   state is restored on exit.
 #' @return A [tibble][tibble::tibble] with columns `id`, `ss_amount`,
 #'   `ll_amount`, `delay`, `choice` (0/1, 1 = LL chosen). When
 #'   `mode = "descriptive"` and `return_truth = TRUE`, the tibble also carries
@@ -60,7 +61,21 @@ simulate_dd_choice <- function(n_subjects = 50,
   equation <- match.arg(equation)
   stopifnot(length(ss_amount) == length(ll_amount),
             length(ss_amount) == length(delay))
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+    old_seed <- if (had_seed) get(".Random.seed", envir = globalenv()) else NULL
+    on.exit(
+      if (had_seed) {
+        assign(".Random.seed", old_seed, envir = globalenv())
+      } else if (
+        exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+      ) {
+        rm(".Random.seed", envir = globalenv())
+      },
+      add = TRUE
+    )
+    set.seed(seed)
+  }
   n_tr <- length(delay)
 
   if (mode == "structural") {

@@ -50,7 +50,8 @@ only).}
 returned tibble carries two attributes: \code{subject_slopes} (n_subjects x 2
 matrix of realized \code{b_i} values) and \code{Sigma} (the 2x2 covariance matrix).}
 
-\item{seed}{Optional integer seed for reproducibility.}
+\item{seed}{Optional integer seed for reproducibility. The caller's RNG
+state is restored on exit.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with columns \code{id}, \code{ss_amount},

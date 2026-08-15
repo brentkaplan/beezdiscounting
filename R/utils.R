@@ -2,7 +2,8 @@
 #'
 #' @param n_ids Number of subjectids
 #' @param n_items Number of trials
-#' @param seed Random seed
+#' @param seed Random seed; identical seeds give identical results. The
+#'   caller's RNG state is restored on exit.
 #' @param prop_na Proportion of NAs in the entire data set
 #'
 #' @return Dataframe of subjectid, questionid, and response
@@ -12,6 +13,18 @@
 #' generate_data_mcq(n_ids = 2, n_items = 27, prop_na = .01)
 generate_data_mcq <- function(n_ids = 100, n_items = 27,
                               seed = 1234, prop_na = 0) {
+  had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (had_seed) get(".Random.seed", envir = globalenv()) else NULL
+  on.exit(
+    if (had_seed) {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    } else if (
+      exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+    ) {
+      rm(".Random.seed", envir = globalenv())
+    },
+    add = TRUE
+  )
   set.seed(seed)
   fake_data <- data.frame(
     subjectid = rep(1:n_ids, each = n_items),

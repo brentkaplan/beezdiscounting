@@ -53,7 +53,8 @@ nonlinearity exponent \code{s} and reduce to \code{"mazur"} at \code{s = 1}.}
 \verb{log k} (the first element is typically \code{0} for the reference level).
 Required (non-\code{NULL}) when \code{n_conditions > 1}.}
 
-\item{seed}{Optional integer seed.}
+\item{seed}{Optional integer seed; identical seeds give identical results.
+The caller's RNG state is restored on exit.}
 
 \item{sigma_phi}{Numeric; SD of the subject random intercept on \verb{log phi}
 (SLT-beta precision). Default \code{0} (no subject-random phi, \code{family = "sltb"}

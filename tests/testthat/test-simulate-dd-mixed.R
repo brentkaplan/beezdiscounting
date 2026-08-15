@@ -237,3 +237,34 @@ describe("simulate_dd_ip() recovery through fit_dd_tmb()", {
     expect_gt(cor(log(sp$k[ok]), log(ts_matched[ok])), 0.93)
   })
 })
+
+describe("simulate_dd_ip() RNG hygiene", {
+  it("restores the caller's RNG state when seed is supplied", {
+    skip_on_cran()
+    set.seed(999)
+    before <- get(".Random.seed", envir = globalenv())
+    invisible(simulate_dd_ip(n_subjects = 8, seed = 1))
+    expect_identical(get(".Random.seed", envir = globalenv()), before)
+
+    set.seed(999)
+    expected <- runif(1)
+    set.seed(999)
+    invisible(simulate_dd_ip(n_subjects = 8, seed = 1))
+    expect_identical(runif(1), expected)
+  })
+
+  it("simulated output for a given seed is unchanged by the RNG-restore fix", {
+    sim <- simulate_dd_ip(n_subjects = 8, seed = 1)
+    # Values computed BEFORE the RNG-restore fix (from git HEAD's
+    # simulate_dd_ip(), which called set.seed(seed) without saving/restoring
+    # the caller's state) -- pinned so the fix cannot alter simulated output.
+    expect_equal(
+      sim$y[1:5],
+      c(
+        0.994522533659, 0.990838508570, 0.394876820486,
+        0.387865097190, 0.361424863212
+      ),
+      tolerance = 1e-10
+    )
+  })
+})

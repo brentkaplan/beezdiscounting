@@ -33,7 +33,8 @@
 #' @param delta_k Numeric vector of length `n_conditions`; per-condition shift on
 #'   `log k` (the first element is typically `0` for the reference level).
 #'   Required (non-`NULL`) when `n_conditions > 1`.
-#' @param seed Optional integer seed.
+#' @param seed Optional integer seed; identical seeds give identical results.
+#'   The caller's RNG state is restored on exit.
 #' @param sigma_phi Numeric; SD of the subject random intercept on `log phi`
 #'   (SLT-beta precision). Default `0` (no subject-random phi, `family = "sltb"`
 #'   only). When `> 0`, the `(log k, log phi)` pair is drawn jointly from
@@ -96,7 +97,21 @@ simulate_dd_ip <- function(
 ) {
   family <- match.arg(family)
   equation <- match.arg(equation)
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+    old_seed <- if (had_seed) get(".Random.seed", envir = globalenv()) else NULL
+    on.exit(
+      if (had_seed) {
+        assign(".Random.seed", old_seed, envir = globalenv())
+      } else if (
+        exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+      ) {
+        rm(".Random.seed", envir = globalenv())
+      },
+      add = TRUE
+    )
+    set.seed(seed)
+  }
 
   if (n_conditions > 1 && is.null(delta_k)) {
     stop("`delta_k` must be supplied (length `n_conditions`) when `n_conditions > 1`.",

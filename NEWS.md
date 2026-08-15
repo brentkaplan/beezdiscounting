@@ -212,6 +212,14 @@ which shipped none).
   (reported by `tidy()`/`summary()`/`confint()`). Both reduce to `"mazur"` at
   `s = 1`.
 
+* New `plot_qq()` methods (re-exporting `beezdemand::plot_qq()`) for
+  `fit_dd_tmb()` and `fit_dd_choice()` fits: a normal QQ plot of the
+  estimated (shrunken, empirical-Bayes) subject random-effect deviates
+  against a normal reference, the standard check on the Gaussian
+  random-effects assumption. Bayesian (`fit_dd_brms()`) fits are
+  intentionally excluded; use `brms::pp_check()` and MCMC diagnostics
+  there instead.
+
 - **Mixed-effects discounting via TMB** (`fit_dd_tmb()`): fits the
   indifference-point (IP) family discounting model — Mazur hyperbolic or
   exponential mean with a subject random intercept on `log k` — under either the

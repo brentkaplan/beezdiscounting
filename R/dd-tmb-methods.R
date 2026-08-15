@@ -66,7 +66,23 @@
   }
   if (!is.null(object$model$se)) {
     se <- object$model$se
-    # Defensive: align to coefficient order/names.
+    # model$se is built PARALLEL to model$coefficients by the extractor
+    # (.fill_vector_se slots vector parameters row-by-row), so when the name
+    # vectors agree elementwise, return it positionally. A name-based match()
+    # here would collapse duplicated vector-parameter names -- e.g. the two
+    # `beta_k` elements of a factor fit -- onto the FIRST element's SE,
+    # silently giving every condition contrast the intercept's SE and
+    # inflating all downstream Wald statistics (caught by the
+    # power_discounting() Type I calibration battery).
+    if (identical(names(se), names(co))) {
+      return(se)
+    }
+    # Names disagree (legacy/partial objects): align by name. This is only
+    # unambiguous when names are unique; with duplicated names (factor fits)
+    # return NA rather than silently collapsing onto the first element.
+    if (anyDuplicated(names(se)) || anyDuplicated(names(co))) {
+      return(na_se)
+    }
     return(stats::setNames(unname(se)[match(names(co), names(se))], names(co)))
   }
   sdr <- object$sdr
@@ -78,7 +94,21 @@
   # `log_aux` is the optimizer name; the fit object renames it to log_phi /
   # log_sigma_e. Translate so the SE vector lines up with coefficients.
   aux_name <- intersect(c("log_phi", "log_sigma_e"), names(co))
-  raw_nms[raw_nms == "log_aux"] <- if (length(aux_name)) aux_name[1] else "log_aux"
+  raw_nms[raw_nms == "log_aux"] <- if (length(aux_name)) {
+    aux_name[1]
+  } else {
+    "log_aux"
+  }
+  # Same duplicated-name hazard as above: prefer positional alignment when
+  # the translated optimizer names agree elementwise with the coefficients;
+  # with duplicated names that do not align positionally, return NA rather
+  # than silently collapsing onto the first element.
+  if (identical(names(co), raw_nms)) {
+    return(stats::setNames(sd_fixed, names(co)))
+  }
+  if (anyDuplicated(raw_nms) || anyDuplicated(names(co))) {
+    return(na_se)
+  }
   se <- stats::setNames(rep(NA_real_, length(co)), names(co))
   hit <- match(names(co), raw_nms)
   se[!is.na(hit)] <- sd_fixed[hit[!is.na(hit)]]
@@ -165,7 +195,9 @@ fixef.beezdiscounting_tmb <- function(object, ...) {
 ranef.beezdiscounting_tmb <- function(object, ...) {
   sp <- object$subject_pars
   keep <- if (object$param_info$n_random_effects == 2L) {
-    re2 <- if (identical(as.integer(object$param_info$re2_target %||% 0L), 1L)) {
+    re2 <- if (
+      identical(as.integer(object$param_info$re2_target %||% 0L), 1L)
+    ) {
       c("re_s", "k", "s")
     } else {
       c("re_phi", "k", "phi")
@@ -202,20 +234,30 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
   if (x$param_info$n_random_effects == 2L) {
     Sigma <- x$Sigma
     if (is.null(Sigma)) {
-      stop("VarCorr: the 2-RE covariance is unavailable (sdreport failed).",
-           call. = FALSE)
+      stop(
+        "VarCorr: the 2-RE covariance is unavailable (sdreport failed).",
+        call. = FALSE
+      )
     }
     sds <- sqrt(diag(Sigma))
     rho <- Sigma[1, 2] / prod(sds)
     return(data.frame(
       Group = c("subject", "subject"),
       Term = rownames(Sigma),
-      Variance = diag(Sigma), StdDev = sds,
-      Corr = c(NA_real_, rho), stringsAsFactors = FALSE))
+      Variance = diag(Sigma),
+      StdDev = sds,
+      Corr = c(NA_real_, rho),
+      stringsAsFactors = FALSE
+    ))
   }
   sd_u <- exp(unname(x$model$coefficients[["log_sigma_u"]]))
-  data.frame(Group = "subject", Term = "k",
-             Variance = sd_u^2, StdDev = sd_u, stringsAsFactors = FALSE)
+  data.frame(
+    Group = "subject",
+    Term = "k",
+    Variance = sd_u^2,
+    StdDev = sd_u,
+    stringsAsFactors = FALSE
+  )
 }
 
 
@@ -237,7 +279,8 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
 #' @return Numeric vector of mu values clamped to `[1e-6, 1-1e-6]`.
 #' @keywords internal
 .dd_discount_mu <- function(k, x, equation, s = 1) {
-  mu <- switch(equation,
+  mu <- switch(
+    equation,
     mazur = 1 / (1 + k * x),
     exponential = exp(-k * x),
     `green-myerson` = (1 + k * x)^(-s),
@@ -264,10 +307,14 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
 #' @param level `"subject"` or `"population"`.
 #' @return Numeric vector of per-row `k`, length `nrow(newdata)`.
 #' @keywords internal
-.dd_tmb_predict_k <- function(object, newdata, level = c("subject", "population")) {
+.dd_tmb_predict_k <- function(
+  object,
+  newdata,
+  level = c("subject", "population")
+) {
   level <- match.arg(level)
-  pinfo  <- object$param_info
-  coefs  <- object$model$coefficients
+  pinfo <- object$param_info
+  coefs <- object$model$coefficients
   beta_k <- unname(coefs[names(coefs) == "beta_k"])
 
   # B8: require every design predictor (factors + covariates) in newdata BEFORE
@@ -288,16 +335,20 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
   # one-sided rhs formula + stored per-factor contrasts (R2 fix).  Passing
   # contrasts.arg pins the contrast coding so the columns match the fit; we do
   # NOT silently zero-pad missing columns (that would mask a level mismatch).
-  rhs           <- object$formula_details$rhs %||% stats::as.formula("~ 1")
+  rhs <- object$formula_details$rhs %||% stats::as.formula("~ 1")
   contrasts_arg <- object$formula_details$contrasts
 
   # ERROR (do not zero-pad) on unseen factor levels.
   for (f in pinfo$factors) {
-    if (!is.null(f) && nzchar(f) && f %in% names(newdata) &&
-          f %in% names(object$data)) {
+    if (
+      !is.null(f) &&
+        nzchar(f) &&
+        f %in% names(newdata) &&
+        f %in% names(object$data)
+    ) {
       fit_levels <- levels(as.factor(object$data[[f]]))
-      nd_levels  <- unique(as.character(newdata[[f]]))
-      unseen     <- setdiff(nd_levels, fit_levels)
+      nd_levels <- unique(as.character(newdata[[f]]))
+      unseen <- setdiff(nd_levels, fit_levels)
       if (length(unseen) > 0L) {
         cli::cli_abort(c(
           "newdata factor {.field {f}} has level(s) not seen in the fit: {.val {unseen}}.",
@@ -309,8 +360,11 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
     }
   }
 
-  Xnew   <- stats::model.matrix(rhs, data = newdata,
-                                contrasts.arg = contrasts_arg)
+  Xnew <- stats::model.matrix(
+    rhs,
+    data = newdata,
+    contrasts.arg = contrasts_arg
+  )
   fit_cn <- colnames(object$formula_details$X)
   if (!identical(colnames(Xnew), fit_cn)) {
     if (!all(fit_cn %in% colnames(Xnew))) {
@@ -337,9 +391,9 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
     # mapped out and absent from coefs, so reconstruct the offset from re_k.
     # 1-RE fits keep the standardized u_i deviate scaled by sigma_u.
     if (object$param_info$n_random_effects == 2L) {
-      off_by_id <- stats::setNames(sp$re_k, as.character(sp$id))   # natural-scale
+      off_by_id <- stats::setNames(sp$re_k, as.character(sp$id)) # natural-scale
     } else {
-      sigma_u   <- exp(unname(coefs[["log_sigma_u"]]))
+      sigma_u <- exp(unname(coefs[["log_sigma_u"]]))
       off_by_id <- stats::setNames(sigma_u * sp$u_i, as.character(sp$id))
     }
     off_row <- off_by_id[as.character(newdata[[id_var]])]
@@ -363,7 +417,9 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
 # NOT exp(log_s) -- they diverge near the [0.05, 20] bounds. For a population-only s
 # (1-RE or phi-target GM/Rachlin) the kernel uses s = exp(log_s); without s, s = 1.
 .dd_tmb_population_s <- function(has_s, is_s_re, log_s) {
-  if (!isTRUE(has_s)) return(1)
+  if (!isTRUE(has_s)) {
+    return(1)
+  }
   if (isTRUE(is_s_re)) .dd_soft_clamp_s_log(log_s) else exp(log_s)
 }
 
@@ -414,19 +470,23 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
 #' }
 #'
 #' @export
-predict.beezdiscounting_tmb <- function(object,
-                                        newdata  = NULL,
-                                        type     = c("response", "parameters"),
-                                        level    = "subject",
-                                        ...) {
+predict.beezdiscounting_tmb <- function(
+  object,
+  newdata = NULL,
+  type = c("response", "parameters"),
+  level = "subject",
+  ...
+) {
   type <- match.arg(type)
   # Reject numeric nlme-style level (0/1) with a clear error.  match.arg()
   # accepts only character; a numeric level produces an opaque error, so we
   # check first.
   if (!is.character(level)) {
     cli::cli_abort(
-      c("{.arg level} must be a character vector.",
-        i = "{.arg level} should be one of {.val \"subject\"} or {.val \"population\"}."),
+      c(
+        "{.arg level} must be a character vector.",
+        i = "{.arg level} should be one of {.val \"subject\"} or {.val \"population\"}."
+      ),
       call = NULL
     )
   }
@@ -438,19 +498,19 @@ predict.beezdiscounting_tmb <- function(object,
 
   # type == "response"
   equation <- object$param_info$equation
-  x_var    <- object$param_info$x_var
+  x_var <- object$param_info$x_var
 
   # For an s-target 2-RE fit the curvature is per-subject; resolve s by id for
   # the subject level (population level keeps the scalar s_hat).
   is_s_re <- isTRUE(object$param_info$n_random_effects == 2L) &&
-             identical(as.integer(object$param_info$re2_target %||% 0L), 1L)
+    identical(as.integer(object$param_info$re2_target %||% 0L), 1L)
 
   # Population (re = 0) s. For an s-target fit this is the SOFT-clamped log_s so the
   # population curve matches the kernel near the bounds (not exp(log_s)).
   s_hat <- .dd_tmb_population_s(
-    has_s   = object$param_info$has_s,
+    has_s = object$param_info$has_s,
     is_s_re = is_s_re,
-    log_s   = if (isTRUE(object$param_info$has_s)) {
+    log_s = if (isTRUE(object$param_info$has_s)) {
       unname(object$model$coefficients[["log_s"]])
     } else {
       NA_real_
@@ -458,19 +518,25 @@ predict.beezdiscounting_tmb <- function(object,
   )
   s_sub_by_id <- if (is_s_re) {
     stats::setNames(object$subject_pars$s, as.character(object$subject_pars$id))
-  } else NULL
+  } else {
+    NULL
+  }
 
   resolve_s_sub <- function(nd) {
-    if (!is_s_re) return(s_hat)
+    if (!is_s_re) {
+      return(s_hat)
+    }
     id_var_local <- object$param_info$id_var
     sv <- unname(s_sub_by_id[as.character(nd[[id_var_local]])])
-    sv[is.na(sv)] <- s_hat   # ids absent from the fit fall back to population s
+    sv[is.na(sv)] <- s_hat # ids absent from the fit fall back to population s
     sv
   }
 
-  if (is.null(newdata)) newdata <- object$data
+  if (is.null(newdata)) {
+    newdata <- object$data
+  }
   out <- tibble::as_tibble(newdata)
-  x   <- newdata[[x_var]]
+  x <- newdata[[x_var]]
   # Supplied newdata uses the CANONICAL column names (id/x/y) -- the fit is
   # validated to canonical, so param_info$*_var are canonical. Fail cleanly
   # (not with an opaque length-0 mu) if the delay column is absent.
@@ -485,19 +551,29 @@ predict.beezdiscounting_tmb <- function(object,
 
   # Single "subject" level: historical .fitted column name for backward compat.
   if (identical(level, "subject")) {
-    k_row       <- .dd_tmb_predict_k(object, newdata, level = "subject")
-    out$.fitted <- .dd_discount_mu(k_row, x, equation, s = resolve_s_sub(newdata))
+    k_row <- .dd_tmb_predict_k(object, newdata, level = "subject")
+    out$.fitted <- .dd_discount_mu(
+      k_row,
+      x,
+      equation,
+      s = resolve_s_sub(newdata)
+    )
     return(out)
   }
 
   # "population" and/or both: use nlme-style column names.
   if ("population" %in% level) {
-    k_pop             <- .dd_tmb_predict_k(object, newdata, level = "population")
+    k_pop <- .dd_tmb_predict_k(object, newdata, level = "population")
     out$predict.fixed <- .dd_discount_mu(k_pop, x, equation, s = s_hat)
   }
   if ("subject" %in% level) {
-    k_sub          <- .dd_tmb_predict_k(object, newdata, level = "subject")
-    out$predict.id <- .dd_discount_mu(k_sub, x, equation, s = resolve_s_sub(newdata))
+    k_sub <- .dd_tmb_predict_k(object, newdata, level = "subject")
+    out$predict.id <- .dd_discount_mu(
+      k_sub,
+      x,
+      equation,
+      s = resolve_s_sub(newdata)
+    )
   }
   out
 }
@@ -522,7 +598,7 @@ predict.beezdiscounting_tmb <- function(object,
 #' @return Numeric vector of per-row response SDs, same length as `mu`.
 #' @keywords internal
 .dd_tmb_response_sd <- function(object, mu, ids = NULL) {
-  coefs  <- object$model$coefficients
+  coefs <- object$model$coefficients
   family <- object$param_info$family
   if (family == "gaussian") {
     return(rep(exp(coefs[["log_sigma_e"]]), length(mu)))
@@ -534,10 +610,12 @@ predict.beezdiscounting_tmb <- function(object,
   # Per-subject phi only applies when the 2nd RE TARGET is phi (re2_target == 0).
   # For an s-target 2-RE fit there is no per-subject phi; always use population phi.
   is_phi_re <- object$param_info$n_random_effects == 2L &&
-               identical(as.integer(object$param_info$re2_target %||% 0L), 0L)
+    identical(as.integer(object$param_info$re2_target %||% 0L), 0L)
   if (is_phi_re && !is.null(ids)) {
-    phi_by_id <- stats::setNames(object$subject_pars$phi,
-                                 as.character(object$subject_pars$id))
+    phi_by_id <- stats::setNames(
+      object$subject_pars$phi,
+      as.character(object$subject_pars$id)
+    )
     phi <- unname(phi_by_id[as.character(ids)])
   } else {
     phi <- exp(coefs[["log_phi"]])
@@ -556,15 +634,17 @@ predict.beezdiscounting_tmb <- function(object,
 #' @param level `"subject"` (default) or `"population"`.
 #' @return List with `.fitted`, `.resid`, and `data`.
 #' @keywords internal
-.dd_tmb_fitted_resid <- function(object, newdata = NULL,
-                                 level = c("subject", "population")) {
-  level      <- match.arg(level)
-  data_used  <- if (is.null(newdata)) object$data else newdata
-  pred       <- predict(object, newdata = data_used,
-                        type = "response", level = level)
+.dd_tmb_fitted_resid <- function(
+  object,
+  newdata = NULL,
+  level = c("subject", "population")
+) {
+  level <- match.arg(level)
+  data_used <- if (is.null(newdata)) object$data else newdata
+  pred <- predict(object, newdata = data_used, type = "response", level = level)
   fitted_col <- if (level == "population") "predict.fixed" else ".fitted"
   fitted_vals <- pred[[fitted_col]]
-  y_obs       <- data_used[[object$param_info$y_var]]
+  y_obs <- data_used[[object$param_info$y_var]]
   if (is.null(y_obs)) {
     cli::cli_abort(c(
       "{.arg newdata} must contain the response column \\
@@ -591,9 +671,11 @@ predict.beezdiscounting_tmb <- function(object,
 #' }
 #'
 #' @export
-fitted.beezdiscounting_tmb <- function(object,
-                                       level = c("subject", "population"),
-                                       ...) {
+fitted.beezdiscounting_tmb <- function(
+  object,
+  level = c("subject", "population"),
+  ...
+) {
   level <- match.arg(level)
   .dd_tmb_fitted_resid(object, level = level)$.fitted
 }
@@ -617,14 +699,18 @@ fitted.beezdiscounting_tmb <- function(object,
 #' }
 #'
 #' @export
-residuals.beezdiscounting_tmb <- function(object,
-                                          type  = c("response", "pearson"),
-                                          level = c("subject", "population"),
-                                          ...) {
-  type  <- match.arg(type)
+residuals.beezdiscounting_tmb <- function(
+  object,
+  type = c("response", "pearson"),
+  level = c("subject", "population"),
+  ...
+) {
+  type <- match.arg(type)
   level <- match.arg(level)
-  fr    <- .dd_tmb_fitted_resid(object, level = level)
-  if (type == "response") return(fr$.resid)
+  fr <- .dd_tmb_fitted_resid(object, level = level)
+  if (type == "response") {
+    return(fr$.resid)
+  }
   # Pass per-row ids only at the subject level so a 2-RE SLT fit uses each
   # subject's phi_i; the population level keeps the population precision.
   ids <- if (level == "subject") fr$data[[object$param_info$id_var]] else NULL
@@ -662,13 +748,13 @@ residuals.beezdiscounting_tmb <- function(object,
 #' @importFrom generics augment
 #' @export
 augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
-  fr          <- .dd_tmb_fitted_resid(x, newdata = newdata, level = "subject")
-  out         <- tibble::as_tibble(fr$data)
-  out$.fitted   <- fr$.fitted
-  out$.resid    <- fr$.resid
+  fr <- .dd_tmb_fitted_resid(x, newdata = newdata, level = "subject")
+  out <- tibble::as_tibble(fr$data)
+  out$.fitted <- fr$.fitted
+  out$.resid <- fr$.resid
   # augment is always subject level: pass ids so a 2-RE SLT fit standardizes by
   # each subject's phi_i.
-  ids           <- fr$data[[x$param_info$id_var]]
+  ids <- fr$data[[x$param_info$id_var]]
   out$.std_resid <- fr$.resid / .dd_tmb_response_sd(x, fr$.fitted, ids)
   out
 }
@@ -687,9 +773,9 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #' @return A data frame with columns `Component`, `Estimate`, `Scale`.
 #' @keywords internal
 .dd_tmb_variance_components <- function(object) {
-  coefs  <- object$model$coefficients
+  coefs <- object$model$coefficients
   family <- object$param_info$family
-  ln10   <- log(10)
+  ln10 <- log(10)
 
   if (object$param_info$n_random_effects == 2L) {
     # 2-RE fit: emit the two RE SDs on the log10 scale (consistent with the
@@ -697,30 +783,41 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
     # from the fitted Sigma. The correlation is scale-free.
     # re2_lab reflects the target ("phi" or "s").
     Sigma <- object$Sigma
-    sds   <- sqrt(diag(Sigma))
-    rho   <- Sigma[1, 2] / prod(sds)
-    re2_lab <- if (identical(as.integer(object$param_info$re2_target %||% 0L), 1L)) {
+    sds <- sqrt(diag(Sigma))
+    rho <- Sigma[1, 2] / prod(sds)
+    re2_lab <- if (
+      identical(as.integer(object$param_info$re2_target %||% 0L), 1L)
+    ) {
       "s"
     } else {
       "phi"
     }
     rows <- list(
-      data.frame(Component = "sd_re[k] (log10-k RE SD)",
-                 Estimate = unname(sds[1]) / ln10, Scale = "log10",
-                 stringsAsFactors = FALSE),
-      data.frame(Component = sprintf("sd_re[%s] (log10-%s RE SD)", re2_lab, re2_lab),
-                 Estimate = unname(sds[2]) / ln10, Scale = "log10",
-                 stringsAsFactors = FALSE),
-      data.frame(Component = sprintf("rho (k,%s)", re2_lab),
-                 Estimate = unname(rho), Scale = "correlation",
-                 stringsAsFactors = FALSE)
+      data.frame(
+        Component = "sd_re[k] (log10-k RE SD)",
+        Estimate = unname(sds[1]) / ln10,
+        Scale = "log10",
+        stringsAsFactors = FALSE
+      ),
+      data.frame(
+        Component = sprintf("sd_re[%s] (log10-%s RE SD)", re2_lab, re2_lab),
+        Estimate = unname(sds[2]) / ln10,
+        Scale = "log10",
+        stringsAsFactors = FALSE
+      ),
+      data.frame(
+        Component = sprintf("rho (k,%s)", re2_lab),
+        Estimate = unname(rho),
+        Scale = "correlation",
+        stringsAsFactors = FALSE
+      )
     )
   } else {
     rows <- list(
       data.frame(
         Component = "sigma_u (log10-k RE SD)",
-        Estimate  = exp(coefs[["log_sigma_u"]]) / ln10,
-        Scale     = "log10",
+        Estimate = exp(coefs[["log_sigma_u"]]) / ln10,
+        Scale = "log10",
         stringsAsFactors = FALSE
       )
     )
@@ -728,15 +825,15 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
   if (family == "sltb") {
     rows[[length(rows) + 1L]] <- data.frame(
       Component = "phi (precision)",
-      Estimate  = exp(coefs[["log_phi"]]),
-      Scale     = "natural",
+      Estimate = exp(coefs[["log_phi"]]),
+      Scale = "natural",
       stringsAsFactors = FALSE
     )
   } else {
     rows[[length(rows) + 1L]] <- data.frame(
       Component = "sigma_e (Residual SD)",
-      Estimate  = exp(coefs[["log_sigma_e"]]),
-      Scale     = "natural",
+      Estimate = exp(coefs[["log_sigma_e"]]),
+      Scale = "natural",
       stringsAsFactors = FALSE
     )
   }
@@ -772,29 +869,31 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #'
 #' @importFrom generics tidy
 #' @export
-tidy.beezdiscounting_tmb <- function(x,
-                                     effects      = c("fixed", "ran_pars"),
-                                     report_space = c("natural", "log10", "internal", "log"),
-                                     ...) {
-  effects      <- match.arg(effects, several.ok = TRUE)
+tidy.beezdiscounting_tmb <- function(
+  x,
+  effects = c("fixed", "ran_pars"),
+  report_space = c("natural", "log10", "internal", "log"),
+  ...
+) {
+  effects <- match.arg(effects, several.ok = TRUE)
   report_space <- match.arg(report_space)
 
   result <- tibble::tibble(
-    term           = character(),
-    estimate       = numeric(),
-    std.error      = numeric(),
-    statistic      = numeric(),
-    p.value        = numeric(),
-    component      = character(),
+    term = character(),
+    estimate = numeric(),
+    std.error = numeric(),
+    statistic = numeric(),
+    p.value = numeric(),
+    component = character(),
     estimate_scale = character(),
-    term_display   = character()
+    term_display = character()
   )
 
   if ("fixed" %in% effects) {
     coefs <- x$model$coefficients
-    se    <- .dd_tmb_model_se(x)
-    nms   <- names(coefs)
-    tn    <- .dd_tmb_build_term_names(x, nms)
+    se <- .dd_tmb_model_se(x)
+    nms <- names(coefs)
+    tn <- .dd_tmb_build_term_names(x, nms)
 
     # Keep only the beta_k rows; the variance rows land in "ran_pars".
     is_fixed <- nms == "beta_k"
@@ -805,21 +904,21 @@ tidy.beezdiscounting_tmb <- function(x,
     p_val <- 2 * stats::pnorm(-abs(z_val))
 
     fixed <- tibble::tibble(
-      term           = tn$term[is_fixed],
-      estimate       = unname(coefs[is_fixed]),
-      std.error      = unname(se[is_fixed]),
-      statistic      = unname(z_val[is_fixed]),
-      p.value        = unname(p_val[is_fixed]),
-      component      = "fixed",
-      estimate_scale = "log",     # internal space for beta_k is log-k
-      term_display   = tn$term[is_fixed]
+      term = tn$term[is_fixed],
+      estimate = unname(coefs[is_fixed]),
+      std.error = unname(se[is_fixed]),
+      statistic = unname(z_val[is_fixed]),
+      p.value = unname(p_val[is_fixed]),
+      component = "fixed",
+      estimate_scale = "log", # internal space for beta_k is log-k
+      term_display = tn$term[is_fixed]
     )
 
     # Back-transform estimate + std.error to report_space; statistic/p.value
     # are left on the estimation scale (assigned above, untouched by transform).
     fixed <- .dd_transform_coef_table(
-      coef_tbl       = fixed,
-      report_space   = report_space,
+      coef_tbl = fixed,
+      report_space = report_space,
       internal_space = "log"
     )
     # Drop the internal sentinel column added by .dd_transform_coef_table -
@@ -833,20 +932,22 @@ tidy.beezdiscounting_tmb <- function(x,
     # variance component: it carries a real Wald SE. New row, same 8 columns.
     if (isTRUE(x$param_info$has_s)) {
       s_pos <- which(nms == "log_s")
-      z_s   <- coefs[s_pos] / se[s_pos]
-      p_s   <- 2 * stats::pnorm(-abs(z_s))
+      z_s <- coefs[s_pos] / se[s_pos]
+      p_s <- 2 * stats::pnorm(-abs(z_s))
       shape <- tibble::tibble(
-        term           = "s",
-        estimate       = unname(coefs[s_pos]),
-        std.error      = unname(se[s_pos]),
-        statistic      = unname(z_s),
-        p.value        = unname(p_s),
-        component      = "shape",
+        term = "s",
+        estimate = unname(coefs[s_pos]),
+        std.error = unname(se[s_pos]),
+        statistic = unname(z_s),
+        p.value = unname(p_s),
+        component = "shape",
         estimate_scale = "log",
-        term_display   = "s"
+        term_display = "s"
       )
       shape <- .dd_transform_coef_table(
-        coef_tbl = shape, report_space = report_space, internal_space = "log"
+        coef_tbl = shape,
+        report_space = report_space,
+        internal_space = "log"
       )
       shape <- shape[, setdiff(names(shape), "estimate_internal"), drop = FALSE]
       result <- dplyr::bind_rows(result, shape)
@@ -854,16 +955,16 @@ tidy.beezdiscounting_tmb <- function(x,
   }
 
   if ("ran_pars" %in% effects) {
-    vc  <- .dd_tmb_variance_components(x)
+    vc <- .dd_tmb_variance_components(x)
     ran <- tibble::tibble(
-      term           = vc$Component,
-      estimate       = vc$Estimate,
-      std.error      = NA_real_,
-      statistic      = NA_real_,
-      p.value        = NA_real_,
-      component      = "variance",
+      term = vc$Component,
+      estimate = vc$Estimate,
+      std.error = NA_real_,
+      statistic = NA_real_,
+      p.value = NA_real_,
+      component = "variance",
       estimate_scale = vc$Scale,
-      term_display   = vc$Component
+      term_display = vc$Component
     )
     result <- dplyr::bind_rows(result, ran)
   }
@@ -892,17 +993,17 @@ tidy.beezdiscounting_tmb <- function(x,
 #' @export
 glance.beezdiscounting_tmb <- function(x, ...) {
   tibble::tibble(
-    model_class      = "beezdiscounting_tmb",
-    backend          = "TMB_mixed",
-    equation         = x$param_info$equation,
-    family           = x$param_info$family,
-    nobs             = x$param_info$n_obs,
-    n_subjects       = x$param_info$n_subjects,
+    model_class = "beezdiscounting_tmb",
+    backend = "TMB_mixed",
+    equation = x$param_info$equation,
+    family = x$param_info$family,
+    nobs = x$param_info$n_obs,
+    n_subjects = x$param_info$n_subjects,
     n_random_effects = x$param_info$n_random_effects,
-    converged        = x$converged,
-    logLik           = x$loglik,
-    AIC              = x$AIC,
-    BIC              = x$BIC
+    converged = x$converged,
+    logLik = x$loglik,
+    AIC = x$AIC,
+    BIC = x$BIC
   )
 }
 
@@ -945,13 +1046,15 @@ glance.beezdiscounting_tmb <- function(x, ...) {
 #' }
 #'
 #' @exportS3Method stats::confint beezdiscounting_tmb
-confint.beezdiscounting_tmb <- function(object,
-                                        parm         = NULL,
-                                        level        = 0.95,
-                                        report_space = c("internal", "natural"),
-                                        ...) {
+confint.beezdiscounting_tmb <- function(
+  object,
+  parm = NULL,
+  level = 0.95,
+  report_space = c("internal", "natural"),
+  ...
+) {
   report_space <- match.arg(report_space)
-  coefs  <- object$model$coefficients
+  coefs <- object$model$coefficients
   se_vec <- .dd_tmb_model_se(object)
   # B2: warn (and return NA intervals via the NA SEs above) when SEs are
   # unreliable, matching the tidy()/summary() gate instead of silently emitting
@@ -964,23 +1067,23 @@ confint.beezdiscounting_tmb <- function(object,
              uncertainty."
     ))
   }
-  nms    <- names(coefs)
-  tn     <- .dd_tmb_build_term_names(object, nms)
-  term   <- tn$term
+  nms <- names(coefs)
+  tn <- .dd_tmb_build_term_names(object, nms)
+  term <- tn$term
 
   # Filter by display name OR raw name (dual-name matching).
   if (!is.null(parm)) {
-    keep   <- term %in% parm | nms %in% parm
-    coefs  <- coefs[keep]
+    keep <- term %in% parm | nms %in% parm
+    coefs <- coefs[keep]
     se_vec <- se_vec[keep]
-    nms    <- nms[keep]
-    term   <- term[keep]
+    nms <- nms[keep]
+    term <- term[keep]
   }
 
   # Wald intervals on the internal (estimation) scale.
-  z         <- stats::qnorm((1 + level) / 2)
+  z <- stats::qnorm((1 + level) / 2)
   estimates <- unname(coefs)
-  conf_low  <- unname(coefs - z * se_vec)
+  conf_low <- unname(coefs - z * se_vec)
   conf_high <- unname(coefs + z * se_vec)
 
   # Back-transform beta_k rows to natural scale if requested.
@@ -988,23 +1091,23 @@ confint.beezdiscounting_tmb <- function(object,
     k_pos <- which(nms == "beta_k")
     if (length(k_pos) > 0L) {
       estimates[k_pos] <- exp(estimates[k_pos])
-      conf_low[k_pos]  <- exp(conf_low[k_pos])
+      conf_low[k_pos] <- exp(conf_low[k_pos])
       conf_high[k_pos] <- exp(conf_high[k_pos])
     }
     s_pos <- which(nms == "log_s")
     if (length(s_pos) > 0L) {
       estimates[s_pos] <- exp(estimates[s_pos])
-      conf_low[s_pos]  <- exp(conf_low[s_pos])
+      conf_low[s_pos] <- exp(conf_low[s_pos])
       conf_high[s_pos] <- exp(conf_high[s_pos])
     }
   }
 
   tibble::tibble(
-    term      = term,
-    estimate  = estimates,
-    conf.low  = conf_low,
+    term = term,
+    estimate = estimates,
+    conf.low = conf_low,
     conf.high = conf_high,
-    level     = level
+    level = level
   )
 }
 
@@ -1036,18 +1139,23 @@ confint.beezdiscounting_tmb <- function(object,
 #' }
 #'
 #' @export
-summary.beezdiscounting_tmb <- function(object,
-                                        report_space = c("natural", "log10", "internal", "log"),
-                                        ...) {
+summary.beezdiscounting_tmb <- function(
+  object,
+  report_space = c("natural", "log10", "internal", "log"),
+  ...
+) {
   report_space <- match.arg(report_space)
 
-  coefs  <- object$model$coefficients
+  coefs <- object$model$coefficients
   se_vec <- .dd_tmb_model_se(object)
-  nms    <- names(coefs)
-  tn     <- .dd_tmb_build_term_names(object, nms)
+  nms <- names(coefs)
+  tn <- .dd_tmb_build_term_names(object, nms)
 
-  component      <- ifelse(nms == "beta_k", "fixed",
-                          ifelse(nms == "log_s", "shape", "variance"))
+  component <- ifelse(
+    nms == "beta_k",
+    "fixed",
+    ifelse(nms == "log_s", "shape", "variance")
+  )
   estimate_scale <- rep("log", length(nms))
 
   z_val <- coefs / se_vec
@@ -1056,23 +1164,26 @@ summary.beezdiscounting_tmb <- function(object,
   # Build the full table, then keep only fixed-effect rows for the coefficient
   # table (variance rows surface via variance_components).
   coefficients <- tibble::tibble(
-    term           = tn$term,
-    estimate       = unname(coefs),
-    std.error      = unname(se_vec),
-    statistic      = unname(z_val),
-    p.value        = unname(p_val),
-    component      = component,
+    term = tn$term,
+    estimate = unname(coefs),
+    std.error = unname(se_vec),
+    statistic = unname(z_val),
+    p.value = unname(p_val),
+    component = component,
     estimate_scale = estimate_scale,
-    term_display   = tn$term
+    term_display = tn$term
   )
-  coefficients <- coefficients[coefficients$component %in% c("fixed", "shape"), ,
-                               drop = FALSE]
+  coefficients <- coefficients[
+    coefficients$component %in% c("fixed", "shape"),
+    ,
+    drop = FALSE
+  ]
 
   # Back-transform estimate + std.error to report_space; statistic/p.value stay
   # on the estimation (log-k) scale (broom/emmeans convention).
   coefficients <- .dd_transform_coef_table(
-    coef_tbl       = coefficients,
-    report_space   = report_space,
+    coef_tbl = coefficients,
+    report_space = report_space,
     internal_space = "log"
   )
 
@@ -1083,45 +1194,60 @@ summary.beezdiscounting_tmb <- function(object,
     notes <- c(notes, "WARNING: Model did not converge.")
   }
   if (isFALSE(object$se_available)) {
-    notes <- c(notes, "Standard errors unavailable (sdreport failed); CIs will be NA.")
+    notes <- c(
+      notes,
+      "Standard errors unavailable (sdreport failed); CIs will be NA."
+    )
   }
   if (isFALSE(object$hessian_pd)) {
-    notes <- c(notes,
-      "Warning: Hessian not positive definite - standard errors may be unreliable.")
+    notes <- c(
+      notes,
+      "Warning: Hessian not positive definite - standard errors may be unreliable."
+    )
   }
   if (length(object$opt_warnings %||% character(0)) > 0L) {
-    notes <- c(notes, sprintf(
-      "Optimizer produced %d warning(s) during fitting.",
-      length(object$opt_warnings)
-    ))
+    notes <- c(
+      notes,
+      sprintf(
+        "Optimizer produced %d warning(s) during fitting.",
+        length(object$opt_warnings)
+      )
+    )
   }
-  if (!is.null(object$param_info$factors) && length(object$param_info$factors) > 0L) {
-    notes <- c(notes,
-      "Population k reflects the reference level. Use get_dd_param_emms() for per-group estimates.")
+  if (
+    !is.null(object$param_info$factors) &&
+      length(object$param_info$factors) > 0L
+  ) {
+    notes <- c(
+      notes,
+      "Population k reflects the reference level. Use get_dd_param_emms() for per-group estimates."
+    )
   }
   if (isTRUE(object$param_info$has_s)) {
-    notes <- c(notes,
-      "s is the population hyperboloid shape parameter (the equation reduces to Mazur at s = 1).")
+    notes <- c(
+      notes,
+      "s is the population hyperboloid shape parameter (the equation reduces to Mazur at s = 1)."
+    )
   }
 
   structure(
     list(
       # R5: store object$call (the R call captured by match.call() in
       # fit_dd_tmb), NOT the optimizer status string (fit$opt$message).
-      call               = object$call,
-      model_class        = "beezdiscounting_tmb",
-      backend            = "TMB_mixed",
-      equation           = object$param_info$equation,
-      family             = object$param_info$family,
-      coefficients       = coefficients,
+      call = object$call,
+      model_class = "beezdiscounting_tmb",
+      backend = "TMB_mixed",
+      equation = object$param_info$equation,
+      family = object$param_info$family,
+      coefficients = coefficients,
       variance_components = vc,
-      n_subjects         = object$param_info$n_subjects,
-      nobs               = object$param_info$n_obs,
-      converged          = object$converged,
-      logLik             = object$loglik,
-      AIC                = object$AIC,
-      BIC                = object$BIC,
-      notes              = notes
+      n_subjects = object$param_info$n_subjects,
+      nobs = object$param_info$n_obs,
+      converged = object$converged,
+      logLik = object$loglik,
+      AIC = object$AIC,
+      BIC = object$BIC,
+      notes = notes
     ),
     class = "summary.beezdiscounting_tmb"
   )
@@ -1156,7 +1282,11 @@ print.beezdiscounting_tmb <- function(x, ...) {
   cat("Number of subjects:", x$param_info$n_subjects, "\n")
   cat("Number of observations:", x$param_info$n_obs, "\n")
   re_lab <- if (x$param_info$n_random_effects == 2L) {
-    re2 <- if (identical(as.integer(x$param_info$re2_target %||% 0L), 1L)) "s" else "phi"
+    re2 <- if (identical(as.integer(x$param_info$re2_target %||% 0L), 1L)) {
+      "s"
+    } else {
+      "phi"
+    }
     sprintf("(k + %s ~ 1, %s)\n", re2, x$param_info$covariance_structure)
   } else {
     "(k ~ 1)\n"
@@ -1201,19 +1331,25 @@ print.summary.beezdiscounting_tmb <- function(x, digits = 4, ...) {
   # Header reflects the report space of the coefficient-table estimates (R4):
   # "(k)" natural, "(log k)" internal/log, "(log10 k)" log10.
   scale_lbl <- unique(stats::na.omit(x$coefficients$estimate_scale))
-  k_space <- switch(if (length(scale_lbl) == 1L) scale_lbl else "log",
+  k_space <- switch(
+    if (length(scale_lbl) == 1L) scale_lbl else "log",
     natural = "k",
-    log10   = "log10 k",
-    log     = "log k",
+    log10 = "log10 k",
+    log = "log k",
     "log k"
   )
   cat(sprintf("--- Fixed Effects (%s) ---\n", k_space))
-  cd <- as.data.frame(x$coefficients[, c("term", "estimate", "std.error",
-                                          "statistic", "p.value")])
-  cd$estimate  <- round(cd$estimate, digits)
+  cd <- as.data.frame(x$coefficients[, c(
+    "term",
+    "estimate",
+    "std.error",
+    "statistic",
+    "p.value"
+  )])
+  cd$estimate <- round(cd$estimate, digits)
   cd$std.error <- round(cd$std.error, digits)
   cd$statistic <- round(cd$statistic, digits)
-  cd$p.value   <- format.pval(cd$p.value, digits = 3)
+  cd$p.value <- format.pval(cd$p.value, digits = 3)
   print(cd, row.names = FALSE)
 
   cat("\n--- Variance Components ---\n")
@@ -1227,7 +1363,9 @@ print.summary.beezdiscounting_tmb <- function(x, digits = 4, ...) {
 
   if (length(x$notes) > 0L) {
     cat("\nNotes:\n")
-    for (note in x$notes) cat("  *", note, "\n")
+    for (note in x$notes) {
+      cat("  *", note, "\n")
+    }
   }
   invisible(x)
 }

@@ -1,5 +1,26 @@
 # beezdiscounting (development version)
 
+### Monte Carlo power analysis
+
+* `power_discounting()` estimates statistical power for detecting a
+  between-subject difference in discount rate (`delta_k` on log k) by
+  simulating with `simulate_dd_ip()` and refitting each replicate with
+  `fit_dd_tmb()`. Reports the power estimate with a Wilson Monte Carlo
+  confidence interval, p-value and CI-exclusion hit rates, and convergence
+  diagnostics; non-usable fits are excluded from the denominator and
+  surfaced, never counted as misses. The Wald test uses a t reference with
+  the design's two-sample df (`n - 2`), validated by Type I calibration
+  tests.
+* `find_n_discounting()` searches for the smallest total N reaching a
+  target power via bisection, adding replicates adaptively where the Monte
+  Carlo verdict is ambiguous and re-confirming the selected N before
+  reporting.
+* Type I error calibration, convergence handling, a closed-form benchmark
+  against `pwr::pwr.t.test()`, monotonicity, and seed reproducibility are
+  verified in the test suite; see `vignette("power-analysis")` for scope
+  and validity notes. Mirrors `beezdemand::power_demand()`; the within- vs
+  between-subject asymmetry is intentional.
+
 ### Probability Discounting Questionnaire (PDQ)
 
 * New `score_pdq()` scores the 30-item PDQ (Madden, Petry, & Johnson,
@@ -50,6 +71,7 @@
   a breaking signature change for any code calling
   `beezdiscounting:::inn()` directly.
 
+
 ### New vignettes
 
 * `vignette("mcq27-scoring")`: scoring the 27-item Monetary Choice Questionnaire
@@ -64,6 +86,18 @@
   its S3 methods, prediction, diagnostics, and group comparisons.
 
 ### Bug fixes
+
+* `tidy()`, `confint()`, and `summary()` on a `fit_dd_tmb()` or structural
+  `fit_dd_choice()` fit with `factors` reported the intercept's standard
+  error for every `beta_k` coefficient (the log-k intercept and each
+  condition contrast): the internal SE lookup collapsed the duplicated
+  `beta_k` parameter names onto the first element. Condition-contrast Wald
+  statistics, p-values, and confidence intervals were therefore
+  anticonservative (the `power_discounting()` Type I calibration battery
+  measured a false-positive rate of 0.168 at nominal .05 before the fix).
+  SEs are now aligned positionally with the coefficient vector in both
+  accessors, and ambiguous legacy objects with duplicated names return `NA`
+  SEs instead of silently misaligned values.
 
 * `check_unsystematic()` and `calc_aucs()` now compute results per `id`. Previously
   they computed a single result over the whole data frame and recycled it across

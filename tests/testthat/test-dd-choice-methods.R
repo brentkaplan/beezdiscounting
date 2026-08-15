@@ -100,3 +100,30 @@ describe("beezdiscounting_choice S3", {
     expect_equal(brow_nat$estimate, brow_log$estimate, tolerance = 1e-12)
   })
 })
+
+
+# -----------------------------------------------------------------------------
+# .dd_choice_model_se on factor fits: same duplicated-beta_k hazard as
+# .dd_tmb_model_se -- name-based match() collapses every beta_k element onto
+# the first element's SE, giving condition contrasts the intercept's SE.
+# -----------------------------------------------------------------------------
+
+test_that(".dd_choice_model_se preserves per-element SEs for factor fits", {
+  skip_on_cran()
+  sim <- simulate_dd_choice(n_subjects = 30, seed = 42)
+  sim$grp <- factor(ifelse(as.integer(sim$id) %% 2 == 0, "A", "B"))
+  fit <- suppressWarnings(suppressMessages(fit_dd_choice(
+    sim, mode = "structural", factors = "grp",
+    multi_start = FALSE, verbose = 0
+  )))
+  expect_equal(fit$converged, TRUE)
+
+  se <- beezdiscounting:::.dd_choice_model_se(fit)
+  expect_identical(unname(se), unname(fit$model$se))
+
+  rows <- summary(fit$sdr, "fixed")
+  sdr_se <- rows[rownames(rows) == "beta_k", "Std. Error"]
+  beta_idx <- which(names(fit$model$coefficients) == "beta_k")
+  expect_length(beta_idx, 2)
+  expect_equal(unname(se[beta_idx]), unname(sdr_se), tolerance = 1e-12)
+})

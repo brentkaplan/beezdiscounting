@@ -60,6 +60,10 @@ navbar:
           href: articles/bayesian-discounting.html
         - text: Comparing discounting rates between groups
           href: articles/dd-group-comparisons.html
+        - text: ---
+        - text: Study planning
+        - text: Power analysis
+          href: articles/power-analysis.html
 
 reference:
   - title: Mixed-effects discounting (TMB)
@@ -70,6 +74,14 @@ reference:
       - fit_dd_tmb
       - simulate_dd_ip
       - VarCorr.beezdiscounting_tmb
+
+  - title: Power analysis
+    desc: >
+      Monte Carlo power estimation and sample-size search for between-subject
+      discounting designs.
+    contents:
+      - power_discounting
+      - find_n_discounting
 
   - title: Choice-based discounting (TMB)
     desc: >

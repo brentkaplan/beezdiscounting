@@ -10,15 +10,19 @@ skip_if_not_installed("TMB")
 
 .get_fit_for_methods <- function() {
   if (!exists("fit", envir = .ddm_cache)) {
-    dat <- .dd_sim_fixture(family = "sltb", equation = "mazur", n_subjects = 30,
-                           seed = 101)
+    dat <- .dd_sim_fixture(
+      family = "sltb",
+      equation = "mazur",
+      n_subjects = 30,
+      seed = 101
+    )
     .ddm_cache$fit <- fit_dd_tmb(
       dat,
-      equation       = "mazur",
-      family         = "sltb",
+      equation = "mazur",
+      family = "sltb",
       random_effects = k ~ 1,
-      multi_start    = TRUE,
-      verbose        = 0
+      multi_start = TRUE,
+      verbose = 0
     )
   }
   .ddm_cache$fit
@@ -26,14 +30,24 @@ skip_if_not_installed("TMB")
 
 .get_gm_fit_for_methods <- function() {
   if (!exists("gm_fit", envir = .ddm_cache)) {
-    dat <- simulate_dd_ip(n_subjects = 40,
-                          delays = c(1, 7, 30, 180, 365, 730, 1460, 2920),
-                          log_k_pop = log(0.01), sigma_u = 0.5, phi = 15,
-                          s = 0.6, family = "sltb",
-                          equation = "green-myerson", seed = 501)
-    .ddm_cache$gm_fit <- fit_dd_tmb(dat, equation = "green-myerson",
-                                    family = "sltb", multi_start = TRUE,
-                                    verbose = 0)
+    dat <- simulate_dd_ip(
+      n_subjects = 40,
+      delays = c(1, 7, 30, 180, 365, 730, 1460, 2920),
+      log_k_pop = log(0.01),
+      sigma_u = 0.5,
+      phi = 15,
+      s = 0.6,
+      family = "sltb",
+      equation = "green-myerson",
+      seed = 501
+    )
+    .ddm_cache$gm_fit <- fit_dd_tmb(
+      dat,
+      equation = "green-myerson",
+      family = "sltb",
+      multi_start = TRUE,
+      verbose = 0
+    )
   }
   .ddm_cache$gm_fit
 }
@@ -58,7 +72,7 @@ describe(".dd_tmb_build_term_names()", {
     fit <- .get_gm_fit_for_methods()
     tn <- .dd_tmb_build_term_names(fit)
     expect_true("s" %in% tn$term)
-    expect_false("log_s" %in% tn$term)   # raw name is mapped to display "s"
+    expect_false("log_s" %in% tn$term) # raw name is mapped to display "s"
   })
 })
 
@@ -175,7 +189,7 @@ describe("predict", {
     k_by_id <- stats::setNames(sp$k, sp$id)
     x <- fit$data[[fit$param_info$x_var]]
     id <- as.character(fit$data[[fit$param_info$id_var]])
-    mu_raw <- 1 / (1 + k_by_id[id] * x)  # mazur
+    mu_raw <- 1 / (1 + k_by_id[id] * x) # mazur
     mu_guarded <- pmin(pmax(mu_raw, 1e-6), 1 - 1e-6)
     expect_equal(pr$.fitted, unname(mu_guarded), tolerance = 1e-8)
   })
@@ -206,8 +220,12 @@ describe("predict", {
   it("level = c('population','subject') returns both columns", {
     fit <- .get_fit_for_methods()
     nd <- fit$data
-    pr <- predict(fit, newdata = nd, type = "response",
-                  level = c("population", "subject"))
+    pr <- predict(
+      fit,
+      newdata = nd,
+      type = "response",
+      level = c("population", "subject")
+    )
     expect_true(all(c("predict.fixed", "predict.id") %in% names(pr)))
   })
 
@@ -219,12 +237,25 @@ describe("predict", {
   it("exponential fit yields .fitted = exp(-k * x) at population level", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    d2 <- simulate_dd_ip(n_subjects = 25, family = "gaussian",
-                                equation = "exponential", seed = 7)
-    f2 <- fit_dd_tmb(d2, equation = "exponential", family = "gaussian",
-                     random_effects = k ~ 1, verbose = 0)
-    pr <- predict(f2, type = "response", level = "population",
-                  newdata = data.frame(x = c(7, 365)))
+    d2 <- simulate_dd_ip(
+      n_subjects = 25,
+      family = "gaussian",
+      equation = "exponential",
+      seed = 7
+    )
+    f2 <- fit_dd_tmb(
+      d2,
+      equation = "exponential",
+      family = "gaussian",
+      random_effects = k ~ 1,
+      verbose = 0
+    )
+    pr <- predict(
+      f2,
+      type = "response",
+      level = "population",
+      newdata = data.frame(x = c(7, 365))
+    )
     k_pop <- exp(unname(f2$model$coefficients["beta_k"][1]))
     mu_raw <- exp(-k_pop * c(7, 365))
     mu_guarded <- pmin(pmax(mu_raw, 1e-6), 1 - 1e-6)
@@ -234,15 +265,21 @@ describe("predict", {
   it("ERRORS on an unseen factor level in newdata (no silent zero-pad)", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    d3 <- simulate_dd_ip(n_subjects = 30, family = "sltb",
-                                equation = "mazur", seed = 31)
-    d3$grp <- factor(rep(c("ctrl", "trt"),
-                         length.out = length(unique(d3$id)))[
-                           match(d3$id, unique(d3$id))])
+    d3 <- simulate_dd_ip(
+      n_subjects = 30,
+      family = "sltb",
+      equation = "mazur",
+      seed = 31
+    )
+    d3$grp <- factor(rep(c("ctrl", "trt"), length.out = length(unique(d3$id)))[
+      match(d3$id, unique(d3$id))
+    ])
     f3 <- fit_dd_tmb(d3, factors = "grp", verbose = 0)
-    nd <- data.frame(x = c(7, 30),
-                     id = f3$param_info$subject_levels[1],
-                     grp = factor("NEVER_SEEN"))
+    nd <- data.frame(
+      x = c(7, 30),
+      id = f3$param_info$subject_levels[1],
+      grp = factor("NEVER_SEEN")
+    )
     expect_error(
       predict(f3, newdata = nd, type = "response", level = "population"),
       regexp = "not seen in the fit|unseen"
@@ -254,11 +291,15 @@ describe("predict", {
     nd <- data.frame(x = c(7, 180, 730))
     pr <- predict(fit, newdata = nd, type = "response", level = "population")
     k_pop <- exp(unname(fit$model$coefficients[
-      names(fit$model$coefficients) == "beta_k"][1]))
+      names(fit$model$coefficients) == "beta_k"
+    ][1]))
     s_hat <- exp(unname(fit$model$coefficients[["log_s"]]))
     mu_raw <- (1 + k_pop * nd$x)^(-s_hat)
-    expect_equal(pr$predict.fixed, pmin(pmax(mu_raw, 1e-6), 1 - 1e-6),
-                 tolerance = 1e-8)
+    expect_equal(
+      pr$predict.fixed,
+      pmin(pmax(mu_raw, 1e-6), 1 - 1e-6),
+      tolerance = 1e-8
+    )
   })
 })
 
@@ -282,8 +323,10 @@ describe("augment", {
     aug <- augment(fit)
     expect_true(all(is.finite(aug$.std_resid)))
     # sign of .std_resid matches sign of .resid
-    expect_true(all(sign(aug$.resid) == sign(aug$.std_resid) |
-                      aug$.resid == 0))
+    expect_true(all(
+      sign(aug$.resid) == sign(aug$.std_resid) |
+        aug$.resid == 0
+    ))
   })
 
   it("supports newdata and computes resid against the y_var in newdata", {
@@ -297,10 +340,19 @@ describe("augment", {
   it("gaussian fit uses constant sigma_e for .std_resid", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    d2 <- simulate_dd_ip(n_subjects = 25, family = "gaussian",
-                                equation = "mazur", seed = 9)
-    f2 <- fit_dd_tmb(d2, equation = "mazur", family = "gaussian",
-                     random_effects = k ~ 1, verbose = 0)
+    d2 <- simulate_dd_ip(
+      n_subjects = 25,
+      family = "gaussian",
+      equation = "mazur",
+      seed = 9
+    )
+    f2 <- fit_dd_tmb(
+      d2,
+      equation = "mazur",
+      family = "gaussian",
+      random_effects = k ~ 1,
+      verbose = 0
+    )
     aug <- augment(f2)
     sigma_e <- exp(f2$model$coefficients[["log_sigma_e"]])
     expect_equal(aug$.std_resid, aug$.resid / sigma_e, tolerance = 1e-10)
@@ -339,9 +391,19 @@ describe("tidy", {
     fit <- .get_fit_for_methods()
     td <- tidy(fit)
     expect_s3_class(td, "tbl_df")
-    expect_named(td, c("term", "estimate", "std.error", "statistic",
-                       "p.value", "component", "estimate_scale",
-                       "term_display"))
+    expect_named(
+      td,
+      c(
+        "term",
+        "estimate",
+        "std.error",
+        "statistic",
+        "p.value",
+        "component",
+        "estimate_scale",
+        "term_display"
+      )
+    )
   })
 
   it("has nrow > 0 and no NA estimates on a good fit (fixed rows)", {
@@ -365,8 +427,11 @@ describe("tidy", {
     fit <- .get_fit_for_methods()
     td <- tidy(fit, report_space = "internal")
     k_row <- td[td$term == "k:(Intercept)", ]
-    expect_equal(k_row$estimate, unname(fit$model$coefficients["beta_k"][1]),
-                 tolerance = 1e-10)
+    expect_equal(
+      k_row$estimate,
+      unname(fit$model$coefficients["beta_k"][1]),
+      tolerance = 1e-10
+    )
     expect_equal(k_row$estimate_scale, "log")
   })
 
@@ -377,7 +442,11 @@ describe("tidy", {
     ki <- td_int[td_int$term == "k:(Intercept)", ]
     kn <- td_nat[td_nat$term == "k:(Intercept)", ]
     expect_equal(kn$estimate, exp(ki$estimate), tolerance = 1e-8)
-    expect_equal(kn$std.error, exp(ki$estimate) * ki$std.error, tolerance = 1e-8)
+    expect_equal(
+      kn$std.error,
+      exp(ki$estimate) * ki$std.error,
+      tolerance = 1e-8
+    )
     expect_equal(kn$estimate_scale, "natural")
   })
 
@@ -441,16 +510,28 @@ describe("tidy", {
   it("emits an s shape row for a 2-parameter fit (8-col contract, natural)", {
     fit <- .get_gm_fit_for_methods()
     td <- tidy(fit, report_space = "natural")
-    expect_named(td, c("term", "estimate", "std.error", "statistic",
-                       "p.value", "component", "estimate_scale",
-                       "term_display"))
+    expect_named(
+      td,
+      c(
+        "term",
+        "estimate",
+        "std.error",
+        "statistic",
+        "p.value",
+        "component",
+        "estimate_scale",
+        "term_display"
+      )
+    )
     s_row <- td[td$term == "s", ]
     expect_equal(nrow(s_row), 1L)
     expect_equal(s_row$component, "shape")
     # natural-scale s == exp(log_s), with a real Wald SE (not NA)
-    expect_equal(s_row$estimate,
-                 exp(unname(fit$model$coefficients[["log_s"]])),
-                 tolerance = 1e-8)
+    expect_equal(
+      s_row$estimate,
+      exp(unname(fit$model$coefficients[["log_s"]])),
+      tolerance = 1e-8
+    )
     expect_false(is.na(s_row$std.error))
   })
 
@@ -458,8 +539,11 @@ describe("tidy", {
     fit <- .get_gm_fit_for_methods()
     td <- tidy(fit, report_space = "internal")
     s_row <- td[td$term == "s", ]
-    expect_equal(s_row$estimate, unname(fit$model$coefficients[["log_s"]]),
-                 tolerance = 1e-10)
+    expect_equal(
+      s_row$estimate,
+      unname(fit$model$coefficients[["log_s"]]),
+      tolerance = 1e-10
+    )
     expect_equal(s_row$estimate_scale, "log")
   })
 
@@ -480,9 +564,22 @@ describe("glance", {
     g <- glance(fit)
     expect_s3_class(g, "tbl_df")
     expect_equal(nrow(g), 1L)
-    expect_named(g, c("model_class", "backend", "equation", "family",
-                      "nobs", "n_subjects", "n_random_effects",
-                      "converged", "logLik", "AIC", "BIC"))
+    expect_named(
+      g,
+      c(
+        "model_class",
+        "backend",
+        "equation",
+        "family",
+        "nobs",
+        "n_subjects",
+        "n_random_effects",
+        "converged",
+        "logLik",
+        "AIC",
+        "BIC"
+      )
+    )
     expect_equal(g$model_class, "beezdiscounting_tmb")
     expect_equal(g$backend, "TMB_mixed")
     expect_equal(g$equation, "mazur")
@@ -506,10 +603,19 @@ describe("glance", {
   it("reports family = gaussian for a gaussian fit", {
     skip_on_cran()
     skip_if_not_installed("TMB")
-    d2 <- simulate_dd_ip(n_subjects = 25, family = "gaussian",
-                                equation = "mazur", seed = 11)
-    f2 <- fit_dd_tmb(d2, equation = "mazur", family = "gaussian",
-                     random_effects = k ~ 1, verbose = 0)
+    d2 <- simulate_dd_ip(
+      n_subjects = 25,
+      family = "gaussian",
+      equation = "mazur",
+      seed = 11
+    )
+    f2 <- fit_dd_tmb(
+      d2,
+      equation = "mazur",
+      family = "gaussian",
+      random_effects = k ~ 1,
+      verbose = 0
+    )
     expect_equal(glance(f2)$family, "gaussian")
   })
 })
@@ -598,8 +704,10 @@ describe("summary / print", {
     expect_equal(s$equation, "mazur")
     expect_equal(s$family, "sltb")
     expect_s3_class(s$coefficients, "tbl_df")
-    expect_true(all(c("term", "estimate", "std.error", "statistic",
-                      "p.value") %in% names(s$coefficients)))
+    expect_true(all(
+      c("term", "estimate", "std.error", "statistic", "p.value") %in%
+        names(s$coefficients)
+    ))
     expect_true(!is.null(s$variance_components))
     expect_equal(s$n_subjects, fit$param_info$n_subjects)
   })
@@ -608,9 +716,11 @@ describe("summary / print", {
     fit <- .get_fit_for_methods()
     s_nat <- summary(fit, report_space = "natural")
     krow <- s_nat$coefficients[s_nat$coefficients$term == "k:(Intercept)", ]
-    expect_equal(krow$estimate,
-                 exp(unname(fit$model$coefficients["beta_k"][1])),
-                 tolerance = 1e-8)
+    expect_equal(
+      krow$estimate,
+      exp(unname(fit$model$coefficients["beta_k"][1])),
+      tolerance = 1e-8
+    )
   })
 
   it("summary(report_space = 'log') == 'internal' for beta_k (B11)", {
@@ -619,8 +729,11 @@ describe("summary / print", {
     si <- summary(fit, report_space = "internal")
     expect_equal(sl$coefficients$estimate, si$coefficients$estimate)
     krow <- sl$coefficients[sl$coefficients$term == "k:(Intercept)", ]
-    expect_equal(krow$estimate, unname(fit$model$coefficients["beta_k"][1]),
-                 tolerance = 1e-8)
+    expect_equal(
+      krow$estimate,
+      unname(fit$model$coefficients["beta_k"][1]),
+      tolerance = 1e-8
+    )
   })
 
   it("print() and print.summary() run without error and return invisibly", {
@@ -635,14 +748,20 @@ describe("summary / print", {
   it("print.summary header reflects the report space / scale (R4)", {
     fit <- .get_fit_for_methods()
     # natural -> "(k)"
-    expect_output(print(summary(fit, report_space = "natural")),
-                  "Fixed Effects \\(k\\)")
+    expect_output(
+      print(summary(fit, report_space = "natural")),
+      "Fixed Effects \\(k\\)"
+    )
     # log10 -> "(log10 k)"
-    expect_output(print(summary(fit, report_space = "log10")),
-                  "Fixed Effects \\(log10 k\\)")
+    expect_output(
+      print(summary(fit, report_space = "log10")),
+      "Fixed Effects \\(log10 k\\)"
+    )
     # internal -> "(log k)"
-    expect_output(print(summary(fit, report_space = "internal")),
-                  "Fixed Effects \\(log k\\)")
+    expect_output(
+      print(summary(fit, report_space = "internal")),
+      "Fixed Effects \\(log k\\)"
+    )
   })
 
   it("summary notes flag non-convergence / missing SEs", {
@@ -666,9 +785,11 @@ describe("summary / print", {
     srow <- s$coefficients[s$coefficients$term == "s", ]
     expect_equal(nrow(srow), 1L)
     expect_equal(srow$component, "shape")
-    expect_equal(srow$estimate,
-                 exp(unname(fit$model$coefficients[["log_s"]])),
-                 tolerance = 1e-8)
+    expect_equal(
+      srow$estimate,
+      exp(unname(fit$model$coefficients[["log_s"]])),
+      tolerance = 1e-8
+    )
   })
 
   it("summary() of a mazur fit has no s row", {
@@ -691,12 +812,23 @@ describe("non-default column names (B1: canonical-names contract)", {
     skip_if_not_installed("TMB")
     sim <- simulate_dd_ip(n_subjects = 18, seed = 5)
     remap <- sim
-    names(remap) <- c("subj", "delay", "indiff")  # id, x, y -> remapped names
+    names(remap) <- c("subj", "delay", "indiff") # id, x, y -> remapped names
 
-    fit_canon <- fit_dd_tmb(sim, equation = "mazur", family = "sltb", verbose = 0)
-    fit_remap <- fit_dd_tmb(remap, y_var = "indiff", x_var = "delay",
-                            id_var = "subj", equation = "mazur",
-                            family = "sltb", verbose = 0)
+    fit_canon <- fit_dd_tmb(
+      sim,
+      equation = "mazur",
+      family = "sltb",
+      verbose = 0
+    )
+    fit_remap <- fit_dd_tmb(
+      remap,
+      y_var = "indiff",
+      x_var = "delay",
+      id_var = "subj",
+      equation = "mazur",
+      family = "sltb",
+      verbose = 0
+    )
 
     # Regression: these previously errored because param_info kept the user's
     # original names while fit$data is canonical id/x/y.
@@ -708,15 +840,18 @@ describe("non-default column names (B1: canonical-names contract)", {
     expect_true(all(c(".fitted", ".resid", ".std_resid") %in% names(aug)))
 
     # Identical underlying data (+ deterministic optimizer) -> identical fitted.
-    expect_equal(unname(fitted(fit_remap)), unname(fitted(fit_canon)),
-                 tolerance = 1e-6)
+    expect_equal(
+      unname(fitted(fit_remap)),
+      unname(fitted(fit_canon)),
+      tolerance = 1e-6
+    )
   })
 
   it("predict() errors cleanly when newdata omits the canonical delay column", {
     skip_on_cran()
     skip_if_not_installed("TMB")
     fit <- .get_fit_for_methods()
-    bad <- data.frame(id = "s1", y = 0.5)   # canonical 'x' (delay) absent
+    bad <- data.frame(id = "s1", y = 0.5) # canonical 'x' (delay) absent
     expect_error(
       predict(fit, newdata = bad, type = "response"),
       "delay column|canonical"
@@ -732,7 +867,7 @@ describe("confint se_available gate (B2)", {
     fit$se_available <- FALSE
     expect_warning(ci <- confint(fit), "unreliable")
     expect_true(all(is.na(ci$conf.low)) && all(is.na(ci$conf.high)))
-    expect_false(any(is.na(ci$estimate)))   # point estimates preserved
+    expect_false(any(is.na(ci$estimate))) # point estimates preserved
   })
 
   it("finite CIs on a normal (PD-Hessian) fit (no over-broadening)", {
@@ -755,10 +890,20 @@ describe("2-RE (k + phi) S3 surface", {
   make_fit <- function(cov = "pdSymm", seed = 21) {
     key <- paste0("re2_", cov, "_", seed)
     if (!exists(key, envir = .ddm_cache)) {
-      sim <- simulate_dd_ip(n_subjects = 30, sigma_u = 0.5, sigma_phi = 0.4,
-                            rho_kphi = 0.3, phi = 10, seed = seed)
-      .ddm_cache[[key]] <- fit_dd_tmb(sim, random_effects = k + phi ~ 1,
-                                      covariance_structure = cov, verbose = 0)
+      sim <- simulate_dd_ip(
+        n_subjects = 30,
+        sigma_u = 0.5,
+        sigma_phi = 0.4,
+        rho_kphi = 0.3,
+        phi = 10,
+        seed = seed
+      )
+      .ddm_cache[[key]] <- fit_dd_tmb(
+        sim,
+        random_effects = k + phi ~ 1,
+        covariance_structure = cov,
+        verbose = 0
+      )
     }
     .ddm_cache[[key]]
   }
@@ -811,8 +956,14 @@ describe("2-RE (k + phi) S3 surface", {
 
   it("predict/residuals work at level = population for a 2-RE fit", {
     fit <- make_fit("pdSymm")
-    expect_true(all(is.finite(predict(fit, level = "population")$predict.fixed)))
-    expect_true(all(is.finite(residuals(fit, type = "pearson", level = "population"))))
+    expect_true(all(is.finite(
+      predict(fit, level = "population")$predict.fixed
+    )))
+    expect_true(all(is.finite(residuals(
+      fit,
+      type = "pearson",
+      level = "population"
+    ))))
   })
 
   it("tidy ran_pars surfaces the 2-RE variance rows", {
@@ -827,11 +978,22 @@ describe("predict/response on a k + s ~ 1 fit", {
   skip_if_not_installed("TMB")
 
   fit_s <- local({
-    sim <- simulate_dd_ip(n_subjects = 30, equation = "green-myerson", s = 1.4,
-                          sigma_u = 0.5, sigma_s = 0.35, rho_ks = 0.2, phi = 12,
-                          seed = 14)
-    fit_dd_tmb(sim, equation = "green-myerson", random_effects = k + s ~ 1,
-               verbose = 0)
+    sim <- simulate_dd_ip(
+      n_subjects = 30,
+      equation = "green-myerson",
+      s = 1.4,
+      sigma_u = 0.5,
+      sigma_s = 0.35,
+      rho_ks = 0.2,
+      phi = 12,
+      seed = 14
+    )
+    fit_dd_tmb(
+      sim,
+      equation = "green-myerson",
+      random_effects = k + s ~ 1,
+      verbose = 0
+    )
   })
 
   it("subject-level predict uses each subject's s_i (not population s)", {
@@ -840,21 +1002,23 @@ describe("predict/response on a k + s ~ 1 fit", {
     # Two subjects with different s_i but the same k would give different mu at
     # the same delay; assert the fitted curve is not produced by a single
     # population s by checking predict matches a manual per-subject recompute.
-    sp  <- fit_s$subject_pars
-    nd  <- fit_s$data
+    sp <- fit_s$subject_pars
+    nd <- fit_s$data
     s_by_id <- stats::setNames(sp$s, as.character(sp$id))
     k_by_id <- stats::setNames(sp$k, as.character(sp$id))
-    mu_manual <- (1 + k_by_id[as.character(nd$id)] * nd$x)^(-s_by_id[as.character(nd$id)])
+    mu_manual <- (1 +
+      k_by_id[as.character(nd$id)] * nd$x)^(-s_by_id[as.character(nd$id)])
     mu_manual <- pmin(pmax(mu_manual, 1e-6), 1 - 1e-6)
     expect_equal(unname(p$.fitted), unname(mu_manual), tolerance = 1e-6)
   })
 
   it("population-level predict uses the population s_hat, NOT s_i", {
     nd <- data.frame(x = c(7, 30, 180, 365))
-    p  <- predict(fit_s, newdata = nd, level = "population")
+    p <- predict(fit_s, newdata = nd, level = "population")
     s_hat <- exp(unname(fit_s$model$coefficients[["log_s"]]))
     k_pop <- exp(unname(fit_s$model$coefficients[
-      names(fit_s$model$coefficients) == "beta_k"])[1])
+      names(fit_s$model$coefficients) == "beta_k"
+    ])[1])
     mu_pop <- pmin(pmax((1 + k_pop * nd$x)^(-s_hat), 1e-6), 1 - 1e-6)
     expect_equal(unname(p$predict.fixed), unname(mu_pop), tolerance = 1e-6)
   })
@@ -863,14 +1027,17 @@ describe("predict/response on a k + s ~ 1 fit", {
     # For an s-target SLT fit there is no per-subject phi; the SLT response SD
     # must use the population exp(log_phi), NOT subject_pars$s or a (nonexistent)
     # subject_pars$phi. augment()'s .std_resid encodes this.
-    au   <- augment(fit_s)
-    phi  <- exp(unname(fit_s$model$coefficients[["log_phi"]]))
-    mu   <- au$.fitted
-    sd_expected <- sqrt(mu * (1 - mu) / (phi + 1))            # s_slt = 1
+    au <- augment(fit_s)
+    phi <- exp(unname(fit_s$model$coefficients[["log_phi"]]))
+    mu <- au$.fitted
+    sd_expected <- sqrt(mu * (1 - mu) / (phi + 1)) # s_slt = 1
     # Multiplicative form avoids 0/0 when a residual is exactly 0:
     # .std_resid == .resid / sd_expected  <=>  .std_resid * sd_expected == .resid
-    expect_equal(unname(au$.std_resid * sd_expected), unname(au$.resid),
-                 tolerance = 1e-6)
+    expect_equal(
+      unname(au$.std_resid * sd_expected),
+      unname(au$.resid),
+      tolerance = 1e-6
+    )
   })
 
   it("residuals/fitted/augment return finite output (smoke)", {
@@ -885,11 +1052,22 @@ describe("S3 surfacing for k + s ~ 1", {
   skip_if_not_installed("TMB")
 
   fit_s <- local({
-    sim <- simulate_dd_ip(n_subjects = 30, equation = "green-myerson", s = 1.4,
-                          sigma_u = 0.5, sigma_s = 0.35, rho_ks = 0.3, phi = 12,
-                          seed = 15)
-    fit_dd_tmb(sim, equation = "green-myerson", random_effects = k + s ~ 1,
-               verbose = 0)
+    sim <- simulate_dd_ip(
+      n_subjects = 30,
+      equation = "green-myerson",
+      s = 1.4,
+      sigma_u = 0.5,
+      sigma_s = 0.35,
+      rho_ks = 0.3,
+      phi = 12,
+      seed = 15
+    )
+    fit_dd_tmb(
+      sim,
+      equation = "green-myerson",
+      random_effects = k + s ~ 1,
+      verbose = 0
+    )
   })
 
   it("ranef carries re_s and s", {
@@ -915,15 +1093,94 @@ describe("S3 surfacing for k + s ~ 1", {
 
   it("tidy/summary/confint/glance/coef/fixef/augment work on an s-RE fit", {
     td <- tidy(fit_s, effects = c("fixed", "ran_pars"))
-    expect_true("s" %in% td$term)                       # population shape row
+    expect_true("s" %in% td$term) # population shape row
     expect_true(any(td$component == "shape"))
     sm <- summary(fit_s)
     expect_true(is.data.frame(sm$variance_components))
-    ci_all <- confint(fit_s)                            # must not error
-    ci_s   <- confint(fit_s, parm = "s")               # log_s maps to "s"
-    expect_equal(ci_s$term, "s")                       # 1-row tibble, term == "s"
-    expect_true(is.data.frame(glance(fit_s)) || tibble::is_tibble(glance(fit_s)))
+    ci_all <- confint(fit_s) # must not error
+    ci_s <- confint(fit_s, parm = "s") # log_s maps to "s"
+    expect_equal(ci_s$term, "s") # 1-row tibble, term == "s"
+    expect_true(
+      is.data.frame(glance(fit_s)) || tibble::is_tibble(glance(fit_s))
+    )
     expect_length(coef(fit_s), length(fixef(fit_s)))
     expect_true(all(is.finite(augment(fit_s)$.std_resid)))
   })
+})
+
+
+# -----------------------------------------------------------------------------
+# .dd_tmb_model_se on factor fits: the coefficient vector contains DUPLICATED
+# "beta_k" names (one per design column). Name-based re-alignment collapses
+# every beta_k element onto the FIRST element's SE, silently assigning the
+# intercept's (smaller) SE to each condition contrast -- which inflates every
+# downstream Wald statistic in tidy()/confint()/summary(). Caught by the
+# power_discounting() Type I calibration battery (empirical rate 0.168 at
+# nominal .05).
+# -----------------------------------------------------------------------------
+
+test_that(".dd_tmb_model_se preserves per-element SEs for factor fits", {
+  skip_on_cran()
+  sim <- simulate_dd_ip(
+    n_subjects = 20,
+    n_conditions = 2,
+    delta_k = c(0, 0.5),
+    seed = 42
+  )
+  fit <- suppressWarnings(suppressMessages(fit_dd_tmb(
+    sim,
+    factors = "condition",
+    multi_start = FALSE,
+    verbose = 0
+  )))
+  expect_equal(fit$converged, TRUE)
+
+  se <- beezdiscounting:::.dd_tmb_model_se(fit)
+  expect_identical(unname(se), unname(fit$model$se))
+
+  # Ground truth: one sdreport row per beta_k element, in design-column order.
+  rows <- summary(fit$sdr, "fixed")
+  sdr_se <- rows[rownames(rows) == "beta_k", "Std. Error"]
+  beta_idx <- which(names(fit$model$coefficients) == "beta_k")
+  expect_length(beta_idx, 2)
+  expect_equal(unname(se[beta_idx]), unname(sdr_se), tolerance = 1e-12)
+
+  # In this design the intercept SE (per-group) and the contrast SE
+  # (two-group difference) must differ.
+  expect_gt(abs(se[beta_idx[2]] - se[beta_idx[1]]), 1e-8)
+
+  # Every user-facing surface must expose sdreport's SECOND beta_k SE for the
+  # contrast row (the pre-fix collapse handed the intercept's SE to every
+  # beta_k row). Rows are matched positionally within the fixed block.
+  td <- tidy(fit, report_space = "internal")
+  td_k <- td[td$component == "fixed", ]
+  expect_equal(nrow(td_k), 2L)
+  expect_equal(td_k$std.error, unname(sdr_se), tolerance = 1e-12)
+  expect_gt(abs(td_k$std.error[2] - td_k$std.error[1]), 1e-8)
+
+  sm <- summary(fit, report_space = "internal")
+  sm_k <- sm$coefficients[sm$coefficients$component == "fixed", ]
+  expect_equal(nrow(sm_k), 2L)
+  expect_equal(sm_k$std.error, unname(sdr_se), tolerance = 1e-12)
+
+  ci <- confint(fit, report_space = "internal", level = 0.95)
+  ci_k <- ci[beta_idx, ]
+  half <- (ci_k$conf.high - ci_k$conf.low) / 2
+  expect_equal(half, unname(stats::qnorm(0.975) * sdr_se), tolerance = 1e-8)
+  expect_gt(abs(half[2] - half[1]), 1e-8)
+})
+
+test_that(".dd_tmb_model_se refuses ambiguous duplicated-name alignment", {
+  # Legacy-shaped object whose se names disagree with the coefficients AND
+  # contain duplicates: name-matching cannot disambiguate, so all SEs must
+  # be NA rather than silently collapsed onto the first beta_k.
+  obj <- list(
+    model = list(
+      coefficients = c(beta_k = 1, beta_k = 2, log_sigma_u = 0),
+      se = c(beta_k = 0.1, beta_k = 0.2, log_sigma_u = 0.3, extra = 9)
+    ),
+    se_available = TRUE
+  )
+  se <- beezdiscounting:::.dd_tmb_model_se(obj)
+  expect_true(all(is.na(se)))
 })

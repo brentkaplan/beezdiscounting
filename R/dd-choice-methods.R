@@ -73,9 +73,20 @@
   if (is.null(se)) {
     return(na_se)
   }
-  # Defensive: align to coefficient order/names. The choice se vector is built
-  # parallel to opt$par (same names) in .dd_choice_extract_estimates, so this is
-  # a positional/name identity in practice.
+  # model$se is built PARALLEL to model$coefficients in
+  # .dd_choice_extract_estimates, so when the name vectors agree elementwise,
+  # return it positionally. A name-based match() would collapse duplicated
+  # vector-parameter names (the beta_k elements of a factor fit) onto the
+  # FIRST element's SE -- the same defect fixed in .dd_tmb_model_se.
+  if (identical(names(se), names(co))) {
+    return(se)
+  }
+  # Names disagree (legacy/partial objects): align by name. This is only
+  # unambiguous when names are unique; with duplicated names (factor fits)
+  # return NA rather than silently collapsing onto the first element.
+  if (anyDuplicated(names(se)) || anyDuplicated(names(co))) {
+    return(na_se)
+  }
   stats::setNames(unname(se)[match(names(co), names(se))], names(co))
 }
 
@@ -192,22 +203,34 @@ VarCorr.beezdiscounting_choice <- function(x, sigma = 1, ...) {
   if (identical(x$param_info$mode, "descriptive")) {
     if (is.null(x$Sigma)) {
       return(data.frame(
-        Group = character(0), Term = character(0),
-        Variance = numeric(0), StdDev = numeric(0), Corr = numeric(0),
-        stringsAsFactors = FALSE))
+        Group = character(0),
+        Term = character(0),
+        Variance = numeric(0),
+        StdDev = numeric(0),
+        Corr = numeric(0),
+        stringsAsFactors = FALSE
+      ))
     }
     sds <- sqrt(diag(x$Sigma))
     rho <- x$Sigma[1, 2] / prod(sds)
     terms <- x$param_info$re_terms %||% c("mag", "delay")
     return(data.frame(
-      Group = "subject", Term = terms,
-      Variance = diag(x$Sigma), StdDev = sds,
-      Corr = c(NA_real_, rho), stringsAsFactors = FALSE))
+      Group = "subject",
+      Term = terms,
+      Variance = diag(x$Sigma),
+      StdDev = sds,
+      Corr = c(NA_real_, rho),
+      stringsAsFactors = FALSE
+    ))
   }
   vc <- .dd_choice_variance_components(x)
   data.frame(
-    Group = "subject", Term = vc$Component,
-    StdDev = vc$Estimate, Scale = vc$Scale, stringsAsFactors = FALSE)
+    Group = "subject",
+    Term = vc$Component,
+    StdDev = vc$Estimate,
+    Scale = vc$Scale,
+    stringsAsFactors = FALSE
+  )
 }
 
 
@@ -233,16 +256,20 @@ VarCorr.beezdiscounting_choice <- function(x, sigma = 1, ...) {
 #'   choice probabilities.
 #'
 #' @export
-predict.beezdiscounting_choice <- function(object,
-                                           newdata = NULL,
-                                           type = c("prob", "parameters"),
-                                           level = "subject",
-                                           ...) {
+predict.beezdiscounting_choice <- function(
+  object,
+  newdata = NULL,
+  type = c("prob", "parameters"),
+  level = "subject",
+  ...
+) {
   type <- match.arg(type)
   if (!is.character(level)) {
     cli::cli_abort(
-      c("{.arg level} must be a character vector.",
-        i = "{.arg level} should be one of {.val \"subject\"} or {.val \"population\"}."),
+      c(
+        "{.arg level} must be a character vector.",
+        i = "{.arg level} should be one of {.val \"subject\"} or {.val \"population\"}."
+      ),
       call = NULL
     )
   }
@@ -255,59 +282,78 @@ predict.beezdiscounting_choice <- function(object,
   # type == "prob"
   # --- Descriptive (Young 2018) branch: linear logit on the rebuilt Z design.
   if (identical(object$param_info$mode, "descriptive")) {
-    if (is.null(newdata)) newdata <- object$data
+    if (is.null(newdata)) {
+      newdata <- object$data
+    }
     out <- tibble::as_tibble(newdata)
     needed <- c("ss_amount", "ll_amount", "delay")
     missing_trial <- setdiff(needed, names(newdata))
     if (length(missing_trial) > 0L) {
       cli::cli_abort(c(
-        "{.arg newdata} is missing trial column{?s}: {.val {missing_trial}}."))
+        "{.arg newdata} is missing trial column{?s}: {.val {missing_trial}}."
+      ))
     }
     fd <- object$formula_details
     terms_obj <- stats::delete.response(stats::terms(fd$predictors))
     mf <- tryCatch(
       stats::model.frame(terms_obj, newdata, xlev = fd$xlevels),
-      error = function(e) cli::cli_abort(c(
-        "{.arg newdata} has factor levels not seen at fit time.",
-        "x" = conditionMessage(e))))
+      error = function(e) {
+        cli::cli_abort(c(
+          "{.arg newdata} has factor levels not seen at fit time.",
+          "x" = conditionMessage(e)
+        ))
+      }
+    )
     Z <- stats::model.matrix(terms_obj, mf, contrasts.arg = fd$contrasts)
     if (!identical(colnames(Z), colnames(fd$Z))) {
       cli::cli_abort(c(
         "Rebuilt descriptive design columns do not match the fitted design.",
-        "i" = "Expected {.val {colnames(fd$Z)}}; got {.val {colnames(Z)}}."))
+        "i" = "Expected {.val {colnames(fd$Z)}}; got {.val {colnames(Z)}}."
+      ))
     }
-    co_d  <- object$model$coefficients
+    co_d <- object$model$coefficients
     theta <- unname(co_d[names(co_d) == "theta"])
-    eta   <- as.numeric(Z %*% theta)
-    q     <- object$param_info$n_random_effects
+    eta <- as.numeric(Z %*% theta)
+    q <- object$param_info$n_random_effects
     if (level == "subject" && q > 0L) {
       if (!("id" %in% names(newdata))) {
         cli::cli_abort(c(
           "{.arg newdata} must contain an {.val id} column for \\
            {.code level = \"subject\"}.",
-          "i" = "Use {.code level = \"population\"} for the population-mean curve."))
+          "i" = "Use {.code level = \"population\"} for the population-mean curve."
+        ))
       }
-      sp  <- object$subject_pars
+      sp <- object$subject_pars
       idx <- match(as.character(newdata$id), as.character(sp$id))
       if (anyNA(idx)) {
         unknown <- unique(as.character(newdata$id)[is.na(idx)])
         cli::cli_abort(c(
           "Unknown subject id{?s} in {.arg newdata}: {.val {unknown}}.",
-          "i" = "Use {.code level = \"population\"} for subjects not in the fit."))
+          "i" = "Use {.code level = \"population\"} for subjects not in the fit."
+        ))
       }
-      Zre  <- stats::model.matrix(.dd_choice_default_predictors(), data = newdata)
+      Zre <- stats::model.matrix(
+        .dd_choice_default_predictors(),
+        data = newdata
+      )
       bmat <- cbind(sp$b_mag[idx], sp$b_delay[idx])
-      eta  <- eta + rowSums(Zre * bmat)
+      eta <- eta + rowSums(Zre * bmat)
     }
     out$.prob <- stats::plogis(eta)
     return(out)
   }
 
   equation <- object$param_info$equation
-  coefs    <- object$model$coefficients
-  gamma    <- exp(unname(coefs[["log_gamma"]]))
-  beta0    <- if (isTRUE(object$param_info$intercept)) unname(coefs[["beta0"]]) else 0
-  if (is.null(newdata)) newdata <- object$data
+  coefs <- object$model$coefficients
+  gamma <- exp(unname(coefs[["log_gamma"]]))
+  beta0 <- if (isTRUE(object$param_info$intercept)) {
+    unname(coefs[["beta0"]])
+  } else {
+    0
+  }
+  if (is.null(newdata)) {
+    newdata <- object$data
+  }
   out <- tibble::as_tibble(newdata)
 
   # Supplied newdata uses the CANONICAL trial columns. Fail cleanly (not with an
@@ -325,8 +371,13 @@ predict.beezdiscounting_choice <- function(object,
 
   k_row <- .dd_tmb_predict_k(object, newdata, level = level)
   eta <- .dd_choice_structural_eta(
-    k = k_row, ss_amount = newdata$ss_amount, ll_amount = newdata$ll_amount,
-    delay = newdata$delay, equation = equation, gamma = gamma, beta0 = beta0
+    k = k_row,
+    ss_amount = newdata$ss_amount,
+    ll_amount = newdata$ll_amount,
+    delay = newdata$delay,
+    equation = equation,
+    gamma = gamma,
+    beta0 = beta0
   )
   out$.prob <- stats::plogis(eta)
   out
@@ -345,11 +396,14 @@ predict.beezdiscounting_choice <- function(object,
 #' @param level `"subject"` (default) or `"population"`.
 #' @return List with `.fitted`, `.resid`, and `data`.
 #' @keywords internal
-.dd_choice_fitted_resid <- function(object, newdata = NULL,
-                                    level = c("subject", "population")) {
-  level     <- match.arg(level)
+.dd_choice_fitted_resid <- function(
+  object,
+  newdata = NULL,
+  level = c("subject", "population")
+) {
+  level <- match.arg(level)
   data_used <- if (is.null(newdata)) object$data else newdata
-  pred      <- predict(object, newdata = data_used, type = "prob", level = level)
+  pred <- predict(object, newdata = data_used, type = "prob", level = level)
   fitted_vals <- pred$.prob
   y_obs <- data_used[[object$param_info$y_var]]
   if (is.null(y_obs)) {
@@ -370,9 +424,11 @@ predict.beezdiscounting_choice <- function(object,
 #' @param ... Unused.
 #' @return Numeric vector of fitted choice probabilities, length `nobs(object)`.
 #' @export
-fitted.beezdiscounting_choice <- function(object,
-                                          level = c("subject", "population"),
-                                          ...) {
+fitted.beezdiscounting_choice <- function(
+  object,
+  level = c("subject", "population"),
+  ...
+) {
   level <- match.arg(level)
   .dd_choice_fitted_resid(object, level = level)$.fitted
 }
@@ -387,14 +443,18 @@ fitted.beezdiscounting_choice <- function(object,
 #' @param ... Unused.
 #' @return Numeric vector of residuals, length `nobs(object)`.
 #' @export
-residuals.beezdiscounting_choice <- function(object,
-                                             type  = c("response", "pearson"),
-                                             level = c("subject", "population"),
-                                             ...) {
-  type  <- match.arg(type)
+residuals.beezdiscounting_choice <- function(
+  object,
+  type = c("response", "pearson"),
+  level = c("subject", "population"),
+  ...
+) {
+  type <- match.arg(type)
   level <- match.arg(level)
-  fr    <- .dd_choice_fitted_resid(object, level = level)
-  if (type == "response") return(fr$.resid)
+  fr <- .dd_choice_fitted_resid(object, level = level)
+  if (type == "response") {
+    return(fr$.resid)
+  }
   # Clamp the probability in the Pearson SD denominator so a fitted prob that
   # saturates to 0/1 does not divide-by-zero. The response residual stays exact.
   p_sd <- pmin(pmax(fr$.fitted, 1e-6), 1 - 1e-6)
@@ -419,10 +479,10 @@ residuals.beezdiscounting_choice <- function(object,
 #' @importFrom generics augment
 #' @export
 augment.beezdiscounting_choice <- function(x, newdata = NULL, ...) {
-  fr  <- .dd_choice_fitted_resid(x, newdata = newdata, level = "subject")
+  fr <- .dd_choice_fitted_resid(x, newdata = newdata, level = "subject")
   out <- tibble::as_tibble(fr$data)
-  out$.fitted    <- fr$.fitted
-  out$.resid     <- fr$.resid
+  out$.fitted <- fr$.fitted
+  out$.resid <- fr$.resid
   # Clamp the probability in the Pearson SD denominator so a fitted prob that
   # saturates to 0/1 does not divide-by-zero. The response residual stays exact.
   p_sd <- pmin(pmax(fr$.fitted, 1e-6), 1 - 1e-6)
@@ -443,11 +503,11 @@ augment.beezdiscounting_choice <- function(x, newdata = NULL, ...) {
 #' @keywords internal
 .dd_choice_variance_components <- function(object) {
   coefs <- object$model$coefficients
-  ln10  <- log(10)
+  ln10 <- log(10)
   data.frame(
     Component = "sigma_u (log10-k RE SD)",
-    Estimate  = exp(coefs[["log_sigma_u"]]) / ln10,
-    Scale     = "log10",
+    Estimate = exp(coefs[["log_sigma_u"]]) / ln10,
+    Scale = "log10",
     stringsAsFactors = FALSE
   )
 }
@@ -467,33 +527,56 @@ augment.beezdiscounting_choice <- function(x, newdata = NULL, ...) {
 #' @return A tibble with the standard 8-column broom contract.
 #' @keywords internal
 .dd_choice_tidy_descriptive <- function(x, effects, ...) {
-  co  <- x$model$coefficients
-  se  <- .dd_choice_model_se(x)
+  co <- x$model$coefficients
+  se <- .dd_choice_model_se(x)
   nms <- names(co)
   result <- tibble::tibble(
-    term = character(), estimate = numeric(), std.error = numeric(),
-    statistic = numeric(), p.value = numeric(), component = character(),
-    estimate_scale = character(), term_display = character())
+    term = character(),
+    estimate = numeric(),
+    std.error = numeric(),
+    statistic = numeric(),
+    p.value = numeric(),
+    component = character(),
+    estimate_scale = character(),
+    term_display = character()
+  )
   if ("fixed" %in% effects) {
     is_t <- nms == "theta"
     z <- co / se
     p <- 2 * stats::pnorm(-abs(z))
-    labs <- colnames(x$formula_details$Z) %||% paste0("theta", seq_len(sum(is_t)))
-    result <- dplyr::bind_rows(result, tibble::tibble(
-      term = labs, estimate = unname(co[is_t]), std.error = unname(se[is_t]),
-      statistic = unname(z[is_t]), p.value = unname(p[is_t]),
-      component = "fixed", estimate_scale = "identity", term_display = labs))
+    labs <- colnames(x$formula_details$Z) %||%
+      paste0("theta", seq_len(sum(is_t)))
+    result <- dplyr::bind_rows(
+      result,
+      tibble::tibble(
+        term = labs,
+        estimate = unname(co[is_t]),
+        std.error = unname(se[is_t]),
+        statistic = unname(z[is_t]),
+        p.value = unname(p[is_t]),
+        component = "fixed",
+        estimate_scale = "identity",
+        term_display = labs
+      )
+    )
   }
   if ("ran_pars" %in% effects && !is.null(x$Sigma)) {
     sds <- sqrt(diag(x$Sigma))
     rho <- x$Sigma[1, 2] / prod(sds)
     terms <- x$param_info$re_terms %||% c("mag", "delay")
-    result <- dplyr::bind_rows(result, tibble::tibble(
-      term = c(paste0("sd_", terms), "cor_slopes"),
-      estimate = c(sds, rho), std.error = NA_real_, statistic = NA_real_,
-      p.value = NA_real_, component = "variance",
-      estimate_scale = "natural",
-      term_display = c(paste0("sd(", terms, ")"), "cor(slopes)")))
+    result <- dplyr::bind_rows(
+      result,
+      tibble::tibble(
+        term = c(paste0("sd_", terms), "cor_slopes"),
+        estimate = c(sds, rho),
+        std.error = NA_real_,
+        statistic = NA_real_,
+        p.value = NA_real_,
+        component = "variance",
+        estimate_scale = "natural",
+        term_display = c(paste0("sd(", terms, ")"), "cor(slopes)")
+      )
+    )
   }
   if (isFALSE(x$converged) || isFALSE(x$se_available)) {
     attr(result, "se_warning") <-
@@ -531,11 +614,13 @@ augment.beezdiscounting_choice <- function(x, newdata = NULL, ...) {
 #'
 #' @importFrom generics tidy
 #' @export
-tidy.beezdiscounting_choice <- function(x,
-                                        effects      = c("fixed", "ran_pars"),
-                                        report_space = c("natural", "log10", "internal", "log"),
-                                        ...) {
-  effects      <- match.arg(effects, several.ok = TRUE)
+tidy.beezdiscounting_choice <- function(
+  x,
+  effects = c("fixed", "ran_pars"),
+  report_space = c("natural", "log10", "internal", "log"),
+  ...
+) {
+  effects <- match.arg(effects, several.ok = TRUE)
   report_space <- match.arg(report_space)
 
   # Descriptive (Young 2018): theta on the identity (logit) scale, never
@@ -545,21 +630,21 @@ tidy.beezdiscounting_choice <- function(x,
   }
 
   result <- tibble::tibble(
-    term           = character(),
-    estimate       = numeric(),
-    std.error      = numeric(),
-    statistic      = numeric(),
-    p.value        = numeric(),
-    component      = character(),
+    term = character(),
+    estimate = numeric(),
+    std.error = numeric(),
+    statistic = numeric(),
+    p.value = numeric(),
+    component = character(),
     estimate_scale = character(),
-    term_display   = character()
+    term_display = character()
   )
 
   if ("fixed" %in% effects) {
     coefs <- x$model$coefficients
-    se    <- .dd_choice_model_se(x)
-    nms   <- names(coefs)
-    tn    <- .dd_choice_term_names(x, nms)
+    se <- .dd_choice_model_se(x)
+    nms <- names(coefs)
+    tn <- .dd_choice_term_names(x, nms)
 
     is_fixed <- nms == "beta_k"
 
@@ -569,21 +654,21 @@ tidy.beezdiscounting_choice <- function(x,
     p_val <- 2 * stats::pnorm(-abs(z_val))
 
     fixed <- tibble::tibble(
-      term           = tn$term[is_fixed],
-      estimate       = unname(coefs[is_fixed]),
-      std.error      = unname(se[is_fixed]),
-      statistic      = unname(z_val[is_fixed]),
-      p.value        = unname(p_val[is_fixed]),
-      component      = "fixed",
-      estimate_scale = "log",     # internal space for beta_k is log-k
-      term_display   = tn$term[is_fixed]
+      term = tn$term[is_fixed],
+      estimate = unname(coefs[is_fixed]),
+      std.error = unname(se[is_fixed]),
+      statistic = unname(z_val[is_fixed]),
+      p.value = unname(p_val[is_fixed]),
+      component = "fixed",
+      estimate_scale = "log", # internal space for beta_k is log-k
+      term_display = tn$term[is_fixed]
     )
     # Back-transform estimate + std.error to report_space (k rows only; the
     # transformer keys on ^k($|_|:)). statistic/p.value are left on the
     # estimation scale.
     fixed <- .dd_transform_coef_table(
-      coef_tbl       = fixed,
-      report_space   = report_space,
+      coef_tbl = fixed,
+      report_space = report_space,
       internal_space = "log"
     )
     fixed <- fixed[, setdiff(names(fixed), "estimate_internal"), drop = FALSE]
@@ -592,30 +677,33 @@ tidy.beezdiscounting_choice <- function(x,
     # gamma (log_gamma): choice-sensitivity shape parameter. R6 - transform
     # EXPLICITLY (the param-space transformer does not key on gamma).
     g_pos <- which(nms == "log_gamma")
-    z_g   <- coefs[g_pos] / se[g_pos]
-    p_g   <- 2 * stats::pnorm(-abs(z_g))
-    to_g  <- if (report_space == "internal") "log" else report_space
-    g_tr  <- .dd_transform_est_se(
-      estimate = unname(coefs[g_pos]), se = unname(se[g_pos]),
-      from = "log", to = to_g
+    z_g <- coefs[g_pos] / se[g_pos]
+    p_g <- 2 * stats::pnorm(-abs(z_g))
+    to_g <- if (report_space == "internal") "log" else report_space
+    g_tr <- .dd_transform_est_se(
+      estimate = unname(coefs[g_pos]),
+      se = unname(se[g_pos]),
+      from = "log",
+      to = to_g
     )
     # to_g is exhaustive over {natural, log10, log}; the stop() is a defensive
     # guard that can never fire given the upstream match.arg on report_space.
-    g_disp <- switch(to_g,
+    g_disp <- switch(
+      to_g,
       natural = "gamma",
-      log10   = "log10(gamma)",
-      log     = "log(gamma)",
+      log10 = "log10(gamma)",
+      log = "log(gamma)",
       stop("unexpected report space '", to_g, "'", call. = FALSE)
     )
     shape <- tibble::tibble(
-      term           = "gamma",
-      estimate       = g_tr$estimate,
-      std.error      = g_tr$se,
-      statistic      = unname(z_g),
-      p.value        = unname(p_g),
-      component      = "shape",
+      term = "gamma",
+      estimate = g_tr$estimate,
+      std.error = g_tr$se,
+      statistic = unname(z_g),
+      p.value = unname(p_g),
+      component = "shape",
       estimate_scale = to_g,
-      term_display   = g_disp
+      term_display = g_disp
     )
     result <- dplyr::bind_rows(result, shape)
 
@@ -623,33 +711,33 @@ tidy.beezdiscounting_choice <- function(x,
     # NEVER transformed/exponentiated across report spaces.
     if (isTRUE(x$param_info$intercept)) {
       b_pos <- which(nms == "beta0")
-      z_b   <- coefs[b_pos] / se[b_pos]
-      p_b   <- 2 * stats::pnorm(-abs(z_b))
+      z_b <- coefs[b_pos] / se[b_pos]
+      p_b <- 2 * stats::pnorm(-abs(z_b))
       beta0_row <- tibble::tibble(
-        term           = "beta0",
-        estimate       = unname(coefs[b_pos]),
-        std.error      = unname(se[b_pos]),
-        statistic      = unname(z_b),
-        p.value        = unname(p_b),
-        component      = "shape",
+        term = "beta0",
+        estimate = unname(coefs[b_pos]),
+        std.error = unname(se[b_pos]),
+        statistic = unname(z_b),
+        p.value = unname(p_b),
+        component = "shape",
         estimate_scale = "identity",
-        term_display   = "beta0"
+        term_display = "beta0"
       )
       result <- dplyr::bind_rows(result, beta0_row)
     }
   }
 
   if ("ran_pars" %in% effects) {
-    vc  <- .dd_choice_variance_components(x)
+    vc <- .dd_choice_variance_components(x)
     ran <- tibble::tibble(
-      term           = vc$Component,
-      estimate       = vc$Estimate,
-      std.error      = NA_real_,
-      statistic      = NA_real_,
-      p.value        = NA_real_,
-      component      = "variance",
+      term = vc$Component,
+      estimate = vc$Estimate,
+      std.error = NA_real_,
+      statistic = NA_real_,
+      p.value = NA_real_,
+      component = "variance",
       estimate_scale = vc$Scale,
-      term_display   = vc$Component
+      term_display = vc$Component
     )
     result <- dplyr::bind_rows(result, ran)
   }
@@ -678,17 +766,17 @@ tidy.beezdiscounting_choice <- function(x,
 #' @export
 glance.beezdiscounting_choice <- function(x, ...) {
   tibble::tibble(
-    model_class      = "beezdiscounting_choice",
-    backend          = "TMB_choice",
-    mode             = x$param_info$mode,
-    equation         = x$param_info$equation,
-    nobs             = x$param_info$n_obs,
-    n_subjects       = x$param_info$n_subjects,
+    model_class = "beezdiscounting_choice",
+    backend = "TMB_choice",
+    mode = x$param_info$mode,
+    equation = x$param_info$equation,
+    nobs = x$param_info$n_obs,
+    n_subjects = x$param_info$n_subjects,
     n_random_effects = x$param_info$n_random_effects,
-    converged        = x$converged,
-    logLik           = x$loglik,
-    AIC              = x$AIC,
-    BIC              = x$BIC
+    converged = x$converged,
+    logLik = x$loglik,
+    AIC = x$AIC,
+    BIC = x$BIC
   )
 }
 
@@ -716,27 +804,30 @@ glance.beezdiscounting_choice <- function(x, ...) {
 #'   `level`.
 #'
 #' @exportS3Method stats::confint beezdiscounting_choice
-confint.beezdiscounting_choice <- function(object,
-                                           parm         = NULL,
-                                           level        = 0.95,
-                                           report_space = c("internal", "natural"),
-                                           ...) {
+confint.beezdiscounting_choice <- function(
+  object,
+  parm = NULL,
+  level = 0.95,
+  report_space = c("internal", "natural"),
+  ...
+) {
   report_space <- match.arg(report_space)
 
   # Descriptive (Young 2018): theta sensitivities stay on the identity (logit)
   # scale - NEVER exponentiated; log_sd_re / cor_re are reported on their
   # internal (estimation) scale. report_space does not change the estimates.
   if (identical(object$param_info$mode, "descriptive")) {
-    co_d   <- object$model$coefficients
-    se_d   <- .dd_choice_model_se(object)
+    co_d <- object$model$coefficients
+    se_d <- .dd_choice_model_se(object)
     if (isFALSE(object$se_available)) {
       cli::cli_warn(c(
         "!" = "Standard errors are unreliable (non-PD Hessian or sdreport \\
                failed); confidence intervals are returned as {.val NA}.",
         "i" = "Check convergence and model identifiability before interpreting \\
-               uncertainty."))
+               uncertainty."
+      ))
     }
-    nms_d  <- names(co_d)
+    nms_d <- names(co_d)
     labs_z <- colnames(object$formula_details$Z) %||%
       paste0("theta", seq_len(sum(nms_d == "theta")))
     term_d <- nms_d
@@ -744,29 +835,42 @@ confint.beezdiscounting_choice <- function(object,
     # Distinct labels for the two random-slope SD rows (Zre column order is
     # always mag, delay), and a friendly name for the correlation row.
     if (sum(nms_d == "log_sd_re") == 2L) {
-      term_d[nms_d == "log_sd_re"] <- paste0("log_sd_re[", c("mag", "delay"), "]")
+      term_d[nms_d == "log_sd_re"] <- paste0(
+        "log_sd_re[",
+        c("mag", "delay"),
+        "]"
+      )
     }
     term_d[nms_d == "cor_re"] <- "cor_slopes"
     if (!is.null(parm)) {
-      keep   <- term_d %in% parm | nms_d %in% parm
-      co_d   <- co_d[keep]; se_d <- se_d[keep]
-      term_d <- term_d[keep]; nms_d <- nms_d[keep]
+      keep <- term_d %in% parm | nms_d %in% parm
+      co_d <- co_d[keep]
+      se_d <- se_d[keep]
+      term_d <- term_d[keep]
+      nms_d <- nms_d[keep]
     }
-    z_d  <- stats::qnorm((1 + level) / 2)
-    est  <- unname(co_d)
-    lo   <- unname(co_d - z_d * se_d)
-    hi   <- unname(co_d + z_d * se_d)
+    z_d <- stats::qnorm((1 + level) / 2)
+    est <- unname(co_d)
+    lo <- unname(co_d - z_d * se_d)
+    hi <- unname(co_d + z_d * se_d)
     # cor_re is estimated on the unconstrained atanh scale; report the
     # correlation (tanh) so the interval is interpretable and bounded in [-1, 1].
     cpos <- which(nms_d == "cor_re")
     if (length(cpos)) {
-      est[cpos] <- tanh(est[cpos]); lo[cpos] <- tanh(lo[cpos]); hi[cpos] <- tanh(hi[cpos])
+      est[cpos] <- tanh(est[cpos])
+      lo[cpos] <- tanh(lo[cpos])
+      hi[cpos] <- tanh(hi[cpos])
     }
     return(tibble::tibble(
-      term = term_d, estimate = est, conf.low = lo, conf.high = hi, level = level))
+      term = term_d,
+      estimate = est,
+      conf.low = lo,
+      conf.high = hi,
+      level = level
+    ))
   }
 
-  coefs  <- object$model$coefficients
+  coefs <- object$model$coefficients
   se_vec <- .dd_choice_model_se(object)
   if (isFALSE(object$se_available)) {
     cli::cli_warn(c(
@@ -776,23 +880,23 @@ confint.beezdiscounting_choice <- function(object,
              uncertainty."
     ))
   }
-  nms  <- names(coefs)
-  tn   <- .dd_choice_term_names(object, nms)
+  nms <- names(coefs)
+  tn <- .dd_choice_term_names(object, nms)
   term <- tn$term
 
   # Filter by display name OR raw name (dual-name matching).
   if (!is.null(parm)) {
-    keep   <- term %in% parm | nms %in% parm
-    coefs  <- coefs[keep]
+    keep <- term %in% parm | nms %in% parm
+    coefs <- coefs[keep]
     se_vec <- se_vec[keep]
-    nms    <- nms[keep]
-    term   <- term[keep]
+    nms <- nms[keep]
+    term <- term[keep]
   }
 
   # Wald intervals on the internal (estimation) scale.
-  z         <- stats::qnorm((1 + level) / 2)
+  z <- stats::qnorm((1 + level) / 2)
   estimates <- unname(coefs)
-  conf_low  <- unname(coefs - z * se_vec)
+  conf_low <- unname(coefs - z * se_vec)
   conf_high <- unname(coefs + z * se_vec)
 
   # Back-transform beta_k (k) AND log_gamma (gamma) rows to natural scale when
@@ -801,17 +905,17 @@ confint.beezdiscounting_choice <- function(object,
     exp_pos <- which(nms %in% c("beta_k", "log_gamma"))
     if (length(exp_pos) > 0L) {
       estimates[exp_pos] <- exp(estimates[exp_pos])
-      conf_low[exp_pos]  <- exp(conf_low[exp_pos])
+      conf_low[exp_pos] <- exp(conf_low[exp_pos])
       conf_high[exp_pos] <- exp(conf_high[exp_pos])
     }
   }
 
   tibble::tibble(
-    term      = term,
-    estimate  = estimates,
-    conf.low  = conf_low,
+    term = term,
+    estimate = estimates,
+    conf.low = conf_low,
     conf.high = conf_high,
-    level     = level
+    level = level
   )
 }
 
@@ -832,9 +936,11 @@ confint.beezdiscounting_choice <- function(object,
 #'   `AIC`, `BIC`, `notes`.
 #'
 #' @export
-summary.beezdiscounting_choice <- function(object,
-                                           report_space = c("natural", "log10", "internal", "log"),
-                                           ...) {
+summary.beezdiscounting_choice <- function(
+  object,
+  report_space = c("natural", "log10", "internal", "log"),
+  ...
+) {
   report_space <- match.arg(report_space)
 
   # Descriptive (Young 2018): fixed sensitivities (identity/logit scale) +
@@ -847,36 +953,49 @@ summary.beezdiscounting_choice <- function(object,
       notes <- c(notes, "WARNING: Model did not converge.")
     }
     if (isFALSE(object$se_available)) {
-      notes <- c(notes, "Standard errors unavailable (sdreport failed); CIs will be NA.")
+      notes <- c(
+        notes,
+        "Standard errors unavailable (sdreport failed); CIs will be NA."
+      )
     }
     if (isFALSE(object$hessian_pd)) {
-      notes <- c(notes,
-        "Warning: Hessian not positive definite - standard errors may be unreliable.")
+      notes <- c(
+        notes,
+        "Warning: Hessian not positive definite - standard errors may be unreliable."
+      )
     }
     if (length(object$opt_warnings %||% character(0)) > 0L) {
-      notes <- c(notes, sprintf(
-        "Optimizer produced %d warning(s) during fitting.",
-        length(object$opt_warnings)))
+      notes <- c(
+        notes,
+        sprintf(
+          "Optimizer produced %d warning(s) during fitting.",
+          length(object$opt_warnings)
+        )
+      )
     }
-    notes <- c(notes,
-      "theta are logit-scale (Young 2018) sensitivities; not exponentiated.")
+    notes <- c(
+      notes,
+      "theta are logit-scale (Young 2018) sensitivities; not exponentiated."
+    )
     return(structure(
       list(
-        call               = object$call,
-        model_class        = "beezdiscounting_choice",
-        backend            = "TMB_choice",
-        mode               = "descriptive",
-        equation           = object$param_info$equation,
-        coefficients       = coefficients,
+        call = object$call,
+        model_class = "beezdiscounting_choice",
+        backend = "TMB_choice",
+        mode = "descriptive",
+        equation = object$param_info$equation,
+        coefficients = coefficients,
         variance_components = vc,
-        n_subjects         = object$param_info$n_subjects,
-        nobs               = object$param_info$n_obs,
-        converged          = object$converged,
-        logLik             = object$loglik,
-        AIC                = object$AIC,
-        BIC                = object$BIC,
-        notes              = notes),
-      class = "summary.beezdiscounting_choice"))
+        n_subjects = object$param_info$n_subjects,
+        nobs = object$param_info$n_obs,
+        converged = object$converged,
+        logLik = object$loglik,
+        AIC = object$AIC,
+        BIC = object$BIC,
+        notes = notes
+      ),
+      class = "summary.beezdiscounting_choice"
+    ))
   }
 
   # Reuse tidy() for the fixed/shape coefficient rows (k + gamma + beta0),
@@ -891,41 +1010,56 @@ summary.beezdiscounting_choice <- function(object,
     notes <- c(notes, "WARNING: Model did not converge.")
   }
   if (isFALSE(object$se_available)) {
-    notes <- c(notes, "Standard errors unavailable (sdreport failed); CIs will be NA.")
+    notes <- c(
+      notes,
+      "Standard errors unavailable (sdreport failed); CIs will be NA."
+    )
   }
   if (isFALSE(object$hessian_pd)) {
-    notes <- c(notes,
-      "Warning: Hessian not positive definite - standard errors may be unreliable.")
+    notes <- c(
+      notes,
+      "Warning: Hessian not positive definite - standard errors may be unreliable."
+    )
   }
   if (length(object$opt_warnings %||% character(0)) > 0L) {
-    notes <- c(notes, sprintf(
-      "Optimizer produced %d warning(s) during fitting.",
-      length(object$opt_warnings)
-    ))
+    notes <- c(
+      notes,
+      sprintf(
+        "Optimizer produced %d warning(s) during fitting.",
+        length(object$opt_warnings)
+      )
+    )
   }
-  if (!is.null(object$param_info$factors) && length(object$param_info$factors) > 0L) {
-    notes <- c(notes,
-      "Population k reflects the reference level. Use get_dd_param_emms() for per-group estimates.")
+  if (
+    !is.null(object$param_info$factors) &&
+      length(object$param_info$factors) > 0L
+  ) {
+    notes <- c(
+      notes,
+      "Population k reflects the reference level. Use get_dd_param_emms() for per-group estimates."
+    )
   }
-  notes <- c(notes,
-    "gamma is the choice-sensitivity (slope) parameter on the logit scale.")
+  notes <- c(
+    notes,
+    "gamma is the choice-sensitivity (slope) parameter on the logit scale."
+  )
 
   structure(
     list(
-      call               = object$call,
-      model_class        = "beezdiscounting_choice",
-      backend            = "TMB_choice",
-      mode               = object$param_info$mode,
-      equation           = object$param_info$equation,
-      coefficients       = coefficients,
+      call = object$call,
+      model_class = "beezdiscounting_choice",
+      backend = "TMB_choice",
+      mode = object$param_info$mode,
+      equation = object$param_info$equation,
+      coefficients = coefficients,
       variance_components = vc,
-      n_subjects         = object$param_info$n_subjects,
-      nobs               = object$param_info$n_obs,
-      converged          = object$converged,
-      logLik             = object$loglik,
-      AIC                = object$AIC,
-      BIC                = object$BIC,
-      notes              = notes
+      n_subjects = object$param_info$n_subjects,
+      nobs = object$param_info$n_obs,
+      converged = object$converged,
+      logLik = object$loglik,
+      AIC = object$AIC,
+      BIC = object$BIC,
+      notes = notes
     ),
     class = "summary.beezdiscounting_choice"
   )
@@ -963,7 +1097,7 @@ print.beezdiscounting_choice <- function(x, ...) {
     cat("AIC:", round(x$AIC, 2), "\n")
 
     cat("\nFixed Effects (theta, logit scale):\n")
-    co    <- x$model$coefficients
+    co <- x$model$coefficients
     theta <- co[names(co) == "theta"]
     names(theta) <- colnames(x$formula_details$Z) %||%
       paste0("theta", seq_along(theta))
@@ -1016,24 +1150,44 @@ print.summary.beezdiscounting_choice <- function(x, digits = 4, ...) {
       cat("Call:\n")
       cat(paste(deparse(x$call), collapse = "\n"), "\n\n")
     }
-    cat("Backend:", x$backend, "  Convergence:", ifelse(x$converged, "Yes", "No"), "\n")
+    cat(
+      "Backend:",
+      x$backend,
+      "  Convergence:",
+      ifelse(x$converged, "Yes", "No"),
+      "\n"
+    )
     cat("Subjects:", x$n_subjects, " Observations:", x$nobs, "\n\n")
     cat("--- Fixed sensitivities (logit scale) ---\n")
-    cd <- as.data.frame(x$coefficients[, c("term", "estimate", "std.error",
-                                           "statistic", "p.value")])
-    cd$estimate  <- round(cd$estimate, digits)
+    cd <- as.data.frame(x$coefficients[, c(
+      "term",
+      "estimate",
+      "std.error",
+      "statistic",
+      "p.value"
+    )])
+    cd$estimate <- round(cd$estimate, digits)
     cd$std.error <- round(cd$std.error, digits)
     cd$statistic <- round(cd$statistic, digits)
-    cd$p.value   <- format.pval(cd$p.value, digits = 3)
+    cd$p.value <- format.pval(cd$p.value, digits = 3)
     print(cd, row.names = FALSE)
     cat("\n--- Random-slope (co)variances ---\n")
     print(x$variance_components, row.names = FALSE)
     cat("\n--- Fit Statistics ---\n")
-    cat("Log-likelihood:", round(x$logLik, 2), "  AIC:", round(x$AIC, 2),
-        "  BIC:", round(x$BIC, 2), "\n")
+    cat(
+      "Log-likelihood:",
+      round(x$logLik, 2),
+      "  AIC:",
+      round(x$AIC, 2),
+      "  BIC:",
+      round(x$BIC, 2),
+      "\n"
+    )
     if (length(x$notes) > 0L) {
       cat("\nNotes:\n")
-      for (note in x$notes) cat("  *", note, "\n")
+      for (note in x$notes) {
+        cat("  *", note, "\n")
+      }
     }
     return(invisible(x))
   }
@@ -1050,20 +1204,27 @@ print.summary.beezdiscounting_choice <- function(x, digits = 4, ...) {
   cat("Subjects:", x$n_subjects, " Observations:", x$nobs, "\n\n")
 
   scale_lbl <- unique(stats::na.omit(x$coefficients$estimate_scale[
-    x$coefficients$component == "fixed"]))
-  k_space <- switch(if (length(scale_lbl) == 1L) scale_lbl else "log",
+    x$coefficients$component == "fixed"
+  ]))
+  k_space <- switch(
+    if (length(scale_lbl) == 1L) scale_lbl else "log",
     natural = "k",
-    log10   = "log10 k",
-    log     = "log k",
+    log10 = "log10 k",
+    log = "log k",
     "log k"
   )
   cat(sprintf("--- Fixed Effects (%s) ---\n", k_space))
-  cd <- as.data.frame(x$coefficients[, c("term", "estimate", "std.error",
-                                         "statistic", "p.value")])
-  cd$estimate  <- round(cd$estimate, digits)
+  cd <- as.data.frame(x$coefficients[, c(
+    "term",
+    "estimate",
+    "std.error",
+    "statistic",
+    "p.value"
+  )])
+  cd$estimate <- round(cd$estimate, digits)
   cd$std.error <- round(cd$std.error, digits)
   cd$statistic <- round(cd$statistic, digits)
-  cd$p.value   <- format.pval(cd$p.value, digits = 3)
+  cd$p.value <- format.pval(cd$p.value, digits = 3)
   print(cd, row.names = FALSE)
 
   cat("\n--- Variance Components ---\n")
@@ -1077,7 +1238,9 @@ print.summary.beezdiscounting_choice <- function(x, digits = 4, ...) {
 
   if (length(x$notes) > 0L) {
     cat("\nNotes:\n")
-    for (note in x$notes) cat("  *", note, "\n")
+    for (note in x$notes) {
+      cat("  *", note, "\n")
+    }
   }
   invisible(x)
 }

@@ -25,13 +25,16 @@ discounting template (see the [Qualtrics Minute Discounting User
 Guide](https://doi.org/10.13140/RG.2.2.26495.79527)), which is also
 available as a .qsf file in this package.
 
-It now also fits discounting *models*: a mixed-effects (hierarchical)
-tier via Template Model Builder (`fit_dd_tmb()`), a trial-level choice
-model (`fit_dd_choice()`), and a Bayesian tier via brms
-(`fit_dd_brms()`). These newer modeling tiers are available in the
-development version (install from GitHub, see below); the current CRAN
-release (0.4.0) carries the scoring and NLS tools. Full documentation,
-including worked vignettes, is available at the [package
+It also fits discounting *models*: a mixed-effects (hierarchical) tier
+via Template Model Builder (`fit_dd_tmb()`), a trial-level choice model
+(`fit_dd_choice()`), a Bayesian tier via brms (`fit_dd_brms()`), and
+Monte Carlo power analysis for between-subject designs
+(`power_discounting()`). These modeling tiers, together with 21-item MCQ
+and 30-item PDQ scoring, ship in version 0.4.0, which is currently being
+submitted to CRAN; the CRAN release available today is 0.3.2, which
+carries only the scoring and NLS tools (see Installing, below, for how
+to get each version). Full documentation, including worked vignettes, is
+available at the [package
 website](https://brentkaplan.github.io/beezdiscounting/).
 
 ## Which approach should I use?
@@ -71,7 +74,7 @@ page](https://github.com/brentkaplan/shinybeez).
 If you use this package in your own work, please consider citing the
 package:
 
-Kaplan, B. A. (2025). *beezdiscounting: Behavioral Economic Easy
+Kaplan, B. A. (2026). *beezdiscounting: Behavioral Economic Easy
 Discounting*. R package version 0.4.0,
 <https://github.com/brentkaplan/beezdiscounting>
 
@@ -82,11 +85,14 @@ You can also find the latest citation using
 
 ### CRAN Release (recommended method)
 
-The latest stable version of `beezdiscounting` (currently v.0.4.0) can
-be found on [CRAN](https://CRAN.R-project.org/package=beezdiscounting)
-and installed using the following command. The first time you install
-the package, you may be asked to select a CRAN mirror. Simply select the
-mirror geographically closest to you.
+The latest CRAN release of `beezdiscounting` can be found on
+[CRAN](https://CRAN.R-project.org/package=beezdiscounting) and installed
+using the following command. The first time you install the package, you
+may be asked to select a CRAN mirror. Simply select the mirror
+geographically closest to you. (CRAN lags this repository’s `develop`
+branch: check [CRAN](https://CRAN.R-project.org/package=beezdiscounting)
+or `packageVersion("beezdiscounting")` for the version you’ll actually
+get.)
 
 ``` r
 install.packages("beezdiscounting")
@@ -96,13 +102,14 @@ library(beezdiscounting)
 
 ### GitHub Release
 
-The development version on
-[GitHub](https://github.com/brentkaplan/beezdiscounting) carries the
-newer modeling tiers (`fit_dd_tmb()`, `fit_dd_choice()`,
-`fit_dd_brms()`) that are not yet on CRAN. First install and load the
-`devtools` package, then use `install_github` to install the package and
-its vignettes. You *don’t* need to download anything directly from
-[GitHub](https://github.com/brentkaplan/beezdiscounting):
+The `develop` branch on
+[GitHub](https://github.com/brentkaplan/beezdiscounting) is always the
+most current version and carries any modeling tiers or features (e.g.
+`fit_dd_tmb()`, `fit_dd_choice()`, `fit_dd_brms()`,
+`power_discounting()`) that have not yet reached CRAN. First install and
+load the `devtools` package, then use `install_github` to install the
+package and its vignettes. You *don’t* need to download anything
+directly from [GitHub](https://github.com/brentkaplan/beezdiscounting):
 
 ``` r
 install.packages("devtools")
@@ -1099,9 +1106,12 @@ Scoring Summary of the 5.5 Trial Probability Discounting Task
 Worked examples live in the package vignettes, also rendered on the
 [website](https://brentkaplan.github.io/beezdiscounting/articles/):
 
-- [Scoring the 27-Item Monetary Choice
-  Questionnaire](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.html)
+- [Scoring the Monetary Choice Questionnaire (21- and
+  27-Item)](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.html)
   (`vignette("mcq27-scoring")`)
+- [Scoring the Probability Discounting Questionnaire
+  (PDQ)](https://brentkaplan.github.io/beezdiscounting/articles/pdq-scoring.html)
+  (`vignette("pdq-scoring")`)
 - [Getting started: indifference points, k, and
   AUC](https://brentkaplan.github.io/beezdiscounting/articles/delay-discounting-basics.html)
   (`vignette("delay-discounting-basics")`)
@@ -1114,7 +1124,7 @@ Worked examples live in the package vignettes, also rendered on the
 - [Discounting from trial-level
   choices](https://brentkaplan.github.io/beezdiscounting/articles/choice-discounting.html)
   (`vignette("choice-discounting")`)
-- [Indifference points with bounded error
+- [Modeling delay-discounting indifference points with bounded error
   distributions](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.html)
   (`vignette("sltb-discounting")`)
 - [Comparing discounting rates between
@@ -1123,6 +1133,9 @@ Worked examples live in the package vignettes, also rendered on the
 - [Bayesian discounting models with
   brms](https://brentkaplan.github.io/beezdiscounting/articles/bayesian-discounting.html)
   (`vignette("bayesian-discounting")`)
+- [Power Analysis for Between-Subject Discounting
+  Designs](https://brentkaplan.github.io/beezdiscounting/articles/power-analysis.html)
+  (`vignette("power-analysis")`)
 
 ## Learn More About Functions
 

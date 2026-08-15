@@ -5,8 +5,16 @@
 # Structural Stan-code assertions via brms::make_stancode()/make_standata()
 # (pure R, no toolchain).
 
-skip_if_not_installed("brms")
-skip_on_ci()  # brms fits real Stan models; too slow/fragile under covr on CI (run locally)
+# NOTE: the brms/CI skips are applied INSIDE every test_that() via
+# skip_if_no_brms(), never at file level. A file-level skip aborts the file
+# before any test registers, so testthat treats every snapshot in
+# tests/testthat/_snaps/dd-brms-formulas.md as orphaned and DELETES the file --
+# that is why the snapshot kept vanishing on machines without {brms}. A
+# test-level skip, by contrast, preserves the snapshot.
+skip_if_no_brms <- function() {
+  skip_if_not_installed("brms")
+  skip_on_ci()  # brms fits real Stan models; too slow/fragile under covr on CI (run locally)
+}
 
 squish <- function(x) {
   gsub("[[:space:]]+", "", paste(deparse(x, width.cutoff = 500), collapse = ""))
@@ -40,6 +48,7 @@ choice_test_data <- function(n_id = 6) {
 # ------------------------------------------------------------------------------
 
 test_that("mazur beta formula carries the sltb-analog squish and identity link", {
+  skip_if_no_brms()
   spec <- beezdiscounting:::.dd_brms_formula(
     equation = "mazur",
     family = "beta"
@@ -57,6 +66,7 @@ test_that("mazur beta formula carries the sltb-analog squish and identity link",
 })
 
 test_that("exponential / green-myerson / rachlin mu kernels match TMB", {
+  skip_if_no_brms()
   sp_exp <- beezdiscounting:::.dd_brms_formula(
     equation = "exponential",
     family = "beta"
@@ -90,6 +100,7 @@ test_that("exponential / green-myerson / rachlin mu kernels match TMB", {
 })
 
 test_that("gaussian family is exact TMB parity: raw mu, no squish", {
+  skip_if_no_brms()
   spec <- beezdiscounting:::.dd_brms_formula(
     equation = "mazur",
     family = "gaussian"
@@ -99,6 +110,7 @@ test_that("gaussian family is exact TMB parity: raw mu, no squish", {
 })
 
 test_that("zoib boundary swaps in zero_one_inflated_beta", {
+  skip_if_no_brms()
   spec <- beezdiscounting:::.dd_brms_formula(
     equation = "mazur",
     family = "beta",
@@ -109,6 +121,7 @@ test_that("zoib boundary swaps in zero_one_inflated_beta", {
 })
 
 test_that("sltb errors with a pointer to the beta analog", {
+  skip_if_no_brms()
   expect_error(
     beezdiscounting:::.dd_brms_formula(equation = "mazur", family = "sltb"),
     "beta"
@@ -116,6 +129,7 @@ test_that("sltb errors with a pointer to the beta analog", {
 })
 
 test_that("IP formulas generate valid Stan code with brms parameter names", {
+  skip_if_no_brms()
   d <- dd_test_data()
   for (eq in c("mazur", "exponential", "green-myerson", "rachlin")) {
     for (fam in c("beta", "gaussian")) {
@@ -145,6 +159,7 @@ test_that("IP formulas generate valid Stan code with brms parameter names", {
 })
 
 test_that("logk carries the subject random effect; logs is population-level", {
+  skip_if_no_brms()
   d <- dd_test_data()
   spec <- beezdiscounting:::.dd_brms_formula(
     equation = "green-myerson",
@@ -161,6 +176,7 @@ test_that("logk carries the subject random effect; logs is population-level", {
 # ------------------------------------------------------------------------------
 
 test_that("phi random effects add a correlated distributional block (pdSymm)", {
+  skip_if_no_brms()
   d <- dd_test_data()
   spec <- beezdiscounting:::.dd_brms_formula(
     equation = "mazur",
@@ -185,6 +201,7 @@ test_that("phi random effects add a correlated distributional block (pdSymm)", {
 })
 
 test_that("uncorrelated phi random effects use separate blocks (pdDiag)", {
+  skip_if_no_brms()
   d <- dd_test_data()
   spec <- beezdiscounting:::.dd_brms_formula(
     equation = "mazur",
@@ -202,6 +219,7 @@ test_that("uncorrelated phi random effects use separate blocks (pdDiag)", {
 })
 
 test_that("phi random effects require the beta family", {
+  skip_if_no_brms()
   expect_error(
     beezdiscounting:::.dd_brms_formula(
       equation = "mazur",
@@ -217,6 +235,7 @@ test_that("phi random effects require the beta family", {
 # ------------------------------------------------------------------------------
 
 test_that("choice structural formula is the TMB logit with bernoulli family", {
+  skip_if_no_brms()
   spec <- beezdiscounting:::.dd_brms_choice_formula(equation = "mazur")
   expect_identical(
     squish(mu_formula(spec)),
@@ -237,6 +256,7 @@ test_that("choice structural formula is the TMB logit with bernoulli family", {
 })
 
 test_that("choice formula generates valid Stan code", {
+  skip_if_no_brms()
   d <- choice_test_data()
   spec <- beezdiscounting:::.dd_brms_choice_formula(equation = "mazur")
   scode <- brms::make_stancode(spec$formula, data = d)
@@ -245,6 +265,7 @@ test_that("choice formula generates valid Stan code", {
 })
 
 test_that("choice formula carries the factor design on logk (TICKET-048)", {
+  skip_if_no_brms()
   d <- choice_test_data()
   d$group <- factor(ifelse(as.integer(d$id) <= 3, "ctrl", "treat"))
 
@@ -277,6 +298,7 @@ test_that("choice formula carries the factor design on logk (TICKET-048)", {
 # ------------------------------------------------------------------------------
 
 test_that("canonical dd stancode snapshot is stable", {
+  skip_if_no_brms()
   d <- dd_test_data()
   spec <- beezdiscounting:::.dd_brms_formula(
     equation = "mazur",

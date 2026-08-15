@@ -45,3 +45,7 @@ tests/testthat/Rplots.pdf
 CLAUDE.md
 CLAUDE.local.md
 .claude/
+
+# Editor / browser-automation working dirs #
+.vscode/
+.playwright-mcp/

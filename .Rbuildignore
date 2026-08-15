@@ -33,3 +33,6 @@ hex-beezdiscounting.png
 ^tests/testthat/fixtures/brms$
 ^vignettes/.*\.Rmd\.orig$
 ^vignettes/precompile\.R$
+^tools$
+^engineering$
+^\.playwright-mcp$

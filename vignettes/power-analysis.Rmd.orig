@@ -8,7 +8,17 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.path = "power-analysis-"
+)
+library(beezdiscounting)
+```
 
 The Monte Carlo runs below are precomputed (the full set of `power_discounting()`
 / `find_n_discounting()` calls in this vignette takes several minutes, well
@@ -57,8 +67,7 @@ Suppose pilot data suggest the comparison group discounts about twice as
 steeply (`delta_k = log(2) ≈ 0.69`) and subjects vary with `sigma_u = 0.6`
 around their group's log k:
 
-
-``` r
+```{r power-fixed-n}
 res <- power_discounting(
   n_subjects = 60,
   effect = list(delta_k = log(2)),
@@ -72,27 +81,16 @@ res <- power_discounting(
   verbose = FALSE
 )
 res
-#> Monte Carlo power analysis (beezdiscounting)
-#>   Target: k:conditionC2 (delta_k = 0.6931), two-sided alpha = 0.05, t reference (df = 58)
-#>   n_subjects = 60 (between-subject, 2 conditions), n_sim = 40 (converged 40, usable 40)
-#>   Power (CI-exclusion): 0.925 [95% MC CI 0.801, 0.974]
-#>   p-value hit rate:     0.925
 ```
 
 Convergence diagnostics are part of the output, not a footnote: replicates
 whose refit fails are excluded from the power denominator and counted in
 `n_converged` / `n_used`, never treated as "no effect detected".
 
-
-``` r
+```{r diagnostics}
 res$n_converged
-#> [1] 40
 res$n_used
-#> [1] 40
 table(res$replicates$status)
-#> 
-#> ok 
-#> 40
 ```
 
 # Searching for a sample size
@@ -110,8 +108,7 @@ monotonicity demote the status to `uncertain`, but never-visited N cannot be
 checked -- so treat the result as an estimate and confirm it with a large
 `n_sim` at the chosen N.
 
-
-``` r
+```{r find-n}
 search <- find_n_discounting(
   target_power = 0.8,
   effect = list(delta_k = log(3)),
@@ -121,33 +118,6 @@ search <- find_n_discounting(
   verbose = FALSE
 )
 search
-#> Sample-size search (Monte Carlo power)
-#>   Target power 0.80 for delta_k = 1.099 at alpha = 0.05
-#>   Estimated minimum n_subjects = 13 (status: uncertain)
-#>   This is an estimated minimum under Monte Carlo uncertainty;
-#>   rerun the power function at this N with a large n_sim to report it.
-#> 
-#>   Evaluations:
-#>  n_subjects n_sim_total n_used usable_fraction     power  ci_lower  ci_upper
-#>          60          30     30               1 1.0000000 0.8864866 1.0000000
-#>           6          30     30               1 0.5666667 0.3919731 0.7262251
-#>          33          30     30               1 1.0000000 0.8864866 1.0000000
-#>          19          60     60               1 0.9666667 0.8863623 0.9908107
-#>          12         120    120               1 0.7750000 0.6924310 0.8405085
-#>          15          60     60               1 0.9500000 0.8629948 0.9828505
-#>          13         120    120               1 0.8333333 0.7565472 0.8894400
-#>          13         120    120               1 0.8833333 0.8136665 0.9292188
-#>          12         120    120               1 0.8333333 0.7565472 0.8894400
-#>         decision
-#>            above
-#>            below
-#>            above
-#>            above
-#>  ambiguous_below
-#>            above
-#>  ambiguous_above
-#>            above
-#>  ambiguous_above
 ```
 
 The result is an *estimated minimum under Monte Carlo uncertainty* (the
@@ -160,8 +130,7 @@ a large `n_sim` and report that estimate with its Monte Carlo interval.
 Power claims are conditional on the assumed effect and heterogeneity. A
 small sweep makes that dependence visible:
 
-
-``` r
+```{r sensitivity}
 deltas <- c(log(1.5), log(2), log(3))
 sweep <- vapply(deltas, function(d) {
   power_discounting(
@@ -170,10 +139,6 @@ sweep <- vapply(deltas, function(d) {
   )$power
 }, numeric(1))
 data.frame(k_ratio = exp(deltas), power = sweep)
-#>   k_ratio     power
-#> 1     1.5 0.6333333
-#> 2     2.0 1.0000000
-#> 3     3.0 1.0000000
 ```
 
 # How many replicates do you need?

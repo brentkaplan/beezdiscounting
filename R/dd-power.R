@@ -631,9 +631,9 @@
 #' \donttest{
 #' # Quick exploratory run (use n_sim >= 500 for real planning)
 #' res <- power_discounting(
-#'   n_subjects = 40,
+#'   n_subjects = 8,
 #'   effect = list(delta_k = log(2)),
-#'   n_sim = 20, seed = 1, verbose = FALSE
+#'   n_sim = 4, seed = 1, verbose = FALSE
 #' )
 #' print(res)
 #' }
@@ -1052,8 +1052,8 @@ print.beezdiscounting_power <- function(x, ...) {
 #' # Small search for demonstration (use larger n_sim for real planning)
 #' res <- find_n_discounting(
 #'   target_power = 0.8,
-#'   effect = list(delta_k = log(4)),
-#'   n_range = c(4, 40), n_sim = 30, seed = 1, verbose = FALSE
+#'   effect = list(delta_k = log(8)),
+#'   n_range = c(6, 20), n_sim = 4, n_sim_max = 4, seed = 1, verbose = FALSE
 #' )
 #' print(res)
 #' }

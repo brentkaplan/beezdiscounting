@@ -152,9 +152,9 @@ derived measures (ED50, AUC), and arbitrary designs are out of scope; see
 \donttest{
 # Quick exploratory run (use n_sim >= 500 for real planning)
 res <- power_discounting(
-  n_subjects = 40,
+  n_subjects = 8,
   effect = list(delta_k = log(2)),
-  n_sim = 20, seed = 1, verbose = FALSE
+  n_sim = 4, seed = 1, verbose = FALSE
 )
 print(res)
 }

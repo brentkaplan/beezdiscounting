@@ -60,7 +60,12 @@ out of scope in this version.}
 
 \item{random_effects}{Random-effects formula passed to \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.
 The default \code{k ~ 1} matches the simulator's data-generating process (a
-single subject random intercept on log k).}
+single subject random intercept on log k). The simulator ALWAYS
+generates only that intercept: any richer formula (e.g. \code{k + phi ~ 1},
+\code{k + s ~ 1}) is accepted but produces a deliberately over-specified
+refit of data with no such variance component -- useful for probing
+robustness, not for estimating power under those random effects (out
+of scope in this version).}
 
 \item{multi_start}{Passed to \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}. Defaults to \code{FALSE} for
 speed; non-convergent replicates are excluded and surfaced rather than

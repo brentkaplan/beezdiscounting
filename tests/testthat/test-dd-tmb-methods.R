@@ -1148,6 +1148,26 @@ test_that(".dd_tmb_model_se preserves per-element SEs for factor fits", {
   # In this design the intercept SE (per-group) and the contrast SE
   # (two-group difference) must differ.
   expect_gt(abs(se[beta_idx[2]] - se[beta_idx[1]]), 1e-8)
+
+  # Every user-facing surface must expose sdreport's SECOND beta_k SE for the
+  # contrast row (the pre-fix collapse handed the intercept's SE to every
+  # beta_k row). Rows are matched positionally within the fixed block.
+  td <- tidy(fit, report_space = "internal")
+  td_k <- td[td$component == "fixed", ]
+  expect_equal(nrow(td_k), 2L)
+  expect_equal(td_k$std.error, unname(sdr_se), tolerance = 1e-12)
+  expect_gt(abs(td_k$std.error[2] - td_k$std.error[1]), 1e-8)
+
+  sm <- summary(fit, report_space = "internal")
+  sm_k <- sm$coefficients[sm$coefficients$component == "fixed", ]
+  expect_equal(nrow(sm_k), 2L)
+  expect_equal(sm_k$std.error, unname(sdr_se), tolerance = 1e-12)
+
+  ci <- confint(fit, report_space = "internal", level = 0.95)
+  ci_k <- ci[beta_idx, ]
+  half <- (ci_k$conf.high - ci_k$conf.low) / 2
+  expect_equal(half, unname(stats::qnorm(0.975) * sdr_se), tolerance = 1e-8)
+  expect_gt(abs(half[2] - half[1]), 1e-8)
 })
 
 test_that(".dd_tmb_model_se refuses ambiguous duplicated-name alignment", {

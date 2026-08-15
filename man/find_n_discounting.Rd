@@ -63,7 +63,12 @@ out of scope in this version.}
 
 \item{random_effects}{Random-effects formula passed to \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.
 The default \code{k ~ 1} matches the simulator's data-generating process (a
-single subject random intercept on log k).}
+single subject random intercept on log k). The simulator ALWAYS
+generates only that intercept: any richer formula (e.g. \code{k + phi ~ 1},
+\code{k + s ~ 1}) is accepted but produces a deliberately over-specified
+refit of data with no such variance component -- useful for probing
+robustness, not for estimating power under those random effects (out
+of scope in this version).}
 
 \item{multi_start}{Passed to \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}. Defaults to \code{FALSE} for
 speed; non-convergent replicates are excluded and surfaced rather than
@@ -82,10 +87,12 @@ search (\code{status = "unresolved"}).}
 \item{target_power}{As supplied.}
 \item{status}{\code{"confirmed"} (selected N re-confirmed above target and
 N - 1 below), \code{"uncertain"} (a decision relied on a point estimate,
-or N - 1 also cleared the target on reconfirmation so the returned
-N may not be minimal), \code{"unresolved"} (the selected N failed its
+N - 1 also cleared the target on reconfirmation, or an evaluated
+lower N read above the target -- so the returned N may not be
+minimal), \code{"unresolved"} (the selected N failed its
 own reconfirmation; \code{n} is \code{NA}), or \code{"at_lower_bound"} (the target
-was already met at \code{n_range[1]}; smaller N was not explored). These
+was already met at \code{n_range[1]} on two independent looks; smaller N
+was not explored -- widen \code{n_range} downward if that matters). These
 labels describe a heuristic Monte Carlo decision rule -- repeated
 looks at ordinary Wilson intervals across several N -- not a formal
 sequential error guarantee.}
@@ -115,6 +122,20 @@ The returned \code{n} is an \emph{estimated minimum under Monte Carlo uncertaint
 not an exact bound. For grant-quality reporting, rerun
 \code{\link[=power_discounting]{power_discounting()}} at the returned \code{n} with a large \code{n_sim} (2000+)
 and report that estimate with its Monte Carlo confidence interval.
+
+\strong{Monotonicity assumption.} Bisection presumes that power is
+non-decreasing in \code{n_subjects}. Because every evaluated N is judged from
+its own independent replicates (and a convergence-conditioned
+denominator), a Monte Carlo fluctuation can make a lower N read "below"
+when its true power is above the target, so the search may step past a
+lower crossing that it never revisits. Evaluated N that contradict the
+assumption (a lower N reading "above" the selected N) demote the status to
+\code{"uncertain"}; N that were never evaluated cannot be checked. Widen
+\code{n_sim}/\code{n_sim_max} when the reported \code{n} matters. When the target is
+already met at \code{n_range[1]}, that bound is likewise re-evaluated with
+fresh replicates before \code{"at_lower_bound"} is reported; if the second look
+does not clear the target the bound is treated as below and the bisection
+proceeds upward.
 }
 \examples{
 \donttest{

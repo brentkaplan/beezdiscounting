@@ -1,4 +1,9 @@
-# beezdiscounting (development version)
+# beezdiscounting 0.4.0
+
+This is a large release (the first since 0.3.2, January 2025): mixed-effects
+and Bayesian discounting tiers, trial-level choice models, 21-item MCQ and PDQ
+scoring, Monte Carlo power analysis, and ten vignettes (all new since 0.3.2,
+which shipped none).
 
 ### Monte Carlo power analysis
 
@@ -171,22 +176,28 @@
 * `init = "tmb"` is available in both Bayesian fitters (a quiet TMB
   pre-fit supplies the chain starting values, with prior-center fallback).
 * brms, posterior, and loo are Suggests-only.
+* New vignette `vignette("bayesian-discounting")` (precomputed output) walks
+  through `fit_dd_brms()` / `fit_dd_choice_brms()` and their S3 surface.
 * New vignette "Comparing discounting rates between groups"
   (`vignette("dd-group-comparisons")`): factor designs on log k, estimated
   marginal means, and contrasts across both backends -- TMB (Wald + holm)
   and brms (posterior draws + `post.prob`) -- for indifference-point and
   trial-level choice models alike.
 
-# beezdiscounting 0.4.0
-
-### New Features
+### Modeling tiers and choice models
 
 * New `fit_dd_choice(mode = "structural")` fits trial-level smaller-sooner vs
   larger-later choice as a binomial GLMM, estimating the discount rate `k`
   directly (scale-invariant value comparison, optional choice-bias intercept).
   It shares the `get_dd_param_emms()`/`get_dd_comparisons()` `k` contract with
   `fit_dd_tmb()` and is validated by an IP-vs-choice tie-out. `simulate_dd_choice()`
-  generates structural choice data. (Descriptive Young-2018 model: forthcoming.)
+  generates structural choice data.
+
+* `fit_dd_choice(mode = "descriptive")` fits the Young (2018) descriptive
+  choice model: a logistic mixed model on the log amount ratio and log delay
+  with subject random slopes, returning logit-scale sensitivities rather than
+  a discount rate. Shares the S3 surface (`tidy()`, `summary()`, `predict()`,
+  ...) with the structural mode; see `vignette("choice-discounting")`.
 
 * New `mcq27_to_choice()` reshapes long-form 27-item Monetary Choice
   Questionnaire responses (`subjectid`/`questionid`/`response`) into the
@@ -224,7 +235,7 @@
   `ranef()`, `confint()`, `predict()`, `summary()`, `logLik()`, `AIC()`,
   `BIC()`, `nobs()`, `print()`.
 
-### Documentation
+### Documentation (TMB tier)
 
 - New vignette `sltb-discounting`: why bounded error distributions matter for
   indifference points, the SLT-beta density, a boundary demonstration on the
@@ -236,7 +247,7 @@
   clamps mild out-of-range values, **warning loudly** and naming the number of
   values coerced or clamped.
 
-### Bug Fixes
+### Bug fixes (scoring)
 
 - **`score_dd()`** and **`ans_dd()`**: Fixed incorrect response classification for
   Qualtrics numeric recode exports where SS = `"1"` and LL = `"2"`. Previously,

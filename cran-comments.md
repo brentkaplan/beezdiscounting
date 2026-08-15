@@ -1,10 +1,26 @@
 ## Submission
 
-This is a feature release (0.4.0) of an existing CRAN package. It adds a
-mixed-effects (hierarchical) indifference-point discounting model fit via
-Template Model Builder ('TMB'), under a scale-location-truncated beta likelihood
-that admits indifference points at exactly 0 and 1, with the accompanying broom /
-'emmeans'-style S3 surface, a simulator, and a vignette.
+This is a feature release (0.4.0) of an existing CRAN package (0.3.2, January
+2025). It adds:
+
+* a mixed-effects (hierarchical) indifference-point discounting model fit via
+  Template Model Builder ('TMB') under a scale-location-truncated beta
+  likelihood that admits indifference points at exactly 0 and 1 (`fit_dd_tmb()`),
+  with the accompanying broom / 'emmeans'-style S3 surface, group comparisons,
+  and a simulator; the two-parameter Green-Myerson and Rachlin hyperboloids
+  and a subject-random curvature exponent;
+* trial-level choice models (`fit_dd_choice()`; structural and Young-2018
+  descriptive modes);
+* an optional Bayesian tier via 'brms' (`fit_dd_brms()`,
+  `fit_dd_choice_brms()`); 'brms', 'posterior' and 'loo' are Suggests only and
+  every example/test/vignette that needs them is conditional on their presence;
+* Monte Carlo power analysis (`power_discounting()`, `find_n_discounting()`);
+* scoring of the 21-item Monetary Choice Questionnaire and the 30-item
+  Probability Discounting Questionnaire, plus bundled example data;
+* ten vignettes (all new since 0.3.2, which shipped none).
+
+Compiled code: the 'TMB' C++ templates in `src/` changed since 0.3.2 (new
+model families and random-effect blocks).
 
 ## Test environments
 

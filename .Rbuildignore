@@ -36,3 +36,4 @@ hex-beezdiscounting.png
 ^tools$
 ^engineering$
 ^\.playwright-mcp$
+^CLAUDE.*\.md$

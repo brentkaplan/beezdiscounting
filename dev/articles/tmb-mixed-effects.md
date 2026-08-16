@@ -282,7 +282,7 @@ fits <- lapply(equations, function(eq)
 #>   Converged (NLL = -87.54). Done.
 #> Fitting TMB mixed-effects discounting model (exponential, sltb)...
 #>   Subjects: 15, Observations: 90
-#>   Multi-start: best NLL = -53.40 (start set 3 of 3)
+#>   Multi-start: best NLL = -53.40 (start set 1 of 3)
 #>   Converged (NLL = -53.40). Done.
 #> Fitting TMB mixed-effects discounting model (green-myerson, sltb)...
 #>   Subjects: 15, Observations: 90

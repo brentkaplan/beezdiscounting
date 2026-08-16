@@ -80,7 +80,8 @@ simulate_dd_choice(
 
 - seed:
 
-  Optional integer seed for reproducibility.
+  Optional integer seed for reproducibility. The caller's RNG state is
+  restored on exit.
 
 ## Value
 

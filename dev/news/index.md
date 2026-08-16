@@ -1,6 +1,67 @@
 # Changelog
 
-## beezdiscounting (development version)
+## beezdiscounting 0.4.0
+
+This is a large release (the first since 0.3.2, January 2025):
+mixed-effects and Bayesian discounting tiers, trial-level choice models,
+21-item MCQ and PDQ scoring, Monte Carlo power analysis, and ten
+vignettes (all new since 0.3.2, which shipped none).
+
+#### Monte Carlo power analysis
+
+- [`power_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/power_discounting.md)
+  estimates statistical power for detecting a between-subject difference
+  in discount rate (`delta_k` on log k) by simulating with
+  [`simulate_dd_ip()`](https://brentkaplan.github.io/beezdiscounting/reference/simulate_dd_ip.md)
+  and refitting each replicate with
+  [`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md).
+  Reports the power estimate with a Wilson Monte Carlo confidence
+  interval, p-value and CI-exclusion hit rates, and convergence
+  diagnostics; non-usable fits are excluded from the denominator and
+  surfaced, never counted as misses. The Wald test uses a t reference
+  with the design’s two-sample df (`n - 2`), validated by Type I
+  calibration tests.
+- [`find_n_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/find_n_discounting.md)
+  searches for the smallest total N reaching a target power via
+  bisection, adding replicates adaptively where the Monte Carlo verdict
+  is ambiguous and re-confirming the selected N before reporting.
+- Type I error calibration, convergence handling, a closed-form
+  benchmark against
+  [`pwr::pwr.t.test()`](https://rdrr.io/pkg/pwr/man/pwr.t.test.html),
+  monotonicity, and seed reproducibility are verified in the test suite;
+  see
+  [`vignette("power-analysis")`](https://brentkaplan.github.io/beezdiscounting/articles/power-analysis.md)
+  for scope and validity notes. Mirrors `beezdemand::power_demand()`;
+  the within- vs between-subject asymmetry is intentional.
+
+#### Probability Discounting Questionnaire (PDQ)
+
+- New
+  [`score_pdq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_pdq.md)
+  scores the 30-item PDQ (Madden, Petry, & Johnson, 2009): per-block h
+  under the hyperbolic odds-against model, consistency, and risky choice
+  ratios, with the same strict input validation and imputation options
+  as
+  [`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md).
+  The implementation reproduces the Gray et al. (2016) scoring-syntax
+  lookup tables exactly for all 3 x 1024 response patterns (verified in
+  the test suite). An `overall_h` from a pooled 30-item ladder is also
+  reported as a documented beezdiscounting extension (the published
+  scoring defines no overall ladder; `mean_h` is Gray et al.’s
+  recommended composite).
+- New
+  [`prop_sc()`](https://brentkaplan.github.io/beezdiscounting/reference/prop_sc.md)
+  (guaranteed-choice proportions by h rank) and
+  [`pdq_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/pdq_to_choice.md)
+  (trial-level choice frame including the odds against winning,
+  `theta`), plus a bundled `pdq` example dataset and a “Scoring the
+  Probability Discounting Questionnaire” vignette.
+- [`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md)
+  gains an `instrument` argument (`"mcq27"`, `"mcq21"`, `"pdq"`);
+  `items` remains as a back-compatible alias. Internally the MCQ
+  registry is now instrument-keyed and the ladder-scoring core is shared
+  across instruments; 27- and 21-item MCQ results are unchanged (pinned
+  by golden-fixture regression tests).
 
 #### 21-item MCQ support
 
@@ -75,6 +136,25 @@
 
 #### Bug fixes
 
+- [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
+  [`confint()`](https://rdrr.io/r/stats/confint.html), and
+  [`summary()`](https://rdrr.io/r/base/summary.html) on a
+  [`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)
+  or structural
+  [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md)
+  fit with `factors` reported the intercept’s standard error for every
+  `beta_k` coefficient (the log-k intercept and each condition
+  contrast): the internal SE lookup collapsed the duplicated `beta_k`
+  parameter names onto the first element. Condition-contrast Wald
+  statistics, p-values, and confidence intervals were therefore
+  anticonservative (the
+  [`power_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/power_discounting.md)
+  Type I calibration battery measured a false-positive rate of 0.168 at
+  nominal .05 before the fix). SEs are now aligned positionally with the
+  coefficient vector in both accessors, and ambiguous legacy objects
+  with duplicated names return `NA` SEs instead of silently misaligned
+  values.
+
 - [`check_unsystematic()`](https://brentkaplan.github.io/beezdiscounting/reference/check_unsystematic.md)
   and
   [`calc_aucs()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_aucs.md)
@@ -88,6 +168,7 @@
   [`calc_aucs()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_aucs.md)
   orders by `x` within each subject. Rows with a missing `id` are
   dropped so they cannot contaminate other subjects’ results.
+
 - [`prop_ss()`](https://brentkaplan.github.io/beezdiscounting/reference/prop_ss.md)
   now pools correctly across respondents. It previously dropped all but
   the first occurrence of each `questionid` (via
@@ -176,6 +257,13 @@
   pre-fit supplies the chain starting values, with prior-center
   fallback).
 - brms, posterior, and loo are Suggests-only.
+- New vignette
+  [`vignette("bayesian-discounting")`](https://brentkaplan.github.io/beezdiscounting/articles/bayesian-discounting.md)
+  (precomputed output) walks through
+  [`fit_dd_brms()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_brms.md)
+  /
+  [`fit_dd_choice_brms()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice_brms.md)
+  and their S3 surface.
 - New vignette “Comparing discounting rates between groups”
   ([`vignette("dd-group-comparisons")`](https://brentkaplan.github.io/beezdiscounting/articles/dd-group-comparisons.md)):
   factor designs on log k, estimated marginal means, and contrasts
@@ -183,9 +271,7 @@
   `post.prob`) – for indifference-point and trial-level choice models
   alike.
 
-## beezdiscounting 0.4.0
-
-#### New Features
+#### Modeling tiers and choice models
 
 - New `fit_dd_choice(mode = "structural")` fits trial-level
   smaller-sooner vs larger-later choice as a binomial GLMM, estimating
@@ -196,8 +282,17 @@
   [`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)
   and is validated by an IP-vs-choice tie-out.
   [`simulate_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/simulate_dd_choice.md)
-  generates structural choice data. (Descriptive Young-2018 model:
-  forthcoming.)
+  generates structural choice data.
+
+- `fit_dd_choice(mode = "descriptive")` fits the Young (2018)
+  descriptive choice model: a logistic mixed model on the log amount
+  ratio and log delay with subject random slopes, returning logit-scale
+  sensitivities rather than a discount rate. Shares the S3 surface
+  ([`tidy()`](https://generics.r-lib.org/reference/tidy.html),
+  [`summary()`](https://rdrr.io/r/base/summary.html),
+  [`predict()`](https://rdrr.io/r/stats/predict.html), …) with the
+  structural mode; see
+  [`vignette("choice-discounting")`](https://brentkaplan.github.io/beezdiscounting/articles/choice-discounting.md).
 
 - New
   [`mcq27_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq27_to_choice.md)
@@ -218,6 +313,22 @@
   a single population nonlinearity exponent `s` (reported by
   [`tidy()`](https://generics.r-lib.org/reference/tidy.html)/[`summary()`](https://rdrr.io/r/base/summary.html)/[`confint()`](https://rdrr.io/r/stats/confint.html)).
   Both reduce to `"mazur"` at `s = 1`.
+
+- New
+  [`plot_qq()`](https://brentkaplan.github.io/beezdemand/reference/plot_qq.html)
+  methods (re-exporting
+  [`beezdemand::plot_qq()`](https://brentkaplan.github.io/beezdemand/reference/plot_qq.html))
+  for
+  [`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)
+  and
+  [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md)
+  fits: a normal QQ plot of the estimated (shrunken, empirical-Bayes)
+  subject random-effect deviates against a normal reference, the
+  standard check on the Gaussian random-effects assumption. Bayesian
+  ([`fit_dd_brms()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_brms.md))
+  fits are intentionally excluded; use
+  [`brms::pp_check()`](https://mc-stan.org/bayesplot/reference/pp_check.html)
+  and MCMC diagnostics there instead.
 
 - **Mixed-effects discounting via TMB**
   ([`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)):
@@ -259,7 +370,7 @@
   [`nobs()`](https://rdrr.io/r/stats/nobs.html),
   [`print()`](https://rdrr.io/r/base/print.html).
 
-#### Documentation
+#### Documentation (TMB tier)
 
 - New vignette `sltb-discounting`: why bounded error distributions
   matter for indifference points, the SLT-beta density, a boundary
@@ -272,7 +383,7 @@
   and clamps mild out-of-range values, **warning loudly** and naming the
   number of values coerced or clamped.
 
-#### Bug Fixes
+#### Bug fixes (scoring)
 
 - **[`score_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/score_dd.md)**
   and

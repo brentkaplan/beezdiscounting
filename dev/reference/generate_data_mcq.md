@@ -20,7 +20,8 @@ generate_data_mcq(n_ids = 100, n_items = 27, seed = 1234, prop_na = 0)
 
 - seed:
 
-  Random seed
+  Random seed; identical seeds give identical results. The caller's RNG
+  state is restored on exit.
 
 - prop_na:
 

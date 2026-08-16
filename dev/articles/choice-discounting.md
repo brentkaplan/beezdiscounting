@@ -156,7 +156,7 @@ summary(fit_d)
 #> --- Fixed sensitivities (logit scale) ---
 #>                      term estimate std.error statistic  p.value
 #>  log(ll_amount/ss_amount)   6.4112     0.964    6.6507 2.92e-11
-#>            log(delay + 1)  -0.9000     0.964   -0.9337     0.35
+#>            log(delay + 1)  -0.9000     0.136   -6.6165 3.68e-11
 #> 
 #> --- Random-slope (co)variances ---
 #>    Group                     Term   Variance    StdDev Corr

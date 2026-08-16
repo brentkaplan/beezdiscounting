@@ -20,6 +20,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
     <li><a class="dropdown-item" href="../articles/mcq27-scoring.html">Scoring the 27-item MCQ</a></li>
+    <li><a class="dropdown-item" href="../articles/pdq-scoring.html">Scoring the Probability Discounting Questionnaire</a></li>
     <li><a class="dropdown-item" href="../articles/delay-discounting-basics.html">Indifference points, k, and AUC</a></li>
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -29,6 +30,9 @@
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
     <li><a class="dropdown-item" href="../articles/bayesian-discounting.html">Bayesian models (brms)</a></li>
     <li><a class="dropdown-item" href="../articles/dd-group-comparisons.html">Comparing discounting rates between groups</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Study planning</h6></li>
+    <li><a class="dropdown-item" href="../articles/power-analysis.html">Power analysis</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -80,6 +84,29 @@
 
         </dt>
         <dd>Random-effect covariance for a TMB discounting model</dd>
+      </dl></div><div class="section level2">
+      <h2 id="power-analysis">Power analysis<a class="anchor" aria-label="anchor" href="#power-analysis"></a></h2>
+
+      <div class="section-desc"><p>Monte Carlo power estimation and sample-size search for between-subject discounting designs.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="power_discounting.html">power_discounting()</a></code>
+
+        </dt>
+        <dd>Monte Carlo power analysis for between-subject discounting designs</dd>
+
+        <dt>
+
+          <code><a href="find_n_discounting.html">find_n_discounting()</a></code>
+
+        </dt>
+        <dd>Find the smallest sample size reaching a target power (discounting)</dd>
       </dl></div><div class="section level2">
       <h2 id="choice-based-discounting-tmb-">Choice-based discounting (TMB)<a class="anchor" aria-label="anchor" href="#choice-based-discounting-tmb-"></a></h2>
 
@@ -534,6 +561,36 @@
         </dt>
         <dd>Extract timing metrics from 5.5 trial probability discounting from Qualtrics template</dd>
       </dl></div><div class="section level2">
+      <h2 id="probability-discounting-questionnaire-pdq-">Probability Discounting Questionnaire (PDQ)<a class="anchor" aria-label="anchor" href="#probability-discounting-questionnaire-pdq-"></a></h2>
+
+      <div class="section-desc"><p>Scoring, lookup, and reshaping for the 30-item PDQ (Madden, Petry, &amp; Johnson, 2009), scored per block with the Gray et al. (2016) consistency-maximization conventions.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="score_pdq.html">score_pdq()</a></code>
+
+        </dt>
+        <dd>Score the 30-item Probability Discounting Questionnaire (PDQ)</dd>
+
+        <dt>
+
+          <code><a href="prop_sc.html">prop_sc()</a></code>
+
+        </dt>
+        <dd>Calculate proportion of guaranteed choices at each PDQ h rank</dd>
+
+        <dt>
+
+          <code><a href="pdq_to_choice.html">pdq_to_choice()</a></code>
+
+        </dt>
+        <dd>Convert PDQ responses to a trial-level choice frame</dd>
+      </dl></div><div class="section level2">
       <h2 id="monetary-choice-questionnaire-mcq-and-item-">Monetary Choice Questionnaire (MCQ, 27- and 21-item)<a class="anchor" aria-label="anchor" href="#monetary-choice-questionnaire-mcq-and-item-"></a></h2>
 
       <div class="section-desc"><p>Scoring, lookup, simulation, and reshaping for the 27-item (Kirby, Petry, &amp; Bickel, 1999) and 21-item (Kirby &amp; Marakovic, 1996) MCQ.</p></div>
@@ -576,7 +633,7 @@
           <code><a href="get_lookup_table.html">get_lookup_table()</a></code>
 
         </dt>
-        <dd>Get internal lookup table for the 27- or 21-item MCQ</dd>
+        <dd>Get an internal instrument design table</dd>
 
         <dt>
 
@@ -710,6 +767,13 @@
 
         <dt>
 
+          <code><a href="plot.prop_sc_output.html">plot(<i>&lt;prop_sc_output&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Plot Proportion of Guaranteed Choices by h Rank</dd>
+
+        <dt>
+
           <code><a href="plot.prop_ss_output.html">plot(<i>&lt;prop_ss_output&gt;</i>)</a></code>
 
         </dt>
@@ -728,6 +792,13 @@
 
         </dt>
         <dd>Plot MCQ Scores</dd>
+
+        <dt>
+
+          <code><a href="plot.score_pdq_output.html">plot(<i>&lt;score_pdq_output&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Plot PDQ Scores</dd>
 
         <dt>
 
@@ -772,6 +843,13 @@
 
         </dt>
         <dd>Example 21-item MCQ data</dd>
+
+        <dt>
+
+          <code><a href="pdq.html">pdq</a></code>
+
+        </dt>
+        <dd>Example 30-item PDQ data</dd>
 
         <dt>
 

@@ -17,6 +17,8 @@ score_one_mcq(dat, reg, impute_method = "none", round = 6)
 - reg:
 
   Registry list from
+  [`.instrument_registry()`](https://brentkaplan.github.io/beezdiscounting/reference/dot-instrument_registry.md)
+  /
   [`.mcq_registry()`](https://brentkaplan.github.io/beezdiscounting/reference/dot-mcq_registry.md)
 
 - impute_method:

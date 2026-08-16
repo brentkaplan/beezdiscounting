@@ -48,6 +48,16 @@ indifference-point data using TMB, and simulate from the same model.
 - [`VarCorr(`*`<beezdiscounting_tmb>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/VarCorr.beezdiscounting_tmb.md)
   : Random-effect covariance for a TMB discounting model
 
+## Power analysis
+
+Monte Carlo power estimation and sample-size search for between-subject
+discounting designs.
+
+- [`power_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/power_discounting.md)
+  : Monte Carlo power analysis for between-subject discounting designs
+- [`find_n_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/find_n_discounting.md)
+  : Find the smallest sample size reaching a target power (discounting)
+
 ## Choice-based discounting (TMB)
 
 Fit the structural or descriptive (Young 2018) SS-vs-LL choice model — a
@@ -208,6 +218,19 @@ Scoring functions for probability-discounting tasks.
   : Extract timing metrics from 5.5 trial probability discounting from
   Qualtrics template
 
+## Probability Discounting Questionnaire (PDQ)
+
+Scoring, lookup, and reshaping for the 30-item PDQ (Madden, Petry, &
+Johnson, 2009), scored per block with the Gray et al. (2016)
+consistency-maximization conventions.
+
+- [`score_pdq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_pdq.md)
+  : Score the 30-item Probability Discounting Questionnaire (PDQ)
+- [`prop_sc()`](https://brentkaplan.github.io/beezdiscounting/reference/prop_sc.md)
+  : Calculate proportion of guaranteed choices at each PDQ h rank
+- [`pdq_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/pdq_to_choice.md)
+  : Convert PDQ responses to a trial-level choice frame
+
 ## Monetary Choice Questionnaire (MCQ, 27- and 21-item)
 
 Scoring, lookup, simulation, and reshaping for the 27-item (Kirby,
@@ -222,7 +245,7 @@ Petry, & Bickel, 1999) and 21-item (Kirby & Marakovic, 1996) MCQ.
 - [`prop_ss()`](https://brentkaplan.github.io/beezdiscounting/reference/prop_ss.md)
   : Calculate proportion of SIR/SS responses at each k value
 - [`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md)
-  : Get internal lookup table for the 27- or 21-item MCQ
+  : Get an internal instrument design table
 - [`mcq_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq_to_choice.md)
   : Convert 27- or 21-item MCQ responses to a trial-level choice frame
 - [`mcq27_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq27_to_choice.md)
@@ -270,12 +293,16 @@ diagnostics – plus plotting for scored task outputs.
   : Plot group differences in discount rate
 - [`plot(`*`<beezdiscounting_tmb>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_tmb.md)
   : Plot a mixed-effects discounting model
+- [`plot(`*`<prop_sc_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.prop_sc_output.md)
+  : Plot Proportion of Guaranteed Choices by h Rank
 - [`plot(`*`<prop_ss_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.prop_ss_output.md)
   : Plot Proportion of SIR/SS Choices by k Value
 - [`plot(`*`<score_mcq27_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.score_mcq27_output.md)
   : Plot MCQ-27 Scores
 - [`plot(`*`<score_mcq_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.score_mcq_output.md)
   : Plot MCQ Scores
+- [`plot(`*`<score_pdq_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.score_pdq_output.md)
+  : Plot PDQ Scores
 - [`plot_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/plot_dd.md)
   : Plot Delay-Discounting Model
 - [`plot_qq(`*`<beezdiscounting_tmb>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot_qq.beezdiscounting.md)
@@ -292,6 +319,8 @@ Built-in datasets for examples and testing.
   : Example 27-item MCQ data
 - [`mcq21`](https://brentkaplan.github.io/beezdiscounting/reference/mcq21.md)
   : Example 21-item MCQ data
+- [`pdq`](https://brentkaplan.github.io/beezdiscounting/reference/pdq.md)
+  : Example 30-item PDQ data
 - [`five.fivetrial_dd`](https://brentkaplan.github.io/beezdiscounting/reference/five.fivetrial_dd.md)
   : Example Qualtrics output from the 5.5 trial delay discounting
   template.
@@ -330,6 +359,10 @@ Generics re-exported from other packages.
   task](https://brentkaplan.github.io/beezdiscounting/articles/fivetrial-task.md):
 - [Scoring the Monetary Choice Questionnaire (21- and
   27-Item)](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.md):
+- [Scoring the Probability Discounting Questionnaire
+  (PDQ)](https://brentkaplan.github.io/beezdiscounting/articles/pdq-scoring.md):
+- [Power Analysis for Between-Subject Discounting
+  Designs](https://brentkaplan.github.io/beezdiscounting/articles/power-analysis.md):
 - [Modeling delay-discounting indifference points with bounded error
   distributions](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.md):
 - [Mixed-effects discounting with

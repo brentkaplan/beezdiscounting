@@ -89,7 +89,8 @@ simulate_dd_ip(
 
 - seed:
 
-  Optional integer seed.
+  Optional integer seed; identical seeds give identical results. The
+  caller's RNG state is restored on exit.
 
 - sigma_phi:
 

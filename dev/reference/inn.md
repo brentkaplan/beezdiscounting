@@ -18,6 +18,8 @@ inn(dat, reg, random, verbose)
 - reg:
 
   Registry list from
+  [`.instrument_registry()`](https://brentkaplan.github.io/beezdiscounting/reference/dot-instrument_registry.md)
+  /
   [`.mcq_registry()`](https://brentkaplan.github.io/beezdiscounting/reference/dot-mcq_registry.md)
 
 - random:

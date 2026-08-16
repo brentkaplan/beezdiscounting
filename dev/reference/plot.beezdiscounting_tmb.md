@@ -77,7 +77,7 @@ sim <- simulate_dd_ip(n_subjects = 12, seed = 1)
 fit <- fit_dd_tmb(sim, equation = "mazur")
 #> Fitting TMB mixed-effects discounting model (mazur, sltb)...
 #>   Subjects: 12, Observations: 84
-#>   Multi-start: best NLL = -113.59 (start set 3 of 3)
+#>   Multi-start: best NLL = -113.59 (start set 2 of 3)
 #>   Converged (NLL = -113.59). Done.
 plot(fit)
 

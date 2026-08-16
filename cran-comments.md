@@ -27,7 +27,7 @@ model families and random-effect blocks).
 * local macOS (R 4.5.2)
 * GitHub Actions: ubuntu-latest (release, devel, oldrel-1), macOS-latest,
   windows-latest (R-CMD-check workflow)
-* win-builder (R-release; R-devel pending) and R-hub v2 (linux, macos-arm64,
+* win-builder (R-release and R-devel) and R-hub v2 (linux, macos-arm64,
   windows, clang-asan, valgrind -- the package ships TMB C++ templates)
 
 ## R CMD check results
@@ -38,7 +38,8 @@ local warning is environmental (R's own header under a very recent Apple
 
 win-builder R-release (R 4.6.1 ucrt, Windows Server 2022, 2026-08-16):
 0 errors | 0 warnings | 1 note (the pkgdown-site URL note below).
-win-builder R-devel: PENDING.
+win-builder R-devel (R Under development 2026-08-15 r90413 ucrt, 2026-08-16):
+0 errors | 0 warnings | 1 note (the pkgdown-site URL note below).
 R-hub v2 (2026-08-16; R-devel on linux/macos-arm64/windows, plus clang-asan
 and valgrind): all five legs OK -- 0 errors, no sanitizer findings; valgrind
 `ERROR SUMMARY: 0 errors`, `definitely lost: 0 bytes`.

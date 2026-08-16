@@ -1,0 +1,119 @@
+# Heavy test files (port of beezdemand's TICKET-070 / release-train Q14a).
+#
+# `.Rbuildignore` excludes `tests`, so R CMD check (R-CMD-check.yaml,
+# cran-everything, CRAN) never runs this suite; the only CI job that does is
+# test-coverage.yaml, and under covr's instrumented TMB build the Monte-Carlo
+# power file's thousands of refits push it past GitHub's 6-hour job limit.
+# The heaviest files are therefore gated behind BEEZ_FULL_TESTS=true (see
+# tests/testthat/helper-full-tests.R) and run HERE, on all three OSes, through
+# a STREAMING reporter so the runner sees continuous output. This job must be
+# green on every release SHA.
+#
+# Locally: `BEEZ_FULL_TESTS=true Rscript -e 'devtools::test()'`.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '47 6 * * 1'   # weekly, Monday 06:47 UTC
+
+name: full-tests
+
+permissions: read-all
+
+jobs:
+  full-tests:
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-15,       r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,  r: 'release'}
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      NOT_CRAN: true
+      BEEZ_FULL_TESTS: true
+      # The repo's .Rprofile activates renv unconditionally; run this job with
+      # the autoloader off (as rhub.yaml does) so setup-r-dependencies,
+      # `R CMD INSTALL` and the test step all share the default library.
+      RENV_CONFIG_AUTOLOADER_ENABLED: "false"
+      # Serial on purpose: under parallel workers testthat buffers a file's
+      # events until the file finishes, so a long power file would be silent
+      # and trip the runner's lost-communication kill. Serial + progress
+      # reporter streams every test as it completes.
+      TESTTHAT_PARALLEL: false
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      BLIS_NUM_THREADS: 1
+      VECLIB_MAXIMUM_THREADS: 1
+      R_DATATABLE_NUM_THREADS: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+
+      - name: Work around ubuntu apt azure-cli repo 403
+        if: runner.os == 'Linux'
+        run: |
+          set -euxo pipefail
+          sudo rm -f /etc/apt/sources.list.d/azure-cli.list /etc/apt/sources.list.d/azure-cli.sources || true
+          sudo apt-get update
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::pkgload, any::testthat
+          needs: check
+
+      - name: Rebuild TMB from source against libomp (macOS)
+        # Same repair as R-CMD-check.yaml: the prebuilt CRAN TMB binary on the
+        # macOS arm64 runners references OpenMP without linking libomp.
+        if: runner.os == 'macOS'
+        run: |
+          set -euxo pipefail
+          brew install libomp
+          LOMP="$(brew --prefix libomp)"
+          mkdir -p ~/.R
+          {
+            echo "CPPFLAGS += -Xclang -fopenmp -I${LOMP}/include"
+            echo "LDFLAGS += -L${LOMP}/lib -lomp -Wl,-rpath,${LOMP}/lib"
+          } >> ~/.R/Makevars
+          Rscript -e 'install.packages("TMB", type = "source", repos = "https://cloud.r-project.org", lib = .libPaths()[1])'
+          Rscript -e 'library(TMB); cat("TMB", as.character(packageVersion("TMB")), "loads OK\n")'
+        shell: bash
+
+      - name: Install the package
+        # A normal (optimised) install. pkgload::load_all() would compile
+        # src/ with pkgbuild's debug flags (-O0 -g), and on Windows the TMB
+        # object then exceeds the COFF section limit ("file too big").
+        run: R CMD INSTALL --no-docs --no-multiarch .
+        shell: bash
+
+      - name: Run the heavy test files (serial, streaming reporter)
+        # Only the BEEZ_FULL_TESTS-gated files (the rest run under covr in
+        # test-coverage.yaml). Serial (TESTTHAT_PARALLEL=false above) + the
+        # `progress` reporter writes each test's result to stdout as it
+        # completes, which is what keeps the hosted runner from killing a
+        # long CPU-bound phase.
+        run: |
+          source("tests/testthat/helper-full-tests.R")
+          heavy <- .beez_full_test_files
+          cat("Heavy files:", paste(heavy, collapse = ", "), "\n")
+          library(testthat)
+          testthat::test_dir(
+            "tests/testthat",
+            package = "beezdiscounting",
+            load_package = "installed",
+            filter = paste0("^(", paste(heavy, collapse = "|"), ")$"),
+            reporter = "progress",
+            stop_on_failure = TRUE
+          )
+        shell: Rscript {0}

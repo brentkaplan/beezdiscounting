@@ -37,3 +37,4 @@ hex-beezdiscounting.png
 ^engineering$
 ^\.playwright-mcp$
 ^CLAUDE.*\.md$
+^_win-builder$

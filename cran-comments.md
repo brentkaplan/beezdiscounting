@@ -27,12 +27,19 @@ model families and random-effect blocks).
 * local macOS (R 4.5.2)
 * GitHub Actions: ubuntu-latest (release, devel, oldrel-1), macOS-latest,
   windows-latest (R-CMD-check workflow)
+* win-builder (R-release; R-devel pending) and R-hub v2 (linux, macos-arm64,
+  windows, clang-asan, valgrind -- the package ships TMB C++ templates)
 
 ## R CMD check results
 
-Locally: 0 errors | 1 warning | 1 note. On CRAN's build machines we expect
-0 errors | 0 warnings | 1 note -- the single local warning is environmental
-(R's own header under a very recent Apple 'clang'), explained below.
+Locally (macOS/arm64, R 4.5.x): 0 errors | 1 warning | 1 note -- the single
+local warning is environmental (R's own header under a very recent Apple
+'clang'), explained below.
+
+win-builder R-release (R 4.6.1 ucrt, Windows Server 2022, 2026-08-16):
+0 errors | 0 warnings | 1 note (the pkgdown-site URL note below).
+win-builder R-devel: PENDING. R-hub linux / macos-arm64 / windows /
+clang-asan / valgrind: PENDING (recorded before submission).
 
 * **NOTE — possibly invalid URL** `https://brentkaplan.github.io/beezdiscounting/`:
   this is the package's 'pkgdown' documentation site, which is (re)deployed by the

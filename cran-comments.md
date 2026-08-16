@@ -38,8 +38,10 @@ local warning is environmental (R's own header under a very recent Apple
 
 win-builder R-release (R 4.6.1 ucrt, Windows Server 2022, 2026-08-16):
 0 errors | 0 warnings | 1 note (the pkgdown-site URL note below).
-win-builder R-devel: PENDING. R-hub linux / macos-arm64 / windows /
-clang-asan / valgrind: PENDING (recorded before submission).
+win-builder R-devel: PENDING.
+R-hub v2 (2026-08-16; R-devel on linux/macos-arm64/windows, plus clang-asan
+and valgrind): all five legs OK -- 0 errors, no sanitizer findings; valgrind
+`ERROR SUMMARY: 0 errors`, `definitely lost: 0 bytes`.
 
 * **NOTE — possibly invalid URL** `https://brentkaplan.github.io/beezdiscounting/`:
   this is the package's 'pkgdown' documentation site, which is (re)deployed by the

@@ -27,6 +27,14 @@ on:
         description: 'Unique ID. You can leave this empty.'
         type: string
 
+# The repo's .Rprofile activates renv unconditionally; inside the R-hub
+# containers that hijacks .libPaths() (the valgrind image installs pak under
+# one HOME and loads from another -> "no package called 'pak'"). Run the
+# R-hub legs with the autoloader off; the package is checked from the tarball
+# and does not need the renv library.
+env:
+  RENV_CONFIG_AUTOLOADER_ENABLED: "false"
+
 jobs:
 
   setup:

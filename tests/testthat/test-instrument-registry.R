@@ -51,10 +51,12 @@ test_that(".mcq_registry translates and keeps its strict items contract", {
 # The scoring goldens hold log10()/log() doubles; compare with a 1e-12
 # tolerance (not byte-identity) so last-ulp libm differences across platforms
 # (x86_64 Linux vs arm64 macOS: covr run 31976786586, log10_overall_k differed
-# at 1e-16) do not fail the refactor-safety net. Structure, names and
-# non-double columns are still compared exactly by expect_equal().
+# at 1e-16) do not fail the refactor-safety net. expect_equal() still compares
+# structure, dimensions, names, attributes and character values; numeric
+# columns (integer or double) are compared within the tolerance. The
+# to_choice / lookup_table goldens stay byte-identical (expect_identical).
 
-test_that("27-item paths are byte-identical to the pre-refactor goldens", {
+test_that("27-item paths match the pre-refactor goldens (scores within 1e-12; choice/lookup identical)", {
   golden <- readRDS(testthat::test_path("fixtures", "mcq27-golden.rds"))
   expect_equal(score_mcq27(mcq27), golden$default, tolerance = 1e-12)
   expect_equal(score_mcq27(mcq27, trans = "ln"), golden$ln, tolerance = 1e-12)
@@ -94,7 +96,7 @@ test_that("27-item paths are byte-identical to the pre-refactor goldens", {
   expect_identical(mcq27_to_choice(mcq27), golden$to_choice)
 })
 
-test_that("21-item paths are byte-identical to the pre-refactor goldens", {
+test_that("21-item paths match the pre-refactor goldens (scores within 1e-12; choice/lookup identical)", {
   golden <- readRDS(testthat::test_path("fixtures", "mcq21-golden.rds"))
   dat21 <- generate_data_mcq(n_ids = 8, n_items = 21, seed = 99, prop_na = 0)
   dat21_na <- generate_data_mcq(

@@ -1,0 +1,258 @@
+# Power Analysis for Between-Subject Discounting Designs
+
+The Monte Carlo runs below are precomputed (the full set of
+[`power_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/power_discounting.md)
+/
+[`find_n_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/find_n_discounting.md)
+calls in this vignette takes several minutes, well past CRAN’s
+vignette-build budget), so the outputs shown come from real runs; copy
+the chunks into your session to reproduce them.
+
+## Why simulation-based power?
+
+Before running a study, a researcher planning a delay-discounting
+experiment needs an answer to: *“How many subjects do I need to detect a
+group difference in discounting of this size at 80% power?”* Closed-form
+power formulas do not exist for mixed-effects discounting models with
+scale-location-truncated beta (SLT-beta) observation models, and Wald
+asymptotics can be unreliable at realistic study sizes.
+[`power_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/power_discounting.md)
+therefore estimates power by Monte Carlo simulation:
+
+1.  Simulate a two-group indifference-point dataset with
+    \[simulate_dd_ip()\] under assumed population parameters, a
+    hypothesized `delta_k` (the condition shift on natural-log k), and
+    the design.
+2.  Refit it with the package’s TMB mixed-effects fitter,
+    \[fit_dd_tmb()\]. The simulation and refit always use the same
+    discounting function and observation family, so the tested contrast
+    is the simulated effect.
+3.  Extract the Wald standard error of the log-k condition contrast from
+    the TMB `sdreport`.
+4.  Record both a p-value verdict and a confidence-interval verdict
+    (does the Wald CI exclude 0). Both are referred to a t distribution
+    with `n_subjects - 2` degrees of freedom (the design’s two-sample
+    df) rather than the asymptotic normal, which is anticonservative at
+    study-relevant N; `df = Inf` recovers the z-test. The two verdicts
+    use the same standard error and reference distribution, so they
+    always agree – both report formats are returned.
+5.  Repeat `n_sim` times. Power is the proportion of *usable* fits
+    (converged, positive-definite Hessian, finite SE) that reject,
+    reported with a Wilson confidence interval because it is itself an
+    estimate from finitely many replicates.
+
+The design is *between-subject*: `n_subjects` is the total N, split
+across the two conditions round-robin (use even numbers for equal
+groups). This mirrors `beezdemand::power_demand()`, which models a
+*within-subject* condition – the asymmetry matches what each package’s
+simulator and fitter already represent.
+
+## Estimating power at a fixed sample size
+
+Suppose pilot data suggest the comparison group discounts about twice as
+steeply (`delta_k = log(2) ≈ 0.69`) and subjects vary with
+`sigma_u = 0.6` around their group’s log k:
+
+``` r
+
+res <- power_discounting(
+  n_subjects = 60,
+  effect = list(delta_k = log(2)),
+  design = list(
+    delays = c(7, 30, 180, 365, 730, 1460, 2920),
+    sigma_u = 0.6,  # subject SD on log k
+    phi = 10        # SLT-beta precision
+  ),
+  n_sim = 40,       # small for a fast vignette; see guidance below
+  seed = 1234,
+  verbose = FALSE
+)
+res
+#> Monte Carlo power analysis (beezdiscounting)
+#>   Target: k:conditionC2 (delta_k = 0.6931), two-sided alpha = 0.05, t reference (df = 58)
+#>   n_subjects = 60 (between-subject, 2 conditions), n_sim = 40 (converged 40, usable 40)
+#>   Power (CI-exclusion): 0.925 [95% MC CI 0.801, 0.974]
+#>   p-value hit rate:     0.925
+```
+
+Convergence diagnostics are part of the output, not a footnote:
+replicates whose refit fails are excluded from the power denominator and
+counted in `n_converged` / `n_used`, never treated as “no effect
+detected”.
+
+``` r
+
+res$n_converged
+#> [1] 40
+res$n_used
+#> [1] 40
+table(res$replicates$status)
+#> 
+#> ok 
+#> 40
+```
+
+## Searching for a sample size
+
+[`find_n_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/find_n_discounting.md)
+wraps the engine in a bisection search over total N for the smallest
+sample whose estimated power reaches the target. The search is aware of
+Monte Carlo noise: at each candidate N it adds replicates until the
+Wilson interval falls clearly above or below the target (up to
+`n_sim_max`), and it re-evaluates the selected N and its lower neighbor
+(or the lower bound itself, when the target is already met there) before
+reporting. Bisection assumes power is monotone in N; because each N is
+judged from independent replicates, a fluctuation at a lower N can hide
+a crossing the search never revisits. Evaluated N that contradict
+monotonicity demote the status to `uncertain`, but never-visited N
+cannot be checked – so treat the result as an estimate and confirm it
+with a large `n_sim` at the chosen N.
+
+``` r
+
+search <- find_n_discounting(
+  target_power = 0.8,
+  effect = list(delta_k = log(3)),
+  n_range = c(6, 60),
+  n_sim = 30,       # small for a fast vignette
+  seed = 5678,
+  verbose = FALSE
+)
+search
+#> Sample-size search (Monte Carlo power)
+#>   Target power 0.80 for delta_k = 1.099 at alpha = 0.05
+#>   Estimated minimum n_subjects = 13 (status: uncertain)
+#>   This is an estimated minimum under Monte Carlo uncertainty;
+#>   rerun the power function at this N with a large n_sim to report it.
+#> 
+#>   Evaluations:
+#>  n_subjects n_sim_total n_used usable_fraction     power  ci_lower  ci_upper
+#>          60          30     30               1 1.0000000 0.8864866 1.0000000
+#>           6          30     30               1 0.5666667 0.3919731 0.7262251
+#>          33          30     30               1 1.0000000 0.8864866 1.0000000
+#>          19          60     60               1 0.9666667 0.8863623 0.9908107
+#>          12         120    120               1 0.7750000 0.6924310 0.8405085
+#>          15          60     60               1 0.9500000 0.8629948 0.9828505
+#>          13         120    120               1 0.8333333 0.7565472 0.8894400
+#>          13         120    120               1 0.8833333 0.8136665 0.9292188
+#>          12         120    120               1 0.8333333 0.7565472 0.8894400
+#>         decision
+#>            above
+#>            below
+#>            above
+#>            above
+#>  ambiguous_below
+#>            above
+#>  ambiguous_above
+#>            above
+#>  ambiguous_above
+```
+
+The result is an *estimated minimum under Monte Carlo uncertainty* (the
+`status` field says whether the confirmation pass was conclusive). For a
+defensible grant number, rerun
+[`power_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/power_discounting.md)
+at the returned N with a large `n_sim` and report that estimate with its
+Monte Carlo interval.
+
+## Sensitivity to the assumed effect size
+
+Power claims are conditional on the assumed effect and heterogeneity. A
+small sweep makes that dependence visible:
+
+``` r
+
+deltas <- c(log(1.5), log(2), log(3))
+sweep <- vapply(deltas, function(d) {
+  power_discounting(
+    n_subjects = 60, effect = list(delta_k = d),
+    n_sim = 30, seed = 42, verbose = FALSE
+  )$power
+}, numeric(1))
+data.frame(k_ratio = exp(deltas), power = sweep)
+#>   k_ratio     power
+#> 1     1.5 0.6333333
+#> 2     2.0 1.0000000
+#> 3     3.0 1.0000000
+```
+
+## How many replicates do you need?
+
+The Monte Carlo standard error of a power estimate near `p` is
+`sqrt(p (1 - p) / n_sim)`:
+
+| `n_sim` | MC SE near power = 0.8 | Use                                  |
+|--------:|-----------------------:|--------------------------------------|
+|     100 |                  0.040 | quick interactive exploration        |
+|     500 |                  0.018 | default; serious exploration         |
+|    2000 |                  0.009 | grant applications, preregistrations |
+
+Always report the Wilson interval (`power_mc_ci`) alongside the point
+estimate.
+
+## Validity and Limitations
+
+**Validity checks.** The package test suite
+(`tests/testthat/test-dd-power.R`) verifies, with preregistered seeds
+and tolerance bands fixed before the tests were first run:
+
+- **Type I error calibration** (the load-bearing check): with
+  `delta_k = 0`, the empirical false-positive rate at nominal
+  `alpha = .05` over 1,200 replicates must fall in \[0.03, 0.07\] – a
+  band of 3.18 binomial standard errors that excludes both half and 1.5
+  times the nominal rate. `n_sim = 1200` was computed from that
+  tolerance (`9 * .05 * .95 / .02^2 ≈ 1069`), not guessed. A second null
+  check runs at N = 60. The t(n - 2) reference distribution these checks
+  validate was adopted after the sibling beezdemand calibration battery
+  showed the asymptotic z-test is anticonservative at study-relevant
+  sample sizes.
+- **Convergence handling**: a configuration that reliably produces
+  non-convergence confirms failed replicates are excluded from the power
+  denominator and surfaced via `n_converged` / `n_used`, not silently
+  counted as misses.
+- **Closed-form benchmark**: with `family = "gaussian"`, tiny residual
+  error, and many delays, each subject’s log k is recovered nearly
+  exactly and the design reduces to a two-sample comparison of log k;
+  the Monte Carlo estimate must match
+  [`pwr::pwr.t.test()`](https://rdrr.io/pkg/pwr/man/pwr.t.test.html)
+  within a preregistered tolerance of 0.10.
+- **Monotonicity**: power increases with `n_subjects` and `delta_k` and
+  decreases with `sigma_u`, within Monte Carlo slack.
+- **Reproducibility**: identical `seed` gives identical results,
+  asserted exactly.
+
+These checks validate the default configuration (`equation = "mazur"`,
+`family = "sltb"`, `random_effects = k ~ 1`), where the refit model
+exactly matches the data-generating process.
+
+The `find_n_*` search statuses (`"confirmed"`, `"uncertain"`,
+`"unresolved"`) describe a heuristic Monte Carlo decision rule –
+repeated looks at ordinary Wilson intervals across candidate N – not a
+formal sequential testing procedure with a guaranteed error rate. When
+the confirmation pass contradicts the search, the function returns
+`n = NA` rather than an unsupported number.
+
+**Explicitly out of scope in v1** (flagged as future work, not silently
+approximated):
+
+- Effects on the curvature exponent `s` (Green-Myerson / Rachlin) or the
+  SLT-beta precision `phi`; the two-parameter equations are excluded
+  entirely.
+- Power for derived measures (ED50, AUC, indifference points at a
+  delay).
+- Random effects beyond the single log-k intercept; correlated `k`/`phi`
+  or `k`/`s` random effects. (`random_effects` accepts such formulas,
+  but the simulator still generates only the log-k intercept, so the
+  refit is over-specified relative to the data-generating process – a
+  robustness probe, not a power estimate under those random effects.)
+- Arbitrary user-supplied designs beyond the package’s between-subject
+  simulator (two conditions, round-robin allocation, all subjects at all
+  delays).
+- Any graphical or interactive interface.
+
+**What the numbers can bear.** A reported power estimate is (a)
+conditional on the assumed population parameters and heterogeneity –
+vary them and look at the sensitivity of the answer; (b) conditional on
+usable fits – take the `n_used` warning seriously if it fires; and (c) a
+Monte Carlo estimate – cite it with its interval at an `n_sim` sized for
+the decision it supports.

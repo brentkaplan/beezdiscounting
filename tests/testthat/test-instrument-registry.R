@@ -48,39 +48,49 @@ test_that(".mcq_registry translates and keeps its strict items contract", {
   expect_error(beezdiscounting:::.mcq_registry(c(27, 21)), "must be 27 or 21")
 })
 
+# The scoring goldens hold log10()/log() doubles; compare with a 1e-12
+# tolerance (not byte-identity) so last-ulp libm differences across platforms
+# (x86_64 Linux vs arm64 macOS: covr run 31976786586, log10_overall_k differed
+# at 1e-16) do not fail the refactor-safety net. Structure, names and
+# non-double columns are still compared exactly by expect_equal().
+
 test_that("27-item paths are byte-identical to the pre-refactor goldens", {
   golden <- readRDS(testthat::test_path("fixtures", "mcq27-golden.rds"))
-  expect_identical(score_mcq27(mcq27), golden$default)
-  expect_identical(score_mcq27(mcq27, trans = "ln"), golden$ln)
-  expect_identical(
+  expect_equal(score_mcq27(mcq27), golden$default, tolerance = 1e-12)
+  expect_equal(score_mcq27(mcq27, trans = "ln"), golden$ln, tolerance = 1e-12)
+  expect_equal(
     score_mcq27(mcq27, trans = "log", round = 3),
-    golden$log_round3
+    golden$log_round3,
+    tolerance = 1e-12
   )
   all_sir <- data.frame(subjectid = 1L, questionid = 1:27, response = 0)
-  expect_identical(score_mcq27(all_sir), golden$all_sir)
+  expect_equal(score_mcq27(all_sir), golden$all_sir, tolerance = 1e-12)
   dat_na <- generate_data_mcq(
     n_ids = 8,
     n_items = 27,
     seed = 99,
     prop_na = 0.03
   )
-  expect_identical(
+  expect_equal(
     suppressWarnings(score_mcq27(dat_na, impute_method = "none")),
-    golden$na_none
+    golden$na_none,
+    tolerance = 1e-12
   )
-  expect_identical(
+  expect_equal(
     suppressWarnings(score_mcq27(dat_na, impute_method = "ggm")),
-    golden$na_ggm
+    golden$na_ggm,
+    tolerance = 1e-12
   )
-  expect_identical(
+  expect_equal(
     suppressWarnings(score_mcq27(
       dat_na,
       impute_method = "inn",
       return_data = TRUE
     )),
-    golden$na_inn_data
+    golden$na_inn_data,
+    tolerance = 1e-12
   )
-  expect_identical(suppressWarnings(prop_ss(mcq27)), golden$prop_ss)
+  expect_equal(suppressWarnings(prop_ss(mcq27)), golden$prop_ss, tolerance = 1e-12)
   expect_identical(mcq27_to_choice(mcq27), golden$to_choice)
 })
 
@@ -94,31 +104,35 @@ test_that("21-item paths are byte-identical to the pre-refactor goldens", {
     prop_na = 0.03
   )
   all_sir <- data.frame(subjectid = 1L, questionid = 1:21, response = 0)
-  expect_identical(score_mcq(dat21, items = 21), golden$default)
-  expect_identical(score_mcq(dat21, items = 21, trans = "ln"), golden$ln)
-  expect_identical(
+  expect_equal(score_mcq(dat21, items = 21), golden$default, tolerance = 1e-12)
+  expect_equal(score_mcq(dat21, items = 21, trans = "ln"), golden$ln, tolerance = 1e-12)
+  expect_equal(
     score_mcq(dat21, items = 21, trans = "log", round = 3),
-    golden$log_round3
+    golden$log_round3,
+    tolerance = 1e-12
   )
-  expect_identical(score_mcq(all_sir, items = 21), golden$all_sir)
-  expect_identical(
+  expect_equal(score_mcq(all_sir, items = 21), golden$all_sir, tolerance = 1e-12)
+  expect_equal(
     suppressWarnings(score_mcq(dat21_na, items = 21, impute_method = "none")),
-    golden$na_none
+    golden$na_none,
+    tolerance = 1e-12
   )
-  expect_identical(
+  expect_equal(
     suppressWarnings(score_mcq(dat21_na, items = 21, impute_method = "ggm")),
-    golden$na_ggm
+    golden$na_ggm,
+    tolerance = 1e-12
   )
-  expect_identical(
+  expect_equal(
     suppressWarnings(score_mcq(
       dat21_na,
       items = 21,
       impute_method = "inn",
       return_data = TRUE
     )),
-    golden$na_inn_data
+    golden$na_inn_data,
+    tolerance = 1e-12
   )
-  expect_identical(suppressWarnings(prop_ss(dat21, items = 21)), golden$prop_ss)
+  expect_equal(suppressWarnings(prop_ss(dat21, items = 21)), golden$prop_ss, tolerance = 1e-12)
   expect_identical(mcq_to_choice(dat21, items = 21), golden$to_choice)
   expect_identical(get_lookup_table(items = 21), golden$lookup_table)
 })

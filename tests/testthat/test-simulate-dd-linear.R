@@ -26,7 +26,10 @@ describe("simulate_dd_linear()", {
     skip_on_cran()
     s <- simulate_dd_linear(n_subjects = 200, delays = c(30, 90, 180, 365, 1095, 1825, 3650),
                             mu = c(-7, -5.5), sigma2 = 2, g = 10.4, seed = 42)
-    f <- fit_dd_linear(s, factors = "condition")
+    # boundary = "error": simulated D is strictly inside (0, 1), and the default clamp would also
+    # pull interior points within eps of 0/1, biasing sigma2/g downward (~5-8% at these paper-scale
+    # parameters). This test isolates the estimator.
+    f <- fit_dd_linear(s, factors = "condition", boundary = "error")
     expect_equal(unname(f$re$mu), c(-7, -5.5), tolerance = 0.1)
     expect_equal(f$re$sigma2, 2, tolerance = 0.08)
     expect_equal(f$re$g, 10.4, tolerance = 0.15)

@@ -217,7 +217,7 @@
 #'   level; frames with an id under several levels are rejected because the exact
 #'   F-test assumes independent units per condition.
 #' @param response_scale,ll As in [fit_dd_tmb()].
-#' @param boundary How to treat `y` in {0, 1}: `"clamp"` (default), `"drop"`
+#' @param boundary How to treat `y` in \{0, 1\}: `"clamp"` (default), `"drop"`
 #'   (per-subject estimates only unless the design stays balanced), `"error"`.
 #' @param eps Clamp half-width; default `1/(2 * ll)` if `ll` is given, else `0.005`.
 #' @param conf_level Confidence level for per-subject ln(k) intervals.

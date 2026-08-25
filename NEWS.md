@@ -1,3 +1,25 @@
+# beezdiscounting 0.5.0 (development)
+
+### Linearized Mazur estimator (Hinds et al., 2026)
+
+* `fit_dd_linear()` fits the linearized hyperbola `ln(1/D - 1) - ln(t) = ln k + e`
+  (Hinds, Tegge, Stein, LaConte, McClure & Ferreira, 2026, *J. Math. Psychol.*
+  130:103006). Per-subject ln k is the closed-form mean of the transformed
+  points (no optimizer, no convergence failures), with t-based confidence
+  intervals; a one-way random-effects model on the transformed scale has
+  closed-form MLEs (`mu` per condition, `sigma2`, `g`); `anova()` gives the
+  paper's exact F-test for condition means, including pairwise contrasts and
+  Cohen's d; `logLik(scale = "raw")` is Jacobian-corrected so it is comparable
+  with Gaussian NLS/TMB fits (paper Sec. 2.3). Indifference points at exactly
+  0 or 1 — undefined under the transform and not addressed by the paper — are
+  clamped to `[eps, 1 - eps]` by default (`boundary = "clamp"`), with `"drop"`
+  and `"error"` alternatives; the count is reported.
+* `simulate_dd_linear()` simulates from the linearized random-effects model
+  (paper Sec. 4.1).
+* Implementation note: written from the published paper; validated against
+  `nlme::lme(method = "ML")` and nested `lm()` ANOVA oracles. A comparison
+  with the authors' reference package is a separate, later step.
+
 # beezdiscounting 0.4.0
 
 This is a large release (the first since 0.3.2, January 2025): mixed-effects

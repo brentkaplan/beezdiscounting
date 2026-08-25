@@ -75,6 +75,15 @@ reference:
       - simulate_dd_ip
       - VarCorr.beezdiscounting_tmb
 
+  - title: Linearized Mazur (closed form)
+    desc: >
+      Analytic ln k, closed-form random-effects MLEs, and an exact F-test across
+      conditions (Hinds et al., 2026).
+    contents:
+      - fit_dd_linear
+      - anova.beezdiscounting_linear
+      - simulate_dd_linear
+
   - title: Power analysis
     desc: >
       Monte Carlo power estimation and sample-size search for between-subject

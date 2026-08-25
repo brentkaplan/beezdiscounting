@@ -29,7 +29,7 @@ F-test assumes independent units per condition.}
 
 \item{response_scale, ll}{As in \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.}
 
-\item{boundary}{How to treat \code{y} in {0, 1}: \code{"clamp"} (default), \code{"drop"}
+\item{boundary}{How to treat \code{y} in \{0, 1\}: \code{"clamp"} (default), \code{"drop"}
 (per-subject estimates only unless the design stays balanced), \code{"error"}.}
 
 \item{eps}{Clamp half-width; default \code{1/(2 * ll)} if \code{ll} is given, else \code{0.005}.}

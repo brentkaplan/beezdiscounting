@@ -38,6 +38,7 @@ returns \verb{D = 1 / (1 + exp(y) t)} (Hinds et al., 2026, Sec. 4.1), which is
 always strictly inside (0, 1).
 }
 \examples{
-s <- simulate_dd_linear(30, c(7, 30, 180, 365), mu = c(A = -6, B = -5), sigma2 = 2, g = 10, seed = 1)
-fit_dd_linear(s, factors = "condition")
+s <- simulate_dd_linear(30, c(7, 30, 180, 365), mu = c(A = -6, B = -5),
+                        sigma2 = 2, g = 10, seed = 1)
+anova(fit_dd_linear(s, factors = "condition"))
 }

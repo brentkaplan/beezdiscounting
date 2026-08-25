@@ -12,8 +12,9 @@
 #' @param attach_truth If `TRUE`, attach `attr(, "truth")`.
 #' @return Long `data.frame(id, condition, x, y)`.
 #' @examples
-#' s <- simulate_dd_linear(30, c(7, 30, 180, 365), mu = c(A = -6, B = -5), sigma2 = 2, g = 10, seed = 1)
-#' fit_dd_linear(s, factors = "condition")
+#' s <- simulate_dd_linear(30, c(7, 30, 180, 365), mu = c(A = -6, B = -5),
+#'                         sigma2 = 2, g = 10, seed = 1)
+#' anova(fit_dd_linear(s, factors = "condition"))
 #' @export
 simulate_dd_linear <- function(n_subjects, delays, mu, sigma2, g, seed = NULL, attach_truth = FALSE) {
   if (any(delays <= 0)) {

@@ -84,3 +84,59 @@
   out$loglik_raw <- ll_y + sum(lj)
   out
 }
+
+#' One-way random-effects MLEs on the transformed scale (Hinds et al. 2026, Prop. 3.3)
+#' @keywords internal
+#' @noRd
+.dd_lin_re_mle <- function(y_lin, unit, condition, log_jac) {
+  unit <- droplevels(as.factor(unit))
+  condition <- droplevels(as.factor(condition))
+  ok <- is.finite(y_lin)
+  y <- y_lin[ok]
+  u <- droplevels(unit[ok])
+  cnd <- condition[ok]
+  lj <- log_jac[ok]
+  t_per_unit <- table(u)
+  if (length(unique(as.integer(t_per_unit))) != 1L) {
+    cli::cli_abort(c(
+      "The random-effects model requires a balanced design: every unit must have the same number of delays.",
+      "i" = "Counts range {min(t_per_unit)}-{max(t_per_unit)}. Use {.code boundary = \"clamp\"} or complete the data."
+    ))
+  }
+  n_t <- as.integer(t_per_unit[1])
+  N <- nlevels(u)
+  unit_cond <- factor(tapply(as.character(cnd), u, `[`, 1), levels = levels(cnd))
+  ybar_i <- tapply(y, u, mean)
+  mu <- tapply(y, cnd, mean)                                       # Eq. 21
+  sse_z <- sum((y - ybar_i[as.character(u)])^2)
+  ssr_zx <- n_t * sum((ybar_i - mu[as.character(unit_cond)])^2)
+  g_zero <- ssr_zx <= 0 || (sse_z / ssr_zx) >= (n_t - 1)
+  if (g_zero) {
+    sigma2 <- (sse_z + ssr_zx) / (N * n_t)
+    g <- 0
+  } else {
+    sigma2 <- sse_z / (N * (n_t - 1))                              # Eq. 22
+    g <- ssr_zx / (sse_z / (n_t - 1)) - 1                          # Eq. 23
+  }
+  # Eq. 20 at the MLE (third term vanishes at mu-hat), plus the 2*pi constant
+  loglik_y <- -(N / 2) * (n_t * log(sigma2) + log1p(g)) -
+    (sse_z + ssr_zx / (g + 1)) / (2 * sigma2) - (N * n_t / 2) * log(2 * pi)
+  C <- nlevels(cnd)
+  list(
+    mu = stats::setNames(as.numeric(mu), names(mu)),
+    sigma2 = sigma2,
+    g = g,
+    g_zero = g_zero,
+    sigma_u2 = g * sigma2 / n_t,
+    sse_z = sse_z,
+    ssr_zx = ssr_zx,
+    n_units = N,
+    n_per_condition = table(unit_cond),
+    n_delays = n_t,
+    loglik_y = loglik_y,
+    loglik_raw = loglik_y + sum(lj),
+    n_par = C + 2L,
+    unit_mean = stats::setNames(as.numeric(ybar_i), names(ybar_i)),
+    unit_condition = unit_cond
+  )
+}

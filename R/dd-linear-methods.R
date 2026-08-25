@@ -114,6 +114,12 @@ confint.beezdiscounting_linear <- function(object, parm = c("population", "subje
     if (is.null(re)) {
       cli::cli_abort("Random-effects component was not fitted.")
     }
+    if (re$n_units - length(re$mu) < 1L) {
+      cli::cli_abort(paste0(
+        "population intervals need at least one condition with two or more units ",
+        "(N - C = 0)"
+      ))
+    }
     # ANOVA-style interval on the per-subject ln k means (the paper gives no population
     # interval). Between-subject mean square with N - C df: SSR_{Z|X} / (T (N - C)).
     # The ML divisor N (= sigma2 (g+1)/T) would understate the SE by sqrt((N - C)/N).

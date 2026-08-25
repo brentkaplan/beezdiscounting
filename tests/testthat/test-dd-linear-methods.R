@@ -3,6 +3,13 @@
                             mu = c(-6.5, -6, -5.5), sigma2 = 2, g = 10, seed = 3)
   fit_dd_linear(sim, factors = "condition")
 }
+.lin_fit_ncz0 <- function() {
+  d <- data.frame(
+    id = rep(c("a", "b"), each = 3), x = rep(c(1, 7, 30), 2),
+    y = c(0.9, 0.5, 0.2, 0.8, 0.4, 0.1), cond = rep(c("A", "B"), each = 3)
+  )
+  fit_dd_linear(d, factors = "cond")
+}
 describe("beezdiscounting_linear methods", {
   fit <- .lin_fit3()
   it("print/summary run and mention the clamp bookkeeping", {
@@ -23,7 +30,8 @@ describe("beezdiscounting_linear methods", {
   it("coef returns population mu; confint population = ANOVA t-interval with N - C df", {
     expect_equal(coef(fit), fit$re$mu)
     ci <- confint(fit)
-    # ORACLE: lm on per-subject ln k computed from the raw data, not from the fit
+    # ORACLE: lm on per-subject ln k computed from the fit's stored y_lin (independent of the
+    # RE closed forms, not of the transform)
     d <- fit$data
     logk <- tapply(d$y_lin, d$id, mean)
     cond <- factor(tapply(as.character(d$condition), d$id, `[`, 1), levels = levels(d$condition))
@@ -54,5 +62,13 @@ describe("beezdiscounting_linear methods", {
     expect_error(anova(one), "single condition")
     unb <- suppressWarnings(fit_dd_linear(dd_ip, boundary = "drop"))
     expect_error(anova(unb), "not fitted")
+  })
+  it("confint population errors when N - C = 0 (one subject per condition)", {
+    fit0 <- .lin_fit_ncz0()
+    expect_error(confint(fit0), "N - C")
+  })
+  it("anova errors when the F-test denominator df is 0 (N - C = 0)", {
+    fit0 <- .lin_fit_ncz0()
+    expect_error(anova(fit0), "denominator df")
   })
 })

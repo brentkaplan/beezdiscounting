@@ -183,6 +183,12 @@
   ssr_red <- n_t * sum((ybar - tapply(ybar, red, mean)[as.character(red)])^2)
   df1 <- nlevels(full) - nlevels(red)
   df2 <- sum(table(full) - 1)
+  if (df2 < 1L) {
+    cli::cli_abort(paste0(
+      "the F-test needs at least one condition with two or more units ",
+      "(denominator df = 0)"
+    ))
+  }
   f_stat <- ((ssr_red - ssr_full) / df1) / (ssr_full / df2)
   p <- stats::pf(f_stat, df1, df2, lower.tail = FALSE)
   if (re$g_zero) {
@@ -291,6 +297,8 @@ fit_dd_linear <- function(data, y_var = "y", x_var = "x", id_var = "id", factors
     subjects <- subjects[!too_few, , drop = FALSE]
   }
   long$unit <- droplevels(long$unit)
+  long$condition <- droplevels(long$condition)
+  subjects$condition <- droplevels(subjects$condition)
   subjects <- tibble::as_tibble(subjects)
   subjects <- subjects[, c("id", "condition", "n_delays", "n_boundary", "logk", "se", "df",
                            "ci_lo", "ci_hi", "k", "k_lo", "k_hi", "s2", "loglik_y", "loglik_raw")]

@@ -66,4 +66,17 @@ describe("fit_dd_linear()", {
     expect_warning(fp <- fit_dd_linear(p, response_scale = "percent"))
     expect_equal(fp$subjects$logk, fit_dd_linear(toy)$subjects$logk)
   })
+  it("dropping the only subject in a condition drops that condition level everywhere", {
+    d <- data.frame(
+      id = c("a1", "a1", "a2", "a2", "b1", "b1", "b2", "b2", "c1"),
+      x = c(1, 7, 1, 7, 1, 7, 1, 7, 1),
+      y = c(0.9, 0.5, 0.85, 0.55, 0.3, 0.1, 0.35, 0.15, 0.5),
+      cond = c("A", "A", "A", "A", "B", "B", "B", "B", "C")
+    )
+    expect_warning(fit <- fit_dd_linear(d, factors = "cond"), "c1")
+    expect_equal(fit$design$levels, c("A", "B"))
+    expect_named(fit$re$mu, c("A", "B"))
+    expect_equal(glance(fit)$n_conditions, 2L)
+    expect_equal(nrow(anova(fit, pairwise = TRUE)), 1L)
+  })
 })

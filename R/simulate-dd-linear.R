@@ -17,14 +17,23 @@
 #' anova(fit_dd_linear(s, factors = "condition"))
 #' @export
 simulate_dd_linear <- function(n_subjects, delays, mu, sigma2, g, seed = NULL, attach_truth = FALSE) {
-  if (any(delays <= 0)) {
-    cli::cli_abort("{.arg delays} must be positive.")
+  if (any(!is.finite(delays)) || any(delays <= 0)) {
+    cli::cli_abort("{.arg delays} must be finite and positive.")
   }
-  if (sigma2 <= 0 || g < 0) {
-    cli::cli_abort("{.arg sigma2} must be > 0 and {.arg g} >= 0.")
+  if (!is.numeric(sigma2) || length(sigma2) != 1L || !is.finite(sigma2) || sigma2 <= 0) {
+    cli::cli_abort("{.arg sigma2} must be a finite single number > 0.")
+  }
+  if (!is.numeric(g) || length(g) != 1L || !is.finite(g) || g < 0) {
+    cli::cli_abort("{.arg g} must be a finite single number >= 0.")
   }
   n_cond <- length(mu)
   labels <- if (is.null(names(mu))) paste0("C", seq_len(n_cond)) else names(mu)
+  if (!(length(n_subjects) %in% c(1L, n_cond))) {
+    cli::cli_abort("{.arg n_subjects} must have length 1 or length(mu) ({n_cond}).")
+  }
+  if (any(!is.finite(n_subjects)) || any(n_subjects != round(n_subjects)) || any(n_subjects < 1)) {
+    cli::cli_abort("{.arg n_subjects} must be finite, integer-valued, and >= 1.")
+  }
   n_subjects <- rep_len(as.integer(n_subjects), n_cond)
   if (!is.null(seed)) {
     had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)

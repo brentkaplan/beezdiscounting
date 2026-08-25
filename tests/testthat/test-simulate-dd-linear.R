@@ -14,6 +14,20 @@ describe("simulate_dd_linear()", {
     s <- simulate_dd_linear(c(2, 3), c(7, 30), mu = c(EFT = -7, NCC = -5.5), sigma2 = 2, g = 10, seed = 3)
     expect_equal(as.integer(table(s$condition)), c(4L, 6L)); expect_equal(levels(s$condition), c("EFT", "NCC"))
   })
+  it("rejects non-finite or non-positive delays", {
+    expect_error(simulate_dd_linear(2, c(7, Inf), -5, 1, 4), "finite")
+    expect_error(simulate_dd_linear(2, c(7, -30), -5, 1, 4), "finite")
+  })
+  it("rejects non-finite sigma2/g", {
+    expect_error(simulate_dd_linear(2, c(7, 30), -5, Inf, 4), "sigma2")
+    expect_error(simulate_dd_linear(2, c(7, 30), -5, 1, Inf), "g")
+  })
+  it("rejects n_subjects with the wrong length", {
+    expect_error(simulate_dd_linear(c(2, 3), c(7, 30), mu = c(-6, -5, -4), 1, 4), "length")
+  })
+  it("rejects non-integer n_subjects", {
+    expect_error(simulate_dd_linear(1.9, c(7, 30), -5, 1, 4), "integer")
+  })
   it("seed makes it reproducible and restores the global RNG state", {
     set.seed(99); invisible(runif(1))
     state_before <- .Random.seed
@@ -21,6 +35,17 @@ describe("simulate_dd_linear()", {
     expect_identical(.Random.seed, state_before)          # state untouched by the seeded call
     b <- simulate_dd_linear(4, c(7, 30), -5, 1, 4, seed = 7)
     expect_identical(a, b)
+  })
+  it("ORACLE (nlme, no package code): hand-transformed lme recovers mu, sigma2, g", {
+    skip_on_cran()
+    s <- simulate_dd_linear(n_subjects = 200, delays = c(30, 90, 180, 365, 1095, 1825, 3650),
+                            mu = c(-7, -5.5), sigma2 = 2, g = 10.4, seed = 42)
+    yv <- log(1 / s$y - 1) - log(s$x)
+    lme_fit <- nlme::lme(yv ~ 0 + condition, random = ~ 1 | id,
+                         data = data.frame(yv, condition = s$condition, id = s$id), method = "ML")
+    expect_equal(lme_fit$sigma^2, 2, tolerance = 0.05)
+    expect_equal(as.numeric(nlme::VarCorr(lme_fit)[1, "Variance"]), 10.4 * 2 / 7, tolerance = 0.15)
+    expect_equal(unname(nlme::fixef(lme_fit)), c(-7, -5.5), tolerance = 0.05)
   })
   it("RECOVERY: fit_dd_linear recovers mu, sigma2, g at paper Sec 4.3 values", {
     skip_on_cran()

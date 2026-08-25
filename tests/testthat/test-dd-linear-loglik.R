@@ -10,5 +10,11 @@ describe("Jacobian-corrected likelihood (Sec 2.3 / Eq. 13-14)", {
     nls_fit <- stats::nls(y ~ 1 / (1 + k * x), d, start = list(k = 0.02))
     expect_type(fit$subjects$loglik_raw, "double")
     expect_true(is.finite(fit$subjects$loglik_raw)); expect_true(is.finite(as.numeric(logLik(nls_fit))))
+    # ORACLE: computed only from the raw `d` frame, never from fit$data or .dd_lin_transform.
+    yv <- log(1 / d$y - 1) - log(d$x)
+    s2 <- mean((yv - mean(yv))^2)
+    ll_raw_oracle <- sum(dnorm(yv, mean(yv), sqrt(s2), log = TRUE)) + sum(-log(d$y - d$y^2))
+    expect_equal(fit$subjects$loglik_raw, ll_raw_oracle, tolerance = 1e-10)
+    expect_equal(fit$subjects$loglik_raw - fit$subjects$loglik_y, sum(-log(d$y - d$y^2)), tolerance = 1e-10)
   })
 })

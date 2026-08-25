@@ -49,3 +49,30 @@
     n_dropped = as.integer(n_dropped), log_jac = log_jac
   )
 }
+
+#' Per-unit closed-form fit (Hinds et al. 2026, Eqs. 8-9, 12, 14)
+#' @keywords internal
+#' @noRd
+.dd_lin_unit_fit <- function(y_lin, log_jac, conf_level = 0.95) {
+  ok <- is.finite(y_lin)
+  y <- y_lin[ok]; lj <- log_jac[ok]
+  n <- length(y)
+  out <- data.frame(
+    n_delays = as.integer(n), logk = NA_real_, se = NA_real_, df = NA_real_,
+    ci_lo = NA_real_, ci_hi = NA_real_, k = NA_real_, k_lo = NA_real_, k_hi = NA_real_,
+    s2 = NA_real_, loglik_y = NA_real_, loglik_raw = NA_real_
+  )
+  if (n < 2L) return(out)
+  logk <- mean(y)
+  rss <- sum((y - logk)^2)
+  s2 <- rss / (n - 1)
+  se <- sqrt(s2 / n)
+  tq <- stats::qt(1 - (1 - conf_level) / 2, df = n - 1)
+  sig2_mle <- rss / n
+  ll_y <- -(n / 2) * log(2 * pi * sig2_mle) - n / 2
+  out$logk <- logk; out$se <- se; out$df <- n - 1
+  out$ci_lo <- logk - tq * se; out$ci_hi <- logk + tq * se
+  out$k <- exp(logk); out$k_lo <- exp(out$ci_lo); out$k_hi <- exp(out$ci_hi)
+  out$s2 <- s2; out$loglik_y <- ll_y; out$loglik_raw <- ll_y + sum(lj)
+  out
+}

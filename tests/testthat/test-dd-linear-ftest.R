@@ -69,6 +69,11 @@ describe(".dd_lin_ftest()", {
     expect_equal(bare$hypothesis, "EFT = NCC")
     expect_false(is.na(bare$cohens_d))
   })
+  it("aborts when the hypothesis constrains nothing (numerator df = 0)", {
+    expect_error(.dd_lin_ftest(re, list("EFT")), "constrains nothing")
+    expect_error(.dd_lin_ftest(re, "EFT"), "constrains nothing")
+    expect_error(.dd_lin_ftest(re, list()), "constrains nothing")
+  })
   it("Cohen's d for a pair follows Sec 4.3: sqrt(T)(mu1-mu2)/(sigma sqrt(g+1))", {
     r <- .dd_lin_ftest(re, list(c("EFT", "NCC")))
     expect_equal(r$cohens_d, sqrt(6) * (re$mu[["EFT"]] - re$mu[["NCC"]]) / (sqrt(re$sigma2) * sqrt(re$g + 1)))

@@ -20,5 +20,10 @@ vectors, each naming levels constrained equal under H0.}
 Tibble of class \code{beezdiscounting_linear_anova}.
 }
 \description{
-F-test for condition means in a linearized Mazur fit (Hinds et al. 2026, Prop. 3.5)
+The paper's F-test is exact when the random-effects variance estimate
+\code{g-hat > 0} (Prop. 3.5's assumption); when \code{g-hat = 0} the statistic is still
+reported, with a warning.
+}
+\seealso{
+\link{beezdiscounting_linear-methods} for the other S3 methods.
 }

@@ -110,6 +110,12 @@
   mu <- tapply(y, cnd, mean)                                       # Eq. 21
   sse_z <- sum((y - ybar_i[as.character(u)])^2)
   ssr_zx <- n_t * sum((ybar_i - mu[as.character(unit_cond)])^2)
+  if (sse_z <= 0 && n_t > 1L) {
+    cli::cli_abort(c(
+      "Every unit's transformed points are identical (SSE_Z = 0); the likelihood is unbounded.",
+      "i" = "Check for duplicated or synthetic noiseless indifference points."
+    ))
+  }
   g_zero <- ssr_zx <= 0 || (sse_z / ssr_zx) >= (n_t - 1)
   if (g_zero) {
     sigma2 <- (sse_z + ssr_zx) / (N * n_t)
@@ -182,6 +188,9 @@
   ssr_full <- n_t * sum((ybar - tapply(ybar, full, mean)[as.character(full)])^2)
   ssr_red <- n_t * sum((ybar - tapply(ybar, red, mean)[as.character(red)])^2)
   df1 <- nlevels(full) - nlevels(red)
+  if (df1 < 1L) {
+    cli::cli_abort("{.arg hypothesis} constrains nothing: every named set must contain at least two levels.")
+  }
   df2 <- sum(table(full) - 1)
   if (df2 < 1L) {
     cli::cli_abort(paste0(
@@ -210,11 +219,18 @@
 #' ln(k) has a closed-form per-subject estimator (the geometric mean of
 #' `(1/D - 1)/t`), a one-way random-effects model on the transformed scale has
 #' closed-form MLEs, and condition means can be compared with an exact F-test
-#' ([anova.beezdiscounting_linear()]). No numerical optimization is involved.
+#' ([anova.beezdiscounting_linear()]);
+#' the test is exact when the random-effects variance estimate `g-hat > 0`, and
+#' when `g-hat = 0` the statistic is still reported, with a warning. No
+#' numerical optimization is involved.
 #'
 #' Indifference points at exactly 0 or 1 are undefined under the transform;
 #' by default they are clamped to `[eps, 1 - eps]` (`boundary = "clamp"`).
 #' This is a package decision — the paper does not address boundary values.
+#' `"clamp"` moves any `y` outside `(eps, 1 - eps)` to the nearest bound — not
+#' only exact 0 and 1. On data with many points near 1 (short delays) this
+#' shrinks the transformed-scale variance and biases `sigma2` and `g` downward;
+#' use `boundary = "error"` or `"drop"`, or a smaller `eps`, when that matters.
 #'
 #' @param data Long data frame with subject id, delay, and indifference point columns.
 #' @param y_var,x_var,id_var Column names for indifference point, delay, subject.
@@ -225,12 +241,19 @@
 #' @param response_scale,ll As in [fit_dd_tmb()].
 #' @param boundary How to treat `y` in \{0, 1\}: `"clamp"` (default), `"drop"`
 #'   (per-subject estimates only unless the design stays balanced), `"error"`.
+#'   `"clamp"` moves any `y` outside `(eps, 1 - eps)` to the nearest bound — not
+#'   only exact 0 and 1 — which shrinks the transformed-scale variance and
+#'   biases `sigma2` and `g` downward when many points sit near the bounds.
 #' @param eps Clamp half-width; default `1/(2 * ll)` if `ll` is given, else `0.005`.
+#'   Under `boundary = "clamp"` every `y` outside `(eps, 1 - eps)` is moved to the
+#'   nearest bound, so a smaller `eps` clamps fewer points.
 #' @param conf_level Confidence level for per-subject ln(k) intervals.
-#' @return An object of class `beezdiscounting_linear`. See Details in the
-#'   package vignette index; key elements are `subjects` (per-unit table),
-#'   `re` (random-effects MLEs `mu`, `sigma2`, `g`, or `NULL` if unbalanced),
-#'   `transform` (boundary bookkeeping) and `data`.
+#' @return An object of class `beezdiscounting_linear`: a list with `subjects`
+#'   (per-unit tibble of ln k estimates, intervals and log-likelihoods), `re`
+#'   (closed-form random-effects MLEs `mu`, `sigma2`, `g`, or `NULL` if the
+#'   design is unbalanced), `design` (factor name and levels), `transform`
+#'   (boundary bookkeeping), `data` (the long frame with derived columns),
+#'   `conf_level`, and `call`.
 #' @references Hinds, D., Tegge, A. N., Stein, J. S., LaConte, S. M., McClure, S. M., &
 #'   Ferreira, M. A. R. (2026). To linearize or not to linearize: That is the Mazur delay
 #'   discounting question. *Journal of Mathematical Psychology, 130*, 103006.

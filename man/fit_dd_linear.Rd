@@ -30,29 +30,43 @@ F-test assumes independent units per condition.}
 \item{response_scale, ll}{As in \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.}
 
 \item{boundary}{How to treat \code{y} in \{0, 1\}: \code{"clamp"} (default), \code{"drop"}
-(per-subject estimates only unless the design stays balanced), \code{"error"}.}
+(per-subject estimates only unless the design stays balanced), \code{"error"}.
+\code{"clamp"} moves any \code{y} outside \verb{(eps, 1 - eps)} to the nearest bound — not
+only exact 0 and 1 — which shrinks the transformed-scale variance and
+biases \code{sigma2} and \code{g} downward when many points sit near the bounds.}
 
-\item{eps}{Clamp half-width; default \code{1/(2 * ll)} if \code{ll} is given, else \code{0.005}.}
+\item{eps}{Clamp half-width; default \code{1/(2 * ll)} if \code{ll} is given, else \code{0.005}.
+Under \code{boundary = "clamp"} every \code{y} outside \verb{(eps, 1 - eps)} is moved to the
+nearest bound, so a smaller \code{eps} clamps fewer points.}
 
 \item{conf_level}{Confidence level for per-subject ln(k) intervals.}
 }
 \value{
-An object of class \code{beezdiscounting_linear}. See Details in the
-package vignette index; key elements are \code{subjects} (per-unit table),
-\code{re} (random-effects MLEs \code{mu}, \code{sigma2}, \code{g}, or \code{NULL} if unbalanced),
-\code{transform} (boundary bookkeeping) and \code{data}.
+An object of class \code{beezdiscounting_linear}: a list with \code{subjects}
+(per-unit tibble of ln k estimates, intervals and log-likelihoods), \code{re}
+(closed-form random-effects MLEs \code{mu}, \code{sigma2}, \code{g}, or \code{NULL} if the
+design is unbalanced), \code{design} (factor name and levels), \code{transform}
+(boundary bookkeeping), \code{data} (the long frame with derived columns),
+\code{conf_level}, and \code{call}.
 }
 \description{
 Linearizes \verb{D = 1/(1 + k t)} to \code{ln(1/D - 1) - ln(t) = ln(k) + e} so that
 ln(k) has a closed-form per-subject estimator (the geometric mean of
 \code{(1/D - 1)/t}), a one-way random-effects model on the transformed scale has
 closed-form MLEs, and condition means can be compared with an exact F-test
-(\code{\link[=anova.beezdiscounting_linear]{anova.beezdiscounting_linear()}}). No numerical optimization is involved.
+(\code{\link[=anova.beezdiscounting_linear]{anova.beezdiscounting_linear()}});
+the test is exact when the random-effects variance estimate \code{g-hat > 0}, and
+when \code{g-hat = 0} the statistic is still reported, with a warning. No
+numerical optimization is involved.
 }
 \details{
 Indifference points at exactly 0 or 1 are undefined under the transform;
 by default they are clamped to \verb{[eps, 1 - eps]} (\code{boundary = "clamp"}).
 This is a package decision — the paper does not address boundary values.
+\code{"clamp"} moves any \code{y} outside \verb{(eps, 1 - eps)} to the nearest bound — not
+only exact 0 and 1. On data with many points near 1 (short delays) this
+shrinks the transformed-scale variance and biases \code{sigma2} and \code{g} downward;
+use \code{boundary = "error"} or \code{"drop"}, or a smaller \code{eps}, when that matters.
 }
 \examples{
 fit <- fit_dd_linear(dd_ip)

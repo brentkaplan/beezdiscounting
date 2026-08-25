@@ -31,7 +31,7 @@ describe("fit_dd_linear()", {
     d <- rbind(cbind(toy, cond = "ctl"), cbind(toy, cond = "trt"))
     expect_error(fit_dd_linear(d, factors = "cond"), "between-subject")
   })
-  it("dd_ip: shared validator clamps y > 1 with a warning; clamp default counts 125 boundary points", {
+  it("dd_ip: shared validator clamps y > 1 with a warning; clamp default counts 129 boundary points", {
     expect_warning(fit <- fit_dd_linear(dd_ip), "[Cc]lamp")   # dd_ip has y up to 1.13
     expect_equal(fit$transform$boundary, "clamp"); expect_equal(fit$transform$eps, 0.005)
     expect_equal(fit$transform$n_boundary, sum(pmin(dd_ip$y, 1) %in% c(0, 1)))
@@ -53,7 +53,7 @@ describe("fit_dd_linear()", {
   })
   it("units with < 2 usable points are dropped with a warning naming them", {
     d <- rbind(toy, data.frame(id = "c", x = 1, y = 0.5))
-    expect_warning(fit <- fit_dd_linear(d), "c")
+    expect_warning(fit <- fit_dd_linear(d), "fewer than 2")
     expect_equal(fit$subjects$id, c("a", "b"))
   })
   it("rejects more than one factor and non-existent columns", {

@@ -81,6 +81,7 @@ reference:
       conditions (Hinds et al., 2026).
     contents:
       - fit_dd_linear
+      - beezdiscounting_linear-methods
       - anova.beezdiscounting_linear
       - simulate_dd_linear
 

@@ -8,12 +8,19 @@
   points (no optimizer, no convergence failures), with t-based confidence
   intervals; a one-way random-effects model on the transformed scale has
   closed-form MLEs (`mu` per condition, `sigma2`, `g`); `anova()` gives the
-  paper's exact F-test for condition means, including pairwise contrasts and
-  Cohen's d; `logLik(scale = "raw")` is Jacobian-corrected so it is comparable
-  with Gaussian NLS/TMB fits (paper Sec. 2.3). Indifference points at exactly
-  0 or 1 — undefined under the transform and not addressed by the paper — are
-  clamped to `[eps, 1 - eps]` by default (`boundary = "clamp"`), with `"drop"`
-  and `"error"` alternatives; the count is reported.
+  paper's exact F-test for condition means (exact when the random-effects
+  variance estimate `g` is greater than 0; the package still reports the
+  statistic with a warning when `g` = 0), including pairwise contrasts and
+  Cohen's d; `logLik(scale = "raw")` is Jacobian-corrected to the raw
+  indifference-point scale (paper Sec. 2.3), which makes it comparable with
+  this package's Gaussian NLS and TMB log-likelihoods. Indifference points at
+  exactly 0 or 1 — undefined under the transform and not addressed by the
+  paper — are clamped to `[eps, 1 - eps]` by default (`boundary = "clamp"`),
+  with `"drop"` and `"error"` alternatives; the count is reported. Note that
+  `"clamp"` moves any point outside `(eps, 1 - eps)` to the nearest bound, not
+  only exact 0 and 1. On data with many points near 1 (short delays) this
+  shrinks the transformed-scale variance and biases `sigma2` and `g` downward;
+  use `boundary = "error"` or `"drop"`, or a smaller `eps`, when that matters.
 * `simulate_dd_linear()` simulates from the linearized random-effects model
   (paper Sec. 4.1).
 * Implementation note: written from the published paper; validated against

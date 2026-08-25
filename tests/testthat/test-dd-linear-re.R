@@ -62,6 +62,15 @@ describe(".dd_lin_re_mle()", {
   it("raw-scale log-lik = transformed log-lik + sum ln|J| (Sec 3.4)", {
     expect_equal(fit$loglik_raw, fit$loglik_y + sum(d$log_jac))
   })
+  it("aborts when every unit's transformed points are identical (SSE_Z = 0)", {
+    dz <- data.frame(
+      unit = factor(rep(seq_len(4), each = 4)),
+      condition = factor(rep(c("A", "B"), each = 8)),
+      y_lin = rep(c(-6, -5.5, -5, -6.2), each = 4),
+      log_jac = 1
+    )
+    expect_error(.dd_lin_re_mle(dz$y_lin, dz$unit, dz$condition, dz$log_jac), "SSE_Z = 0")
+  })
   it("aborts on unbalanced T", {
     d2 <- d[-1, ]
     expect_error(.dd_lin_re_mle(d2$y_lin, d2$unit, d2$condition, d2$log_jac), "balanced")

@@ -63,6 +63,12 @@ describe(".dd_lin_ftest()", {
     r <- .dd_lin_ftest(re)
     expect_equal(r$df2, sum(c(25, 30, 35, 20) - 1))
   })
+  it("a bare character vector hypothesis behaves exactly like the one-element list", {
+    expect_identical(.dd_lin_ftest(re, c("EFT", "NCC")), .dd_lin_ftest(re, list(c("EFT", "NCC"))))
+    bare <- .dd_lin_ftest(re, c("EFT", "NCC"))
+    expect_equal(bare$hypothesis, "EFT = NCC")
+    expect_false(is.na(bare$cohens_d))
+  })
   it("Cohen's d for a pair follows Sec 4.3: sqrt(T)(mu1-mu2)/(sigma sqrt(g+1))", {
     r <- .dd_lin_ftest(re, list(c("EFT", "NCC")))
     expect_equal(r$cohens_d, sqrt(6) * (re$mu[["EFT"]] - re$mu[["NCC"]]) / (sqrt(re$sigma2) * sqrt(re$g + 1)))

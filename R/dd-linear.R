@@ -171,6 +171,7 @@
 #' @keywords internal
 #' @noRd
 .dd_lin_ftest <- function(re, hypothesis = NULL) {
+  if (!is.null(hypothesis) && !is.list(hypothesis)) hypothesis <- list(hypothesis)
   full <- re$unit_condition
   if (nlevels(full) < 2L) {
     cli::cli_abort("No conditions to compare: the fit has a single condition.")

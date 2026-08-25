@@ -14,7 +14,7 @@
                               eps = 0.005) {
   boundary <- match.arg(boundary)
   if (any(!is.finite(t)) || any(t <= 0)) {
-    cli::cli_abort("Delays {.arg x} must be finite and positive; ln(t) is undefined otherwise.")
+    cli::cli_abort("Delays {.arg t} must be finite and positive; ln(t) is undefined otherwise.")
   }
   if (any(!is.finite(d)) || any(d < 0 | d > 1)) {
     cli::cli_abort("Indifference points must lie in [0, 1] after scale conversion.")

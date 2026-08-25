@@ -55,7 +55,8 @@
 #' @noRd
 .dd_lin_unit_fit <- function(y_lin, log_jac, conf_level = 0.95) {
   ok <- is.finite(y_lin)
-  y <- y_lin[ok]; lj <- log_jac[ok]
+  y <- y_lin[ok]
+  lj <- log_jac[ok]
   n <- length(y)
   out <- data.frame(
     n_delays = as.integer(n), logk = NA_real_, se = NA_real_, df = NA_real_,
@@ -70,9 +71,16 @@
   tq <- stats::qt(1 - (1 - conf_level) / 2, df = n - 1)
   sig2_mle <- rss / n
   ll_y <- -(n / 2) * log(2 * pi * sig2_mle) - n / 2
-  out$logk <- logk; out$se <- se; out$df <- n - 1
-  out$ci_lo <- logk - tq * se; out$ci_hi <- logk + tq * se
-  out$k <- exp(logk); out$k_lo <- exp(out$ci_lo); out$k_hi <- exp(out$ci_hi)
-  out$s2 <- s2; out$loglik_y <- ll_y; out$loglik_raw <- ll_y + sum(lj)
+  out$logk <- logk
+  out$se <- se
+  out$df <- n - 1
+  out$ci_lo <- logk - tq * se
+  out$ci_hi <- logk + tq * se
+  out$k <- exp(logk)
+  out$k_lo <- exp(out$ci_lo)
+  out$k_hi <- exp(out$ci_hi)
+  out$s2 <- s2
+  out$loglik_y <- ll_y
+  out$loglik_raw <- ll_y + sum(lj)
   out
 }

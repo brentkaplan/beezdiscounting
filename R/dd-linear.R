@@ -197,3 +197,126 @@
   }
   tibble::tibble(hypothesis = label, F = f_stat, df1 = df1, df2 = df2, p_value = p, cohens_d = effect_d)
 }
+
+#' Fit the linearized Mazur hyperbola (Hinds et al., 2026)
+#'
+#' Linearizes `D = 1/(1 + k t)` to `ln(1/D - 1) - ln(t) = ln(k) + e` so that
+#' ln(k) has a closed-form per-subject estimator (the geometric mean of
+#' `(1/D - 1)/t`), a one-way random-effects model on the transformed scale has
+#' closed-form MLEs, and condition means can be compared with an exact F-test
+#' ([anova.beezdiscounting_linear()]). No numerical optimization is involved.
+#'
+#' Indifference points at exactly 0 or 1 are undefined under the transform;
+#' by default they are clamped to `[eps, 1 - eps]` (`boundary = "clamp"`).
+#' This is a package decision — the paper does not address boundary values.
+#'
+#' @param data Long data frame with subject id, delay, and indifference point columns.
+#' @param y_var,x_var,id_var Column names for indifference point, delay, subject.
+#' @param factors Optional name of ONE categorical column giving the experimental
+#'   condition. Must be between-subject: every id appears under exactly one
+#'   level; frames with an id under several levels are rejected because the exact
+#'   F-test assumes independent units per condition.
+#' @param response_scale,ll As in [fit_dd_tmb()].
+#' @param boundary How to treat `y` in {0, 1}: `"clamp"` (default), `"drop"`
+#'   (per-subject estimates only unless the design stays balanced), `"error"`.
+#' @param eps Clamp half-width; default `1/(2 * ll)` if `ll` is given, else `0.005`.
+#' @param conf_level Confidence level for per-subject ln(k) intervals.
+#' @return An object of class `beezdiscounting_linear`. See Details in the
+#'   package vignette index; key elements are `subjects` (per-unit table),
+#'   `re` (random-effects MLEs `mu`, `sigma2`, `g`, or `NULL` if unbalanced),
+#'   `transform` (boundary bookkeeping) and `data`.
+#' @references Hinds, D., Tegge, A. N., Stein, J. S., LaConte, S. M., McClure, S. M., &
+#'   Ferreira, M. A. R. (2026). To linearize or not to linearize: That is the Mazur delay
+#'   discounting question. *Journal of Mathematical Psychology, 130*, 103006.
+#'   \doi{10.1016/j.jmp.2026.103006}
+#' @examples
+#' fit <- fit_dd_linear(dd_ip)
+#' fit
+#' @export
+fit_dd_linear <- function(data, y_var = "y", x_var = "x", id_var = "id", factors = NULL,
+                          response_scale = c("proportion", "percent", "amount"), ll = NULL,
+                          boundary = c("clamp", "drop", "error"), eps = NULL,
+                          conf_level = 0.95) {
+  cl <- match.call()
+  response_scale <- match.arg(response_scale)
+  boundary <- match.arg(boundary)
+  if (!is.null(factors) && length(factors) != 1L) {
+    cli::cli_abort(c("{.arg factors} must name exactly one column.",
+                     "i" = "Paste several factors into one cell-membership column first."))
+  }
+  if (is.null(eps)) eps <- if (!is.null(ll)) 1 / (2 * ll) else 0.005
+
+  validated <- .dd_validate_ip(data, y_var = y_var, x_var = x_var, id_var = id_var, ll = ll,
+                               extra_cols = factors, response_scale = response_scale)
+  prepared <- .dd_tmb_prepare_data(validated$data, "y", "x", "id", extra_cols = factors)
+  long <- prepared$data
+  long$condition <- if (is.null(factors)) {
+    factor("(all)")
+  } else {
+    droplevels(as.factor(long[[factors]]))
+  }
+  # D2: between-subject only. The exact F-test (Prop. 3.5) assumes independent units per condition.
+  n_lv_per_id <- tapply(as.character(long$condition), long$id, function(v) length(unique(v)))
+  if (any(n_lv_per_id > 1L)) {
+    cli::cli_abort(c(
+      paste0("{.arg factors} must be between-subject: {sum(n_lv_per_id > 1L)} ",
+             "id{?s} appear under more than one level."),
+      "i" = paste0("Within-subject designs are not supported by the exact F-test; ",
+                   "analyse each occasion as a separate subject only if that is ",
+                   "scientifically defensible.")
+    ))
+  }
+  long$unit <- factor(long$id)
+
+  tr <- .dd_lin_transform(long$y, long$x, boundary = boundary, eps = eps)
+  long$y_lin <- tr$y_lin
+  long$d_used <- tr$d_used
+  long$log_jac <- tr$log_jac
+
+  per_unit <- lapply(split(long, long$unit), function(u) {
+    cbind(
+      data.frame(id = u$id[1], condition = u$condition[1]),
+      .dd_lin_unit_fit(u$y_lin, u$log_jac, conf_level = conf_level),
+      n_boundary = sum(u$y == 0 | u$y == 1)
+    )
+  })
+  subjects <- do.call(rbind, per_unit)
+  rownames(subjects) <- NULL
+  subjects$condition <- factor(as.character(subjects$condition), levels = levels(long$condition))
+  too_few <- subjects$n_delays < 2L
+  if (any(too_few)) {
+    cli::cli_warn(paste0("Dropped {sum(too_few)} subject{?s} with fewer than 2 usable delays: ",
+                         "{.val {as.character(subjects$id[too_few])}}."))
+    long <- long[!(long$id %in% subjects$id[too_few]), , drop = FALSE]
+    subjects <- subjects[!too_few, , drop = FALSE]
+  }
+  long$unit <- droplevels(long$unit)
+  subjects <- tibble::as_tibble(subjects)
+  subjects <- subjects[, c("id", "condition", "n_delays", "n_boundary", "logk", "se", "df",
+                           "ci_lo", "ci_hi", "k", "k_lo", "k_hi", "s2", "loglik_y", "loglik_raw")]
+
+  re <- tryCatch(
+    .dd_lin_re_mle(long$y_lin, long$unit, long$condition, long$log_jac),
+    error = function(e) {
+      if (grepl("balanced", conditionMessage(e))) {
+        cli::cli_warn(c(
+          "Random-effects component not fitted: design is not balanced after boundary handling.",
+          "i" = "Per-unit estimates are still returned. {.code anova()} is unavailable."
+        ))
+        NULL
+      } else {
+        stop(e)
+      }
+    }
+  )
+
+  structure(list(
+    subjects = subjects, re = re,
+    design = list(factor = factors, levels = levels(long$condition)),
+    transform = list(boundary = boundary, eps = eps, n_boundary = tr$n_boundary,
+                     n_clamped = tr$n_clamped, n_dropped = tr$n_dropped,
+                     response_scale = response_scale, ll = ll,
+                     divided_by = validated$coercion_info$divided_by),
+    data = long, conf_level = conf_level, call = cl
+  ), class = c("beezdiscounting_linear", "list"))
+}

@@ -140,3 +140,59 @@
     unit_condition = unit_cond
   )
 }
+
+#' Collapse condition levels declared equal under H0 (Hinds et al. 2026, Sec 3.3 X_red construction)
+#' @keywords internal
+#' @noRd
+.dd_lin_merge_levels <- function(condition, hypothesis = NULL) {
+  lv <- levels(condition)
+  if (is.null(hypothesis)) hypothesis <- list(lv)
+  if (!is.list(hypothesis)) hypothesis <- list(hypothesis)
+  bad <- setdiff(unlist(hypothesis), lv)
+  if (length(bad)) {
+    cli::cli_abort("{.arg hypothesis} names unknown condition level{?s}: {.val {bad}}.")
+  }
+  if (anyDuplicated(unlist(hypothesis))) {
+    cli::cli_abort("A level appears in more than one H0 set.")
+  }
+  map <- stats::setNames(lv, lv)
+  for (set in hypothesis) {
+    if (length(set) > 1L) map[set] <- paste(set, collapse = "=")
+  }
+  factor(map[as.character(condition)], levels = unique(map[lv]))
+}
+
+#' Exact F-test for equality of condition means (Hinds et al. 2026, Prop. 3.5)
+#'
+#' `SSR_{Z|X}` is `T` times the sum over units of the squared difference between
+#' the unit mean and its design fitted value. Under `X_full` that fitted value is
+#' the condition mean; under `X_red` it is the merged-group mean. The statistic is
+#' `F = [(SSE_red - SSE_full) / d_num] / [SSR_{Z|X_full} / d_den]`.
+#' @keywords internal
+#' @noRd
+.dd_lin_ftest <- function(re, hypothesis = NULL) {
+  full <- re$unit_condition
+  if (nlevels(full) < 2L) {
+    cli::cli_abort("No conditions to compare: the fit has a single condition.")
+  }
+  red <- .dd_lin_merge_levels(full, hypothesis)
+  n_t <- re$n_delays
+  ybar <- re$unit_mean
+  ssr_full <- n_t * sum((ybar - tapply(ybar, full, mean)[as.character(full)])^2)
+  ssr_red <- n_t * sum((ybar - tapply(ybar, red, mean)[as.character(red)])^2)
+  df1 <- nlevels(full) - nlevels(red)
+  df2 <- sum(table(full) - 1)
+  f_stat <- ((ssr_red - ssr_full) / df1) / (ssr_full / df2)
+  p <- stats::pf(f_stat, df1, df2, lower.tail = FALSE)
+  if (re$g_zero) {
+    cli::cli_warn("g-hat = 0: Prop. 3.5 assumes g > 0; the F statistic is reported as-is.")
+  }
+  sets <- if (is.null(hypothesis)) list(levels(full)) else hypothesis
+  label <- paste(vapply(sets[lengths(sets) > 1L], paste, "", collapse = " = "), collapse = "; ")
+  effect_d <- NA_real_
+  if (length(sets) == 1L && length(sets[[1]]) == 2L) {
+    m <- re$mu[sets[[1]]]
+    effect_d <- sqrt(n_t) * (m[[1]] - m[[2]]) / (sqrt(re$sigma2) * sqrt(re$g + 1))
+  }
+  tibble::tibble(hypothesis = label, F = f_stat, df1 = df1, df2 = df2, p_value = p, cohens_d = effect_d)
+}

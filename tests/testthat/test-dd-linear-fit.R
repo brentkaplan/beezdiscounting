@@ -77,6 +77,7 @@ describe("fit_dd_linear()", {
     expect_equal(fit$design$levels, c("A", "B"))
     expect_named(fit$re$mu, c("A", "B"))
     expect_equal(glance(fit)$n_conditions, 2L)
-    expect_equal(nrow(anova(fit, pairwise = TRUE)), 1L)
+    expect_warning(pw <- anova(fit, pairwise = TRUE), "g-hat = 0")
+    expect_equal(nrow(pw), 1L)
   })
 })

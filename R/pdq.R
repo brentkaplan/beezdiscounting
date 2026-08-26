@@ -41,7 +41,7 @@
 #' lenient, ragged contract.
 #'
 #' The published scoring (Madden et al., 2009; Gray et al., 2016) has no
-#' overall 30-item ladder -- blocks are scored separately, and `mean_h` is
+#' overall 30-item ladder; blocks are scored separately, and `mean_h` is
 #' Gray et al.'s recommended composite. `overall_h` and
 #' `overall_consistency` are a beezdiscounting extension: all 30 items are
 #' pooled into a single ascending ladder (exact-rational h order, ties
@@ -429,8 +429,8 @@ plot.prop_sc_output <- function(
 #'   order.
 #'
 #' @details Unknown or non-coercible question ids raise an error rather
-#'   than silently producing unmatched rows. Ragged input is allowed --
-#'   subjects need not have all items -- and `NA` responses are preserved.
+#'   than silently producing unmatched rows. Ragged input is allowed
+#'   (subjects need not have all items) and `NA` responses are preserved.
 #'   For the strict scorer see [score_pdq()].
 #'
 #' @seealso [score_pdq()], [get_lookup_table()], [mcq_to_choice()]

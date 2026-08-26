@@ -24,7 +24,7 @@ regardless of the \code{id_var}/\code{x_var}/\code{y_var} you gave at fit time.}
 
 \item{level}{For \code{type = "response"}: \code{"subject"} (default; conditions on
 each subject's estimated random intercept, requires the id column) and/or
-\code{"population"} (random effects set to zero - the population-mean curve;
+\code{"population"} (random effects set to zero, i.e., the population-mean curve;
 no id column needed). Pass \code{c("population", "subject")} for both columns
 side-by-side. A numeric nlme-style level is rejected with an error. For
 an s-target 2-RE fit (\code{k + s ~ 1}), the subject level uses each subject's

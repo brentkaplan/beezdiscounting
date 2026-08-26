@@ -255,12 +255,12 @@ test_that("fit_dd_choice_brms structural: object contract and recovery", {
     )
   )
   expect_true(all(c("k:(Intercept)", "gamma") %in% t$term))
-  # TMB choice contract: k is the fixed row; gamma is a shape row (Codex 039-B2)
+  # TMB choice contract: k is the fixed row; gamma is a shape row
   expect_identical(t$component[t$term == "k:(Intercept)"], "fixed")
   expect_identical(t$component[t$term == "gamma"], "shape")
   expect_identical(t$term_display[t$term == "gamma"], "gamma")
 
-  # confint with parm aliases (Codex 039-B1)
+  # confint with parm aliases
   ci <- confint(fit)
   expect_true(all(
     c("term", "estimate", "conf.low", "conf.high", "level") %in% names(ci)

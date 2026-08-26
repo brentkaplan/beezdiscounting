@@ -66,9 +66,9 @@ The default \code{k ~ 1} matches the simulator's data-generating process (a
 single subject random intercept on log k). The simulator ALWAYS
 generates only that intercept: any richer formula (e.g. \code{k + phi ~ 1},
 \code{k + s ~ 1}) is accepted but produces a deliberately over-specified
-refit of data with no such variance component -- useful for probing
-robustness, not for estimating power under those random effects (out
-of scope in this version).}
+refit of data with no such variance component. That refit is useful for
+probing robustness rather than for estimating power under those random
+effects (out of scope in this version).}
 
 \item{multi_start}{Passed to \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}. Defaults to \code{FALSE} for
 speed; non-convergent replicates are excluded and surfaced rather than
@@ -88,14 +88,14 @@ search (\code{status = "unresolved"}).}
 \item{status}{\code{"confirmed"} (selected N re-confirmed above target and
 N - 1 below), \code{"uncertain"} (a decision relied on a point estimate,
 N - 1 also cleared the target on reconfirmation, or an evaluated
-lower N read above the target -- so the returned N may not be
+lower N read above the target, so the returned N may not be
 minimal), \code{"unresolved"} (the selected N failed its
 own reconfirmation; \code{n} is \code{NA}), or \code{"at_lower_bound"} (the target
 was already met at \code{n_range[1]} on two independent looks; smaller N
-was not explored -- widen \code{n_range} downward if that matters). These
-labels describe a heuristic Monte Carlo decision rule -- repeated
-looks at ordinary Wilson intervals across several N -- not a formal
-sequential error guarantee.}
+was not explored; widen \code{n_range} downward if that matters). These
+labels describe a heuristic Monte Carlo decision rule (repeated
+looks at ordinary Wilson intervals across several N) rather than a
+formal sequential error guarantee.}
 \item{uncertain}{Logical; \code{TRUE} when any search decision was made on
 a point estimate rather than a conclusive Wilson interval, or the
 status is not \code{"confirmed"}/\code{"at_lower_bound"}.}
@@ -118,8 +118,8 @@ estimate and the result is flagged \code{uncertain}. The selected N and its
 lower neighbor are then re-evaluated with fresh replicates before
 minimality is claimed.
 
-The returned \code{n} is an \emph{estimated minimum under Monte Carlo uncertainty},
-not an exact bound. For grant-quality reporting, rerun
+The returned \code{n} is an \emph{estimated minimum under Monte Carlo uncertainty}
+rather than an exact bound. For grant-quality reporting, rerun
 \code{\link[=power_discounting]{power_discounting()}} at the returned \code{n} with a large \code{n_sim} (2000+)
 and report that estimate with its Monte Carlo confidence interval.
 

@@ -246,7 +246,7 @@ VarCorr.beezdiscounting_choice <- function(x, sigma = 1, ...) {
 #'   or `"parameters"` (the per-subject parameter tibble).
 #' @param level For `type = "prob"`: `"subject"` (default; conditions on each
 #'   subject's estimated random intercept, requires the id column) or
-#'   `"population"` (random effects set to zero - the population-mean curve; no
+#'   `"population"` (random effects set to zero, i.e., the population-mean curve; no
 #'   id column needed).
 #' @param ... Unused.
 #'
@@ -515,10 +515,11 @@ augment.beezdiscounting_choice <- function(x, newdata = NULL, ...) {
 
 #' Tidy a descriptive (Young 2018) choice model into a coefficient tibble
 #'
-#' Fixed-effect (`theta`) rows are the logit-scale sensitivities and are ALWAYS
-#' on the identity scale - never exponentiated across report spaces (mirroring
-#' the structural `beta0`). Variance rows report the random-slope SDs and their
-#' correlation on the natural scale. Wald `statistic`/`p.value` are computed on
+#' Fixed-effect (`theta`) rows are the logit-scale sensitivities and are always
+#' on the identity scale; they are never exponentiated across report spaces
+#' (mirroring the structural `beta0`). Variance rows report the random-slope
+#' SDs and their correlation on the natural scale. Wald `statistic`/`p.value`
+#' are computed on
 #' the estimation scale.
 #'
 #' @param x A `beezdiscounting_choice` object (descriptive mode).
@@ -597,15 +598,15 @@ augment.beezdiscounting_choice <- function(x, newdata = NULL, ...) {
 #' EXPLICITLY since the param-space transformer keys only on k/s/phi). `beta0`
 #' is on the identity (logit-intercept) scale and is NEVER transformed across
 #' report spaces. `statistic` and `p.value` are always computed on the
-#' estimation (internal) scale - Wald statistics are not recomputed after
+#' estimation (internal) scale. Wald statistics are not recomputed after
 #' back-transforming (broom convention).
 #'
 #' @param x A `beezdiscounting_choice` object.
 #' @param effects Character vector: `"fixed"` (log-k fixed-effect rows + the
 #'   shape rows gamma/beta0), `"ran_pars"` (the RE SD), or both (default).
-#' @param report_space `"natural"`, `"log10"`, `"internal"`, or `"log"` -
-#'   reporting scale for the fixed-effect `estimate`/`std.error`. Default is
-#'   `"natural"`.
+#' @param report_space Reporting scale for the fixed-effect
+#'   `estimate`/`std.error`: `"natural"` (default), `"log10"`, `"internal"`,
+#'   or `"log"`.
 #' @param ... Unused.
 #' @return A tibble with exactly 8 columns in this order: `term`, `estimate`,
 #'   `std.error`, `statistic`, `p.value`, `component`, `estimate_scale`,

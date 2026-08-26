@@ -1,7 +1,7 @@
 
 #' Fit Delay-Discounting Model
 #'
-#' This function fits a delay-discounting model to the given dataset using the specified equation and method.
+#' Fits a delay-discounting model to a data set with the specified equation and fitting method.
 #'
 #' @param dat A data frame containing delay (`x`) and indifference point (`y`) data. For "two stage" methods, the data must include an `id` column to identify participants.
 #' @param equation A character string specifying the delay-discounting equation to use. Options include:
@@ -112,7 +112,7 @@ fit_dd <- function(
 
 #' Plot Delay-Discounting Model
 #'
-#' This function generates a plot of the delay-discounting data and the fitted model.
+#' Plots the delay-discounting data with the fitted model overlaid.
 #'
 #' @param fit_dd_object A fitted delay-discounting model object of class `"fit_dd"`, created by the `fit_dd()` function.
 #' @param xlabel A character string specifying the label for the x-axis. Default is `"Delay"`.
@@ -221,7 +221,7 @@ plot_dd <- function(
 
 #' Extract Results from Delay-Discounting Model
 #'
-#' This function extracts model parameter estimates, fit statistics, and confidence intervals from a fitted delay-discounting model.
+#' Extracts parameter estimates, fit statistics, and confidence intervals from a fitted delay-discounting model.
 #'
 #' @param fit_dd_object A fitted delay-discounting model object of class `"fit_dd"`, created by the `fit_dd()` function.
 #'

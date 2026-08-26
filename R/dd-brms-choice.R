@@ -109,7 +109,7 @@ fit_dd_choice_brms <- function(
 
   # Warn (pre-sampling) on within-subject-varying predictors, matching the
   # TMB choice fitter; .dd_brms_subject_pars() additionally skips
-  # subject-level k for such designs (Codex 048-R1).
+  # subject-level k for such designs.
   .dd_check_between_subject(d, extra_cols)
 
   # The TMB design path carries the guards (rank-deficiency rejection) a bare
@@ -235,7 +235,7 @@ fit_dd_choice_brms <- function(
   )
 
   # Authoritative draw-name map captured at fit time + ordered, validated
-  # alignment of every b_logk_* draw with the design columns (Codex 048-B1).
+  # alignment of every b_logk_* draw with the design columns.
   obj$formula_details$logk_draw_vars <-
     .dd_brms_logk_standata_map(brmsfit, design$X)
   draws <- .dd_brms_draws_matrix(obj)
@@ -346,7 +346,6 @@ fit_dd_choice_brms <- function(
         out <- list(
           # full fixed-effect vector: factor/covariate designs get every
           # coefficient centered at the TMB MLE, not just the intercept
-          # (Codex 041-R2)
           beta_k_vec = unname(coefs[names(coefs) == "beta_k"]),
           logk = unname(coefs[names(coefs) == "beta_k"])[1],
           loggamma = unname(coefs[["log_gamma"]]),

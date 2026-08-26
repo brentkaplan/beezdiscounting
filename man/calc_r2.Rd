@@ -13,7 +13,7 @@ calc_r2(model)
 A numeric value representing the \eqn{R^2} value of the model. Returns \code{NA} if the model is \code{NULL}.
 }
 \description{
-This function calculates the coefficient of determination (\eqn{R^2}) for a given model by comparing the sum of squared errors (SSE)
+Calculates the coefficient of determination (\eqn{R^2}) for a fitted model as one minus the ratio of the sum of squared errors (SSE)
 to the total sum of squares (SST).
 }
 \examples{

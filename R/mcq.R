@@ -400,7 +400,7 @@ inn <- function(dat, reg, random, verbose) {
 #'
 #' @details `items` must match the instrument actually administered.
 #' Question ids 1-21 are valid in both the 21- and 27-item designs, so
-#' passing the wrong `items` does not error -- it silently pools responses
+#' passing the wrong `items` does not error; it silently pools responses
 #' into the wrong k-rank rows. If the observed question ids do not exactly
 #' match the requested design, `prop_ss()` warns.
 #'
@@ -519,13 +519,13 @@ get_lookup_table <- function(items = NULL, instrument = NULL) {
 #' the per-trial smaller-sooner versus larger-later choice frame consumed by
 #' [fit_dd_choice()], joining each `questionid` to the canonical item design
 #' (immediate amount, delayed amount, delay) bundled in the lookup table (see
-#' [get_lookup_table()]) -- Kirby, Petry, & Bickel (1999) for the 27-item MCQ,
-#' or Kirby & Maraković (1996, Table 1) for the 21-item MCQ.
+#' [get_lookup_table()]; Kirby, Petry, & Bickel (1999) for the 27-item MCQ,
+#' or Kirby & Maraković (1996, Table 1) for the 21-item MCQ).
 #'
 #' @param responses Long-form data frame with one row per MCQ item per subject,
 #'   holding the columns named by `id_var`, `question_var`, and `response_var`.
 #'   `response` is `0` for the smaller-immediate reward (SIR/SS) and `1` for the
-#'   larger-delayed reward (LDR/LL) -- the same coding [fit_dd_choice()] expects,
+#'   larger-delayed reward (LDR/LL), the same coding [fit_dd_choice()] expects,
 #'   so no recoding is applied.
 #' @param items Number of MCQ items: 27 (Kirby, Petry, & Bickel, 1999) or 21
 #'   (Kirby & Maraković, 1996). Default is 27.
@@ -540,9 +540,9 @@ get_lookup_table <- function(items = NULL, instrument = NULL) {
 #' @details Unknown or non-coercible question ids raise an error rather than
 #'   silently producing unmatched rows. Question ids 1-21 are valid in both
 #'   the 21- and 27-item designs, so passing the wrong `items` does not
-#'   error -- it silently returns the wrong amounts/delays for those ids;
-#'   make sure `items` matches the instrument actually administered. Ragged
-#'   input is allowed -- subjects need not have all items -- and `NA`
+#'   error; it silently returns the wrong amounts/delays for those ids.
+#'   Make sure `items` matches the instrument actually administered. Ragged
+#'   input is allowed (subjects need not have all items) and `NA`
 #'   responses are preserved (they are complete-cased by [fit_dd_choice()]).
 #'   For the strict scorer see [score_mcq()].
 #'
@@ -639,7 +639,7 @@ mcq27_to_choice <- function(responses,
 
 #' Plot Proportion of SIR/SS Choices by k Value
 #'
-#' This function creates a plot of the proportion of SIR/SS
+#' Plots the proportion of SIR/SS
 #' choices by k value using the output of the `prop_ss` function.
 #'
 #' @param x Output from the `prop_ss` function
@@ -755,10 +755,10 @@ plot.prop_ss_output <- function(
 
 #' Plot MCQ-27 Scores
 #'
-#' This function creates a plot of the MCQ-27 scores for
+#' Boxplots the MCQ-27 scores for
 #' different metrics (small_k, medium_k, large_k, geomean_k, overall_k).
-#' The function handles different logarithmic transformations of the k-values
-#' and adjusts the y-axis label accordingly.
+#' Log-transformed k values (`trans = "log"`/`"ln"`) are detected
+#' and the y-axis label adjusted accordingly.
 #'
 #' @param x A data frame returned by the `score_mcq27` function.
 #' @param ... Additional arguments passed to methods.
@@ -775,10 +775,10 @@ plot.score_mcq27_output <- function(x, ..., xlab = "Metric", alpha = 0.3) {
 
 #' Plot MCQ Scores
 #'
-#' This function creates a plot of MCQ scores for
+#' Boxplots the MCQ scores for
 #' different metrics (small_k, medium_k, large_k, geomean_k, overall_k).
-#' The function handles different logarithmic transformations of the k-values
-#' and adjusts the y-axis label accordingly.
+#' Log-transformed k values (`trans = "log"`/`"ln"`) are detected
+#' and the y-axis label adjusted accordingly.
 #'
 #' @param x A data frame returned by the `score_mcq` function.
 #' @param ... Additional arguments passed to methods.

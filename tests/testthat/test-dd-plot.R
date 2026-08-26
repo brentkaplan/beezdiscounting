@@ -219,7 +219,7 @@ test_that("plot.beezdiscounting_choice_brms covers all types (fixture)", {
   }
 })
 
-# --- edge cases (Codex review) ----------------------------------------------
+# --- edge cases -------------------------------------------------------------
 test_that("plot_qq.beezdiscounting_tmb facets a 2-RE fit and validates which", {
   skip_on_cran()
   fit <- tmb_2re_fit()

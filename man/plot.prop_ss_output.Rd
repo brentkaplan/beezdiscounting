@@ -36,7 +36,7 @@
 A ggplot object.
 }
 \description{
-This function creates a plot of the proportion of SIR/SS
+Plots the proportion of SIR/SS
 choices by k value using the output of the \code{prop_ss} function.
 }
 \examples{

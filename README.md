@@ -30,9 +30,9 @@ via Template Model Builder (`fit_dd_tmb()`), a trial-level choice model
 (`fit_dd_choice()`), a Bayesian tier via brms (`fit_dd_brms()`), and
 Monte Carlo power analysis for between-subject designs
 (`power_discounting()`). These modeling tiers, together with 21-item MCQ
-and 30-item PDQ scoring, ship in version 0.4.0, which is currently being
+and 30-item PDQ scoring, are included in version 0.4.0, which is being
 submitted to CRAN; the CRAN release available today is 0.3.2, which
-carries only the scoring and NLS tools (see Installing, below, for how
+contains only the scoring and NLS tools (see Installing, below, for how
 to get each version). Full documentation, including worked vignettes, is
 available at the [package
 website](https://brentkaplan.github.io/beezdiscounting/).
@@ -1118,6 +1118,7 @@ Worked examples live in the package vignettes, also rendered on the
 - [Scoring the 5.5-trial discounting
   task](https://brentkaplan.github.io/beezdiscounting/articles/fivetrial-task.html)
   (`vignette("fivetrial-task")`)
+- [The linearized Mazur hyperbola: closed-form k and an F-test for conditions](https://brentkaplan.github.io/beezdiscounting/articles/linearized-mazur.html) (`vignette("linearized-mazur")`)
 - [Mixed-effects discounting with
   TMB](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html)
   (`vignette("tmb-mixed-effects")`)

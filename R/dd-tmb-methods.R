@@ -186,7 +186,7 @@ fixef.beezdiscounting_tmb <- function(object, ...) {
 #' @return Data frame keyed by `id`. For a 1-RE fit (`k ~ 1`): the standardized
 #'   random-intercept deviate `u_i` (such that `log k_i = X beta + sigma_u *
 #'   u_i`) and the resolved per-subject discount rate `k` (no `phi` or `s`
-#'   column - both are population-level). For a phi-target 2-RE fit
+#'   column; both are population-level). For a phi-target 2-RE fit
 #'   (`k + phi ~ 1`): `(re_k, re_phi)` offsets plus per-subject `k` and `phi`.
 #'   For an s-target 2-RE fit (`k + s ~ 1`, GM/Rachlin only): `(re_k, re_s)`
 #'   offsets plus per-subject `k` and `s` (soft-clamped toward `(0.05, 20)`).
@@ -434,7 +434,7 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
 #'   `"parameters"` (the per-subject parameter tibble).
 #' @param level For `type = "response"`: `"subject"` (default; conditions on
 #'   each subject's estimated random intercept, requires the id column) and/or
-#'   `"population"` (random effects set to zero - the population-mean curve;
+#'   `"population"` (random effects set to zero, i.e., the population-mean curve;
 #'   no id column needed). Pass `c("population", "subject")` for both columns
 #'   side-by-side. A numeric nlme-style level is rejected with an error. For
 #'   an s-target 2-RE fit (`k + s ~ 1`), the subject level uses each subject's
@@ -725,7 +725,7 @@ residuals.beezdiscounting_tmb <- function(
 #' - `.fitted`: subject-conditional fitted indifference proportion (clamped to
 #'   `(0, 1)`).
 #' - `.resid`: raw residual `y - .fitted` on the response scale.
-#' - `.std_resid`: Pearson (standardized) residual - `.resid` divided by the
+#' - `.std_resid`: Pearson (standardized) residual, i.e., `.resid` divided by the
 #'   per-row response SD.  For `family = "gaussian"` the SD is the constant
 #'   `sigma_e`; for `family = "sltb"` it is the delta-method SLT SD
 #'   `sqrt(mu * (1 - mu) / (phi + 1))`.
@@ -848,7 +848,7 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #'
 #' `estimate` and `std.error` are reported on the `report_space` scale for the
 #' fixed-effect (`beta_k`) rows. `statistic` and `p.value` are always computed
-#' on the estimation (log-k) scale - Wald statistics are not recomputed after
+#' on the estimation (log-k) scale. Wald statistics are not recomputed after
 #' back-transforming (broom convention; see the `summary()` note for details).
 #' Variance-component rows carry `NA` for `statistic` and `p.value` and are not
 #' affected by `report_space`.
@@ -857,9 +857,9 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #' @param effects Character vector: `"fixed"` (log-k fixed-effect rows),
 #'   `"ran_pars"` (the RE SD and the auxiliary precision/scale parameter), or
 #'   both (default).
-#' @param report_space `"natural"`, `"log10"`, `"internal"`, or `"log"` -
-#'   reporting scale for fixed-effect `estimate`/`std.error` (`"internal"` and
-#'   `"log"` coincide for the log-k `beta_k` rows). Default is `"natural"`.
+#' @param report_space Reporting scale for fixed-effect `estimate`/`std.error`:
+#'   `"natural"` (default), `"log10"`, `"internal"`, or `"log"` (`"internal"`
+#'   and `"log"` coincide for the log-k `beta_k` rows).
 #' @param ... Unused.
 #' @return A tibble with exactly 8 columns in this order: `term`, `estimate`,
 #'   `std.error`, `statistic`, `p.value`, `component`, `estimate_scale`,

@@ -24,7 +24,7 @@ or \code{"parameters"} (the per-subject parameter tibble).}
 
 \item{level}{For \code{type = "prob"}: \code{"subject"} (default; conditions on each
 subject's estimated random intercept, requires the id column) or
-\code{"population"} (random effects set to zero - the population-mean curve; no
+\code{"population"} (random effects set to zero, i.e., the population-mean curve; no
 id column needed).}
 
 \item{...}{Unused.}

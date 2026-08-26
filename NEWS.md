@@ -1,9 +1,58 @@
+# beezdiscounting 0.5.0 (development)
+
+### Linearized Mazur estimator (Hinds et al., 2026)
+
+* `fit_dd_linear()` fits the linearized hyperbola `ln(1/D - 1) - ln(t) = ln k + e`
+  (Hinds, Tegge, Stein, LaConte, McClure & Ferreira, 2026, *J. Math. Psychol.*
+  130:103006). Per-subject ln k is the closed-form mean of the transformed
+  points (no optimizer, no convergence failures), with t-based confidence
+  intervals; a one-way random-effects model on the transformed scale has
+  closed-form MLEs (`mu` per condition, `sigma2`, `g`); `anova()` gives the
+  paper's exact F-test for condition means (exact when the random-effects
+  variance estimate `g` is greater than 0; the package still reports the
+  statistic with a warning when `g` = 0), including pairwise contrasts and
+  Cohen's d; `logLik(scale = "raw")` is Jacobian-corrected to the raw
+  indifference-point scale (paper Sec. 2.3), which makes it comparable with
+  this package's Gaussian NLS and TMB log-likelihoods. Indifference points at
+  exactly 0 or 1 — undefined under the transform and not addressed by the
+  paper — are moved to `eps` / `1 - eps` by default (`boundary = "clamp"`;
+  only exact 0 and 1 are touched, interior points are used as observed), with
+  `"drop"` and `"error"` alternatives; the count is reported.
+* `simulate_dd_linear()` simulates from the linearized random-effects model
+  (paper Sec. 4.1).
+* New vignette "The linearized Mazur hyperbola: closed-form k and an F-test for
+  conditions" (`vignette("linearized-mazur")`): the transform, the S3 surface of a
+  `fit_dd_linear()` fit, the F-test with `hypothesis` and `pairwise`, the three
+  `boundary` policies and an `eps` sensitivity table on `dd_ip`, and a comparison
+  with the two-stage nonlinear fit.
+* `plot()` for `fit_dd_linear()` fits, with the indifference-point tiers'
+  arguments (`type`, `ids`, `n_points`, `x_trans`, `show_observed`):
+  `"population"` (the hyperbola implied by each condition's geometric-mean `k`,
+  `exp(mu)`, over the observed points), `"individual"` (per-subject
+  hyperbolae), `"transformed"` (the linearization itself, `ln(1/D - 1)`
+  against `ln(delay)` per subject with a slope-1 line at ln k),
+  `"parameters"` (subject `k` with t-intervals by condition and the condition
+  geometric means overlaid, or a caterpillar without a factor), and
+  `"resid"`. `predict(type = "parameters")` returns the per-subject table in
+  the package's `k` / `k_lower` / `k_upper` layout, and `augment()` gains
+  `.std_resid` (the transformed-scale residual divided by the model's error
+  standard deviation).
+* Implementation note: written from the published paper; validated against
+  `nlme::lme(method = "ML")` and nested `lm()` ANOVA oracles, and then
+  (2026-08-26) against the authors' CRAN package `delaydiscount` 0.0.1:
+  per-subject ln k, group means, `sigma2`, `g`, and the overall and pairwise
+  F-tests agree to within 1e-11 relative on the package's `remedi` data
+  (reproducing the paper's Tables 2-3) and on `dd_ip` under identical
+  boundary handling; the reference package has no boundary policy (it
+  rejects indifference points at exactly 0 or 1), so `boundary = "clamp"`
+  is this package's addition.
+
 # beezdiscounting 0.4.0
 
 This is a large release (the first since 0.3.2, January 2025): mixed-effects
 and Bayesian discounting tiers, trial-level choice models, 21-item MCQ and PDQ
 scoring, Monte Carlo power analysis, and ten vignettes (all new since 0.3.2,
-which shipped none).
+which had none).
 
 ### Monte Carlo power analysis
 
@@ -71,8 +120,8 @@ which shipped none).
   errored).
 * New `plot()` method for 21-item `score_mcq()` output
   (`plot.score_mcq_output()`), matching the existing 27-item plot method.
-* Internal (unexported) `inn()` gained a `reg` parameter --
-  `inn(dat, reg, random, verbose)` -- to support both MCQ versions. This is
+* Internal (unexported) `inn()` gained a `reg` parameter
+  (`inn(dat, reg, random, verbose)`) to support both MCQ versions. This is
   a breaking signature change for any code calling
   `beezdiscounting:::inn()` directly.
 
@@ -180,9 +229,9 @@ which shipped none).
   through `fit_dd_brms()` / `fit_dd_choice_brms()` and their S3 surface.
 * New vignette "Comparing discounting rates between groups"
   (`vignette("dd-group-comparisons")`): factor designs on log k, estimated
-  marginal means, and contrasts across both backends -- TMB (Wald + holm)
-  and brms (posterior draws + `post.prob`) -- for indifference-point and
-  trial-level choice models alike.
+  marginal means, and contrasts across both backends (TMB with Wald tests
+  and Holm adjustment; brms with posterior draws and `post.prob`), for
+  indifference-point and trial-level choice models alike.
 
 ### Modeling tiers and choice models
 
@@ -221,8 +270,8 @@ which shipped none).
   there instead.
 
 - **Mixed-effects discounting via TMB** (`fit_dd_tmb()`): fits the
-  indifference-point (IP) family discounting model — Mazur hyperbolic or
-  exponential mean with a subject random intercept on `log k` — under either the
+  indifference-point (IP) family discounting model (Mazur hyperbolic or
+  exponential mean with a subject random intercept on `log k`) under either the
   scale-location-truncated beta (`family = "sltb"`, default) or Gaussian
   (`family = "gaussian"`) observation family. Between-subject factors and
   continuous covariates enter the `log k` fixed-effect design.

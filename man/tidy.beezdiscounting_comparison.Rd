@@ -32,7 +32,7 @@ probability of direction.
 \code{\link[generics:tidy]{generics::tidy()}} method for \code{beezdiscounting_comparison} objects
 (returned by \code{\link[=get_dd_comparisons]{get_dd_comparisons()}}). Produces a flat long tibble whose
 \strong{column names and order} match the beezdemand
-\code{beezdemand_comparison} tidier, enabling downstream consumers to bind
+\code{beezdemand_comparison} tidier, so downstream consumers can bind
 rows from both backends into a single frame. Note that the \code{contrast}
 label dialect differs: beezdiscounting emits native \code{factor=level}
 labels (e.g. \code{"condition=C1 - condition=C2"}), while beezdemand emits

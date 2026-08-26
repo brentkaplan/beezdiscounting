@@ -39,8 +39,8 @@ A \link[ggplot2:ggplot]{ggplot2::ggplot} object.
 \description{
 Visualize a fitted \code{\link[=fit_dd_brms]{fit_dd_brms()}} model. \code{type = "population"} (default)
 draws the posterior-median discount curve with a credible band for the
-population conditional mean (random effects set to zero -- a credible band,
-not a posterior-predictive band) over the observed (boundary-squeezed)
+population conditional mean (random effects set to zero; a credible band
+rather than a posterior-predictive band) over the observed (boundary-squeezed)
 indifference points; \code{type = "individual"} adds per-subject median curves;
 \code{type = "parameters"} shows the posterior subject-\code{k} caterpillar;
 \code{type = "resid"} plots standardized residuals against fitted values.

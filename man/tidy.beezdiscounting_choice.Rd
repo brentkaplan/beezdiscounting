@@ -17,9 +17,9 @@
 \item{effects}{Character vector: \code{"fixed"} (log-k fixed-effect rows + the
 shape rows gamma/beta0), \code{"ran_pars"} (the RE SD), or both (default).}
 
-\item{report_space}{\code{"natural"}, \code{"log10"}, \code{"internal"}, or \code{"log"} -
-reporting scale for the fixed-effect \code{estimate}/\code{std.error}. Default is
-\code{"natural"}.}
+\item{report_space}{Reporting scale for the fixed-effect
+\code{estimate}/\code{std.error}: \code{"natural"} (default), \code{"log10"}, \code{"internal"},
+or \code{"log"}.}
 
 \item{...}{Unused.}
 }
@@ -40,6 +40,6 @@ fixed-effect (\code{beta_k}) rows and for \code{gamma} (which is transformed
 EXPLICITLY since the param-space transformer keys only on k/s/phi). \code{beta0}
 is on the identity (logit-intercept) scale and is NEVER transformed across
 report spaces. \code{statistic} and \code{p.value} are always computed on the
-estimation (internal) scale - Wald statistics are not recomputed after
+estimation (internal) scale. Wald statistics are not recomputed after
 back-transforming (broom convention).
 }

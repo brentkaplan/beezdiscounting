@@ -104,13 +104,13 @@ shape exponent (\code{logs}) population-level for the two-parameter equations.
 }
 \details{
 \code{family = "beta"} (default) uses \code{Beta(link = "identity")} with the mean
-squished into \verb{(1e-6, 1 - 1e-6)} -- the closest brms analog of the TMB
+squished into \verb{(1e-6, 1 - 1e-6)}, the closest brms analog of the TMB
 SLT-beta (\code{family = "sltb"} has no brms equivalent and errors with this
 pointer). Boundary observations (\code{y} exactly 0 or 1) are handled per
 \code{boundary}: \code{"squeeze"} (default) applies the Smithson-Verkuilen
 transform \verb{y* = (y (N - 1) + 0.5) / N} to all responses (message reports
 the boundary count); \code{"zoib"} switches to \code{zero_one_inflated_beta}
-(statistically more honest but changes the estimand -- k then describes
+(statistically more honest, but it changes the estimand: k then describes
 interior responses only); \code{"error"} refuses to fit.
 \code{family = "gaussian"} matches \code{fit_dd_tmb(family = "gaussian")}
 wherever the TMB template's mu clamp into \verb{[1e-6, 1 - 1e-6]} does not

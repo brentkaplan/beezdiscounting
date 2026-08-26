@@ -50,6 +50,8 @@ navbar:
           href: articles/fivetrial-task.html
         - text: ---
         - text: Modeling
+        - text: Linearized Mazur (closed form)
+          href: articles/linearized-mazur.html
         - text: Mixed-effects discounting (TMB)
           href: articles/tmb-mixed-effects.html
         - text: Discounting from trial-level choices
@@ -74,6 +76,16 @@ reference:
       - fit_dd_tmb
       - simulate_dd_ip
       - VarCorr.beezdiscounting_tmb
+
+  - title: Linearized Mazur (closed form)
+    desc: >
+      Analytic ln k, closed-form random-effects MLEs, and an exact F-test across
+      conditions (Hinds et al., 2026).
+    contents:
+      - fit_dd_linear
+      - beezdiscounting_linear-methods
+      - anova.beezdiscounting_linear
+      - simulate_dd_linear
 
   - title: Power analysis
     desc: >

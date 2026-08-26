@@ -24,7 +24,7 @@ A tibble containing the following columns:
 }
 }
 \description{
-This function extracts model parameter estimates, fit statistics, and confidence intervals from a fitted delay-discounting model.
+Extracts parameter estimates, fit statistics, and confidence intervals from a fitted delay-discounting model.
 }
 \examples{
 data <- data.frame(

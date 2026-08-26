@@ -1,7 +1,7 @@
 Package: beezdiscounting
 Title: Behavioral Economic Easy Discounting
-Version: 0.4.0
-Date: 2026-08-15
+Version: 0.4.0.9000
+Date: 2026-08-24
 Authors@R:
     person(given = "Brent A.", family = "Kaplan", email = "bkaplan.ku@gmail.com", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0002-3758-6776"))
@@ -19,7 +19,9 @@ Description: Facilitates some of the analyses performed in studies of
     <doi:10.13140/RG.2.2.26495.79527>), which is also available as a .qsf file in this package.
     The package also fits mixed-effects (hierarchical) discounting models with a
     scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1
-    (Kim, Kaplan, Koffarnus, and Franck, 2025; <arXiv:2509.13167>).
+    (Kim, Kaplan, Koffarnus, and Franck, 2025; <arXiv:2509.13167>). The package also implements
+    the linearized Mazur estimator, random-effects model, and F-test of Hinds et al.
+    (2026; <doi:10.1016/j.jmp.2026.103006>).
 License: GPL (>= 2)
 URL: https://brentkaplan.github.io/beezdiscounting/, https://github.com/brentkaplan/beezdiscounting
 BugReports: https://github.com/brentkaplan/beezdiscounting/issues

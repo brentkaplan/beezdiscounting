@@ -21,8 +21,14 @@
 * `simulate_dd_linear()` simulates from the linearized random-effects model
   (paper Sec. 4.1).
 * Implementation note: written from the published paper; validated against
-  `nlme::lme(method = "ML")` and nested `lm()` ANOVA oracles. A comparison
-  with the authors' reference package is a separate, later step.
+  `nlme::lme(method = "ML")` and nested `lm()` ANOVA oracles, and then
+  (2026-08-26) against the authors' CRAN package `delaydiscount` 0.0.1:
+  per-subject ln k, group means, `sigma2`, `g`, and the overall and pairwise
+  F-tests agree to within 1e-11 relative on the package's `remedi` data
+  (reproducing the paper's Tables 2-3) and on `dd_ip` under identical
+  boundary handling; the reference package has no boundary policy (it
+  rejects indifference points at exactly 0 or 1), so `boundary = "clamp"`
+  is this package's addition.
 
 # beezdiscounting 0.4.0
 

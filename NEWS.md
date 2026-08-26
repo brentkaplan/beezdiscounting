@@ -20,6 +20,11 @@
   `"drop"` and `"error"` alternatives; the count is reported.
 * `simulate_dd_linear()` simulates from the linearized random-effects model
   (paper Sec. 4.1).
+* New vignette "The linearized Mazur hyperbola: closed-form k and an F-test for
+  conditions" (`vignette("linearized-mazur")`): the transform, the S3 surface of a
+  `fit_dd_linear()` fit, the F-test with `hypothesis` and `pairwise`, the three
+  `boundary` policies and an `eps` sensitivity table on `dd_ip`, and a comparison
+  with the two-stage nonlinear fit.
 * Implementation note: written from the published paper; validated against
   `nlme::lme(method = "ML")` and nested `lm()` ANOVA oracles, and then
   (2026-08-26) against the authors' CRAN package `delaydiscount` 0.0.1:

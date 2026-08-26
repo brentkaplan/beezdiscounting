@@ -1,0 +1,381 @@
+---
+title: "The linearized Mazur hyperbola: closed-form k and an F-test for conditions"
+author: "Brent Kaplan"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{The linearized Mazur hyperbola: closed-form k and an F-test for conditions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.2)
+set.seed(1)
+library(beezdiscounting)
+library(ggplot2)
+```
+
+The other modeling tiers in `beezdiscounting` estimate the discount rate by
+optimization. `fit_dd()` fits Mazur's hyperbola to each subject by nonlinear least
+squares, which may fail to converge for flat or erratic subjects, and `fit_dd_tmb()`
+fits a mixed model whose marginal likelihood has to be maximized numerically. Hinds
+et al. (2026) take a different route. They rearrange the hyperbola so that ln k
+appears as an intercept, at which point the per-subject estimate is a mean, the
+population model is a one-way random-effects ANOVA with closed-form maximum
+likelihood estimates, and condition means can be compared with an F-test whose
+null distribution holds at any sample size under the model's assumptions. No optimizer is
+involved anywhere, so there is nothing to fail to converge. `fit_dd_linear()`
+implements that estimator.
+
+This vignette covers (i) the transform and the per-subject estimator, (ii) the
+random-effects model and the methods that act on a fit, (iii) comparing conditions
+with the F-test, (iv) what to do with indifference points at exactly 0 or 1, and
+(v) how the linearized estimates relate to the nonlinear ones.
+
+## The transform
+
+Mazur's (1987) hyperbola gives the discounted value of a delayed reward as a
+proportion of its undelayed value, `D = 1 / (1 + k t)`, where `t` is the delay and
+`k` is the discount rate. Solving for `k` and taking logs,
+
+```
+ln(1 / D - 1) - ln(t) = ln k .
+```
+
+Every indifference point, once transformed this way, is a direct read of ln k. Hinds
+et al. (2026) treat the transformed points as ln k plus additive Gaussian error, so the
+per-subject estimate of ln k is the mean of the transformed points (equivalently, the
+geometric mean of `(1 / D - 1) / t`). Note that the Gaussian error on the transformed
+scale is a modeling assumption, as it is for any other error model; Section 2 of the
+paper discusses it, and the last section below shows what it implies on the raw scale.
+
+To make that concrete, here is one subject drawn from the simulator introduced in
+the next section, with the transform done by hand:
+
+```{r by-hand}
+one <- simulate_dd_linear(1, delays = c(7, 30, 90, 180, 365, 730),
+                          mu = c(demo = -6), sigma2 = 2, g = 10, seed = 3)
+one$y_lin <- log(1 / one$y - 1) - log(one$x)
+one
+mean(one$y_lin)
+```
+
+`fit_dd_linear()` returns the same number:
+
+```{r by-hand-fit}
+fit_dd_linear(one)$subjects[, c("id", "logk", "se", "ci_lo", "ci_hi")]
+```
+
+The standard error and interval are the usual t-based quantities for a mean of
+`T` observations (here `T = 6` delays), so for a given spread of transformed points
+a subject measured at more delays gets a narrower interval.
+
+## Simulate a three-condition study
+
+`simulate_dd_linear()` draws data from the random-effects model that
+`fit_dd_linear()` fits: each subject's ln k is drawn around their condition mean
+`mu`, and each transformed point is that subject's ln k plus Gaussian noise. The
+model has two variance parameters. `sigma2` is the noise variance on the transformed
+scale, and `g` scales the between-subject variance, `Var(ln k_i) = g * sigma2 / T`.
+The values below are of the order the paper reports for real data
+(`sigma2` near 2, `g` near 10). A scalar `n_subjects` is recycled across
+conditions, so this call yields 30 subjects per condition and 90 in total.
+Conditions `A` and `C` share a mean; `B` discounts more steeply by 1.5 on the ln k
+scale (a factor of about 4.5 in `k`).
+
+```{r sim}
+sim <- simulate_dd_linear(
+  n_subjects = 30,
+  delays     = c(7, 30, 90, 180, 365, 730),
+  mu         = c(A = -6, B = -4.5, C = -6),
+  sigma2     = 2,
+  g          = 10,
+  seed       = 1
+)
+head(sim)
+```
+
+The layout is the package's usual long format (`id`, `x` for delay, `y` for the
+indifference point on `[0, 1]`) plus the `condition` column.
+
+## Fit and inspect
+
+`factors` names the one between-subject column that defines the conditions. Two
+design requirements apply to the random-effects part of the fit: every subject must
+appear under exactly one level (the F-test assumes independent units per condition),
+and every subject must contribute the same number of usable delays. A within-subject
+factor is rejected with an error; an unbalanced design (see the boundary section
+below) returns the per-subject estimates but leaves the population component
+unfitted.
+
+```{r fit}
+fit <- fit_dd_linear(sim, factors = "condition")
+fit
+```
+
+The print method reports the design, the boundary bookkeeping (nothing to report
+here, as the simulator keeps every point strictly inside (0, 1)), the condition means
+`mu` on the ln k scale, and the two variance estimates. `summary()` adds the first
+rows of the per-subject table and the population parameters as a tibble:
+
+```{r summary}
+summary(fit)
+```
+
+`coef()` returns the condition means and `confint()` an interval around each.
+The paper gives no population interval, so the package uses the ANOVA-style
+t-interval on the per-subject ln k values (between-subject mean square,
+`N - C` degrees of freedom); with `parm = "subject"` you get the per-subject
+intervals instead.
+
+```{r coef}
+coef(fit)
+confint(fit)
+head(confint(fit, parm = "subject"), 3)
+```
+
+`tidy()` returns the per-subject table by default (`logk`, its `se` and interval,
+`k` back-transformed with its interval, and `n_boundary`, the count of points that
+sat at 0 or 1), or the population parameters with `effects = "population"`:
+
+```{r tidy}
+tidy(fit)
+tidy(fit, effects = "population")
+```
+
+Because the data were simulated, the estimates can be set beside the values that
+generated them:
+
+```{r recovery}
+tibble::tibble(
+  term     = c("mu_A", "mu_B", "mu_C", "sigma2", "g"),
+  truth    = c(-6, -4.5, -6, 2, 10),
+  estimate = tidy(fit, effects = "population")$estimate
+)
+```
+
+The means and `sigma2` are recovered closely; `g` is estimated with more
+uncertainty, as a between-subject variance from 30 subjects per condition would be
+under any estimator.
+
+`glance()` gives the one-row model summary used across the package for stacking
+fits (`nobs()` returns the count of usable transformed points, 540 here), and
+`logLik()` the log-likelihood. By default `logLik()` returns the
+population (random-effects) likelihood on the raw indifference-point scale, that
+is, corrected by the Jacobian of the transform (paper Section 2.3), which is what
+makes it comparable with the Gaussian likelihoods of `fit_dd()` and
+`fit_dd_tmb()`. `scale = "transformed"` returns the likelihood of the transformed
+points, and `level = "subject"` the sum of the per-subject likelihoods (the
+quantity to set against a per-subject fit rather than a mixed model).
+
+```{r glance}
+glance(fit)
+logLik(fit)
+```
+
+`augment()` returns the long data with the transformed value `y_lin`, the value
+actually used after boundary handling `d_used`, and the fitted indifference point
+and residual on the raw scale, `.fitted` and `.resid`. The figures below are built
+from this table.
+
+```{r augment}
+head(augment(fit), 3)
+```
+
+## Comparing conditions
+
+`anova()` tests whether the condition means are equal. The statistic is the
+paper's F (Proposition 3.5) with `C - 1` and `N - C` degrees of freedom (here 2
+and 87). Under the model's assumptions (a balanced design, independent subjects,
+and Gaussian error on the transformed scale) its null distribution is F at any
+`N`, with no large-sample approximation involved. The proposition derives this
+for a positive between-subject variance estimate `g`, which is the usual case;
+when `g` is estimated at 0 the package still reports the statistic but warns.
+
+```{r anova}
+anova(fit)
+```
+
+A `hypothesis` argument restricts the null to a subset of levels. To test only
+whether `A` and `C` share a mean (the two conditions the simulation set equal):
+
+```{r anova-hyp}
+anova(fit, hypothesis = list(c("A", "C")))
+```
+
+`pairwise = TRUE` runs every two-level comparison. The p-values are uncorrected,
+and each row also reports Cohen's d on the ln k scale (the mean difference divided
+by the between-subject standard deviation); `cohens_d` is only defined for
+two-level hypotheses, which is why the overall test above shows `NA`.
+
+```{r anova-pairwise}
+anova(fit, pairwise = TRUE)
+```
+
+`B` differs from both `A` and `C` at about one between-subject standard deviation,
+and `A` and `C` do not differ, which is the structure the simulation built in.
+By contrast, the Wald tests in `vignette("dd-group-comparisons")` rely on a
+large-sample approximation to the sampling distribution. The F-test here needs
+no such approximation, and it costs nothing beyond the closed-form fit.
+
+## Indifference points at 0 or 1
+
+The transform is undefined at `D = 0` and `D = 1` (`ln(1 / D - 1)` diverges), and
+the paper does not address such values. Real titration data contain them. The
+package's `dd_ip` dataset has 600 points from 100 subjects, of which 125 are exactly
+0 and 4 lie above 1 (the input check clamps those to 1, with a warning), so 129
+points sit on the boundary. `boundary` selects one of three policies.
+
+**`"clamp"`** (the default) moves an exact 0 to `eps` and an exact 1 to `1 - eps`.
+Only exact 0 and 1 are touched; an interior point, however close to a bound, is
+used as observed. The print method reports how many points were clamped.
+
+```{r dd-ip-clamp}
+data(dd_ip)
+fit_clamp <- fit_dd_linear(dd_ip)
+fit_clamp
+```
+
+**`"drop"`** removes boundary points. The per-subject estimates are still returned,
+but subjects then differ in their number of usable delays, the design is no longer
+balanced, and the random-effects component is unavailable. The population methods
+(`coef()`, `anova()`, and the default `confint()`, `tidy(effects = "population")`
+and `logLik()`) then error; the per-subject versions still work.
+
+```{r dd-ip-drop}
+fit_drop <- fit_dd_linear(dd_ip, boundary = "drop")
+fit_drop
+```
+
+**`"error"`** refuses the data, which is the right choice in a pipeline that should
+never silently impute:
+
+```{r dd-ip-error, error = TRUE}
+fit_dd_linear(dd_ip, boundary = "error")
+```
+
+With a fifth of the points clamped, the population estimate depends on where the
+clamped points are placed. The default `eps` is 0.005; when `ll` (the larger-later
+amount) is supplied it becomes `1 / (2 * ll)`, half the smallest step the task
+could resolve. The table below refits `dd_ip` across a range of `eps`:
+
+```{r eps-sensitivity, warning = FALSE}
+eps_grid <- c(0.001, 0.005, 0.01, 0.05)
+tibble::tibble(
+  eps = eps_grid,
+  mu  = sapply(eps_grid, function(e) coef(fit_dd_linear(dd_ip, eps = e))),
+  k   = exp(mu)
+)
+```
+
+The estimate of ln k moves by 0.8 across this range, which is a factor of about 2.2
+in `k`. The sensitivity arises when data with many points on the boundary meet a
+transform that diverges there and a clamp policy that has to pick a finite
+stand-in. A bounded likelihood needs no `eps` at all. We recommend setting
+`eps` from the task's resolution via `ll`, reporting the clamped count, and, when
+boundary points are this common, preferring a likelihood that treats them as data;
+see `vignette("sltb-discounting")`.
+
+## Figures
+
+The linearization is easiest to see on the transformed scale. For each subject,
+`ln(1 / D - 1)` plotted against `ln(t)` should scatter around a line of slope 1 whose
+intercept is that subject's ln k:
+
+```{r fig-transformed, fig.alt = "Six panels, one per simulated subject, plotting ln(1/D - 1) against ln(delay); the points in each panel scatter around a line of slope 1 whose intercept is the subject's estimated ln k."}
+aug <- augment(fit)
+show <- c("A_1", "A_2", "B_1", "B_2", "C_1", "C_2")
+sub  <- tidy(fit)
+d6   <- aug[aug$id %in% show, ]
+d6$logk <- sub$logk[match(d6$id, sub$id)]
+ggplot(d6, aes(x = log(x), y = log(1 / d_used - 1))) +
+  geom_abline(aes(intercept = logk, slope = 1), colour = "grey50") +
+  geom_point() +
+  facet_wrap(~ id, nrow = 2) +
+  labs(x = "ln(delay)", y = "ln(1/D - 1)") +
+  beezdemand::theme_apa()
+```
+
+Back on the raw scale, `.fitted` from `augment()` is the hyperbola implied by each
+subject's `k`:
+
+```{r fig-raw, fig.alt = "Six panels, one per simulated subject, showing observed indifference points against delay with the fitted hyperbola drawn through them."}
+grid <- expand.grid(id = show, x = seq(1, 730, length.out = 200))
+grid$k <- sub$k[match(grid$id, sub$id)]
+grid$.fitted <- 1 / (1 + grid$k * grid$x)
+ggplot(d6, aes(x = x, y = y)) +
+  geom_line(data = grid, aes(y = .fitted), colour = "grey50") +
+  geom_point() +
+  facet_wrap(~ id, nrow = 2) +
+  labs(x = "Delay", y = "Indifference point") +
+  beezdemand::theme_apa()
+```
+
+The third figure answers the study question. It shows every subject's ln k with
+its t-interval, by condition, with the condition mean and its interval from
+`coef()` and `confint()` overlaid.
+
+```{r fig-conditions, fig.alt = "Per-subject ln k estimates with confidence intervals, jittered within three conditions A, B, and C; condition B sits about 1.5 units higher than A and C, and the condition means with their intervals are overlaid in black."}
+pop <- data.frame(condition = names(coef(fit)), mu = coef(fit),
+                  lo = confint(fit)[, 1], hi = confint(fit)[, 2])
+ggplot(sub, aes(x = condition, y = logk)) +
+  geom_pointrange(aes(ymin = ci_lo, ymax = ci_hi), colour = "grey60",
+                  position = position_jitter(width = 0.2, height = 0, seed = 1),
+                  size = 0.2) +
+  geom_pointrange(data = pop, aes(y = mu, ymin = lo, ymax = hi), size = 0.8) +
+  labs(x = "Condition", y = "ln k") +
+  beezdemand::theme_apa()
+```
+
+## How this relates to the nonlinear fit
+
+The same data fitted subject by subject with `fit_dd()` give a second set of
+per-subject rates. The two estimators target the same `k` under different error
+models: `fit_dd()` assumes Gaussian error on the indifference-point scale, whereas
+`fit_dd_linear()` assumes it on the transformed scale, where a fixed error in
+`ln(1 / D - 1)` corresponds to a small raw-scale error near `D = 0.5` and a much
+smaller one near the bounds.
+
+```{r nls-compare}
+nls_fit <- fit_dd(sim, equation = "mazur", method = "two stage")
+nls_res <- results_dd(nls_fit)
+both <- merge(
+  sub[, c("id", "condition", "logk")],
+  data.frame(id = nls_res$id, logk_nls = log(nls_res$estimate)),
+  by = "id"
+)
+cor(both$logk, both$logk_nls)
+head(both)
+```
+
+The two sets of ln k agree closely on these data (`r sprintf("r = %.2f", cor(both$logk, both$logk_nls))`),
+and the largest disagreements are for subjects with a point very close to 0 or 1,
+where the two error models weight the observations most differently. Which error
+model is closer to the truth is an empirical question. Hinds et al. (2026) compare
+the estimators by simulation and on real data, and we refer the reader there
+rather than repeating the comparison. A likelihood comparison between the two is
+possible because `logLik(fit)` is Jacobian-corrected to the indifference-point
+scale, which puts it on the same scale as a Gaussian log-likelihood on the raw
+points. Comparability also requires that (i) the same observations enter both
+fits, (ii) boundary handling is identical, and (iii) the likelihood levels match
+(`level = "subject"` against a per-subject fit, the default population likelihood
+against a mixed model such as `fit_dd_tmb()`).
+
+## Where to go next
+
+- `vignette("dd-group-comparisons")` for factor designs, marginal means, and
+  contrasts under the mixed-effects and Bayesian tiers.
+- `vignette("sltb-discounting")` for a bounded likelihood that treats indifference
+  points at 0 and 1 as data rather than as a nuisance.
+- `vignette("tmb-mixed-effects")` for the `fit_dd_tmb()` workflow, whose
+  log-likelihood is on the same scale as `logLik(fit)` here.
+
+## References
+
+- Hinds, D., Tegge, A. N., Stein, J. S., LaConte, S. M., McClure, S. M., & Ferreira,
+  M. A. R. (2026). To linearize or not to linearize: That is the Mazur delay
+  discounting question. *Journal of Mathematical Psychology, 130*, 103006.
+  https://doi.org/10.1016/j.jmp.2026.103006
+- Mazur, J. E. (1987). An adjusting procedure for studying delayed reinforcement.
+  In *The effect of delay and of intervening events on reinforcement value*
+  (pp. 55--73). Lawrence Erlbaum Associates.

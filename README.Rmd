@@ -680,6 +680,7 @@ Worked examples live in the package vignettes, also rendered on the
 - [Scoring the Probability Discounting Questionnaire (PDQ)](https://brentkaplan.github.io/beezdiscounting/articles/pdq-scoring.html) (`vignette("pdq-scoring")`)
 - [Getting started: indifference points, k, and AUC](https://brentkaplan.github.io/beezdiscounting/articles/delay-discounting-basics.html) (`vignette("delay-discounting-basics")`)
 - [Scoring the 5.5-trial discounting task](https://brentkaplan.github.io/beezdiscounting/articles/fivetrial-task.html) (`vignette("fivetrial-task")`)
+- [The linearized Mazur hyperbola: closed-form k and an F-test for conditions](https://brentkaplan.github.io/beezdiscounting/articles/linearized-mazur.html) (`vignette("linearized-mazur")`)
 - [Mixed-effects discounting with TMB](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html) (`vignette("tmb-mixed-effects")`)
 - [Discounting from trial-level choices](https://brentkaplan.github.io/beezdiscounting/articles/choice-discounting.html) (`vignette("choice-discounting")`)
 - [Modeling delay-discounting indifference points with bounded error distributions](https://brentkaplan.github.io/beezdiscounting/articles/sltb-discounting.html) (`vignette("sltb-discounting")`)

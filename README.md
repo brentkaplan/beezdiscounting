@@ -1118,6 +1118,7 @@ Worked examples live in the package vignettes, also rendered on the
 - [Scoring the 5.5-trial discounting
   task](https://brentkaplan.github.io/beezdiscounting/articles/fivetrial-task.html)
   (`vignette("fivetrial-task")`)
+- [The linearized Mazur hyperbola: closed-form k and an F-test for conditions](https://brentkaplan.github.io/beezdiscounting/articles/linearized-mazur.html) (`vignette("linearized-mazur")`)
 - [Mixed-effects discounting with
   TMB](https://brentkaplan.github.io/beezdiscounting/articles/tmb-mixed-effects.html)
   (`vignette("tmb-mixed-effects")`)

@@ -15,12 +15,9 @@
   indifference-point scale (paper Sec. 2.3), which makes it comparable with
   this package's Gaussian NLS and TMB log-likelihoods. Indifference points at
   exactly 0 or 1 — undefined under the transform and not addressed by the
-  paper — are clamped to `[eps, 1 - eps]` by default (`boundary = "clamp"`),
-  with `"drop"` and `"error"` alternatives; the count is reported. Note that
-  `"clamp"` moves any point outside `(eps, 1 - eps)` to the nearest bound, not
-  only exact 0 and 1. On data with many points near 1 (short delays) this
-  shrinks the transformed-scale variance and biases `sigma2` and `g` downward;
-  use `boundary = "error"` or `"drop"`, or a smaller `eps`, when that matters.
+  paper — are moved to `eps` / `1 - eps` by default (`boundary = "clamp"`;
+  only exact 0 and 1 are touched, interior points are used as observed), with
+  `"drop"` and `"error"` alternatives; the count is reported.
 * `simulate_dd_linear()` simulates from the linearized random-effects model
   (paper Sec. 4.1).
 * Implementation note: written from the published paper; validated against

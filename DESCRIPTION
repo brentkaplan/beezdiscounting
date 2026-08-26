@@ -1,6 +1,6 @@
 Package: beezdiscounting
 Title: Behavioral Economic Easy Discounting
-Version: 0.4.0
+Version: 0.4.0.9000
 Date: 2026-08-24
 Authors@R:
     person(given = "Brent A.", family = "Kaplan", email = "bkaplan.ku@gmail.com", role = c("aut", "cre", "cph"),

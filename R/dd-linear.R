@@ -225,12 +225,11 @@
 #' numerical optimization is involved.
 #'
 #' Indifference points at exactly 0 or 1 are undefined under the transform;
-#' by default they are clamped to `[eps, 1 - eps]` (`boundary = "clamp"`).
-#' This is a package decision — the paper does not address boundary values.
-#' `"clamp"` moves any `y` outside `(eps, 1 - eps)` to the nearest bound — not
-#' only exact 0 and 1. On data with many points near 1 (short delays) this
-#' shrinks the transformed-scale variance and biases `sigma2` and `g` downward;
-#' use `boundary = "error"` or `"drop"`, or a smaller `eps`, when that matters.
+#' by default they are moved to `eps` and `1 - eps` respectively
+#' (`boundary = "clamp"`). Only exact 0 and 1 are touched — interior points,
+#' however close to a bound, are used as observed. This is a package decision;
+#' the paper does not address boundary values. Use `boundary = "drop"` or
+#' `"error"` when you would rather not impute them.
 #'
 #' @param data Long data frame with subject id, delay, and indifference point columns.
 #' @param y_var,x_var,id_var Column names for indifference point, delay, subject.
@@ -239,14 +238,11 @@
 #'   level; frames with an id under several levels are rejected because the exact
 #'   F-test assumes independent units per condition.
 #' @param response_scale,ll As in [fit_dd_tmb()].
-#' @param boundary How to treat `y` in \{0, 1\}: `"clamp"` (default), `"drop"`
+#' @param boundary How to treat `y` in \{0, 1\}: `"clamp"` (default; exact 0
+#'   becomes `eps`, exact 1 becomes `1 - eps`, nothing else moves), `"drop"`
 #'   (per-subject estimates only unless the design stays balanced), `"error"`.
-#'   `"clamp"` moves any `y` outside `(eps, 1 - eps)` to the nearest bound — not
-#'   only exact 0 and 1 — which shrinks the transformed-scale variance and
-#'   biases `sigma2` and `g` downward when many points sit near the bounds.
-#' @param eps Clamp half-width; default `1/(2 * ll)` if `ll` is given, else `0.005`.
-#'   Under `boundary = "clamp"` every `y` outside `(eps, 1 - eps)` is moved to the
-#'   nearest bound, so a smaller `eps` clamps fewer points.
+#' @param eps Where exact 0 / 1 are placed under `boundary = "clamp"`
+#'   (`eps` and `1 - eps`); default `1/(2 * ll)` if `ll` is given, else `0.005`.
 #' @param conf_level Confidence level for per-subject ln(k) intervals.
 #' @return An object of class `beezdiscounting_linear`: a list with `subjects`
 #'   (per-unit tibble of ln k estimates, intervals and log-likelihoods), `re`

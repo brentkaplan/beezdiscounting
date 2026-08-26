@@ -35,6 +35,8 @@ describe("fit_dd_linear()", {
     expect_warning(fit <- fit_dd_linear(dd_ip), "[Cc]lamp")   # dd_ip has y up to 1.13
     expect_equal(fit$transform$boundary, "clamp"); expect_equal(fit$transform$eps, 0.005)
     expect_equal(fit$transform$n_boundary, sum(pmin(dd_ip$y, 1) %in% c(0, 1)))
+    expect_equal(fit$transform$n_clamped, fit$transform$n_boundary)   # ruling: only exact 0/1 move
+    expect_equal(fit$transform$n_clamped, 129L)
     expect_false(is.null(fit$re)); expect_equal(nrow(fit$subjects), 100L)
   })
   it("dd_ip: eps defaults to 1/(2 ll) when ll is given", {

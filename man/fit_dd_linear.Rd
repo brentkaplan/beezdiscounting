@@ -29,15 +29,12 @@ F-test assumes independent units per condition.}
 
 \item{response_scale, ll}{As in \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.}
 
-\item{boundary}{How to treat \code{y} in \{0, 1\}: \code{"clamp"} (default), \code{"drop"}
-(per-subject estimates only unless the design stays balanced), \code{"error"}.
-\code{"clamp"} moves any \code{y} outside \verb{(eps, 1 - eps)} to the nearest bound — not
-only exact 0 and 1 — which shrinks the transformed-scale variance and
-biases \code{sigma2} and \code{g} downward when many points sit near the bounds.}
+\item{boundary}{How to treat \code{y} in \{0, 1\}: \code{"clamp"} (default; exact 0
+becomes \code{eps}, exact 1 becomes \code{1 - eps}, nothing else moves), \code{"drop"}
+(per-subject estimates only unless the design stays balanced), \code{"error"}.}
 
-\item{eps}{Clamp half-width; default \code{1/(2 * ll)} if \code{ll} is given, else \code{0.005}.
-Under \code{boundary = "clamp"} every \code{y} outside \verb{(eps, 1 - eps)} is moved to the
-nearest bound, so a smaller \code{eps} clamps fewer points.}
+\item{eps}{Where exact 0 / 1 are placed under \code{boundary = "clamp"}
+(\code{eps} and \code{1 - eps}); default \code{1/(2 * ll)} if \code{ll} is given, else \code{0.005}.}
 
 \item{conf_level}{Confidence level for per-subject ln(k) intervals.}
 }
@@ -61,12 +58,11 @@ numerical optimization is involved.
 }
 \details{
 Indifference points at exactly 0 or 1 are undefined under the transform;
-by default they are clamped to \verb{[eps, 1 - eps]} (\code{boundary = "clamp"}).
-This is a package decision — the paper does not address boundary values.
-\code{"clamp"} moves any \code{y} outside \verb{(eps, 1 - eps)} to the nearest bound — not
-only exact 0 and 1. On data with many points near 1 (short delays) this
-shrinks the transformed-scale variance and biases \code{sigma2} and \code{g} downward;
-use \code{boundary = "error"} or \code{"drop"}, or a smaller \code{eps}, when that matters.
+by default they are moved to \code{eps} and \code{1 - eps} respectively
+(\code{boundary = "clamp"}). Only exact 0 and 1 are touched — interior points,
+however close to a bound, are used as observed. This is a package decision;
+the paper does not address boundary values. Use \code{boundary = "drop"} or
+\code{"error"} when you would rather not impute them.
 }
 \examples{
 fit <- fit_dd_linear(dd_ip)

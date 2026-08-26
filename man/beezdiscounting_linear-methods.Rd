@@ -10,6 +10,7 @@
 \alias{coef.beezdiscounting_linear}
 \alias{confint.beezdiscounting_linear}
 \alias{augment.beezdiscounting_linear}
+\alias{predict.beezdiscounting_linear}
 \alias{nobs.beezdiscounting_linear}
 \alias{logLik.beezdiscounting_linear}
 \title{Methods for linearized Mazur fits}
@@ -29,6 +30,8 @@
 \method{confint}{beezdiscounting_linear}(object, parm = c("population", "subject"), level = 0.95, ...)
 
 \method{augment}{beezdiscounting_linear}(x, ...)
+
+\method{predict}{beezdiscounting_linear}(object, type = "parameters", ...)
 
 \method{nobs}{beezdiscounting_linear}(object, ...)
 
@@ -60,13 +63,24 @@ For \code{logLik()}, which likelihood to return: \code{"population"} (the
 random-effects MLE, \code{df} = C + 2) or \code{"subject"} (the sum of the per-unit
 log-likelihoods, \code{df} = 2 per unit).}
 
+\item{type}{For \code{predict()}: only \code{"parameters"} exists, returning the
+per-subject \verb{ln k} and \code{k} with their t-intervals (\code{id}, \code{condition},
+\code{logk}, \code{logk_lower}, \code{logk_upper}, \code{k}, \code{k_lower}, \code{k_upper}). There is
+no \code{newdata} prediction; \code{augment()} gives the fitted curve.}
+
 \item{scale}{For \code{logLik()}: \code{"raw"} (default) is Jacobian-corrected back to
 the indifference-point scale; \code{"transformed"} is on the linearized scale.}
 }
 \value{
 \code{print()} and \code{print.summary()} return their input invisibly;
 \code{summary()} returns an object of class \code{summary.beezdiscounting_linear};
-\code{tidy()}, \code{glance()} and \code{augment()} return tibbles; \code{coef()} returns the
+\code{tidy()}, \code{glance()}, \code{augment()} and \code{predict()} return tibbles.
+\code{augment()} adds \code{.fitted} and \code{.resid} on the raw indifference-point
+scale and \code{.std_resid}, the transformed-scale residual \verb{y_lin - ln k_i}
+divided by the model's error standard deviation (\code{sqrt(sigma2)} from the
+random-effects fit, or the pooled within-subject mean square when that
+component is unavailable); \code{.std_resid} is \code{NA} for points dropped under
+\code{boundary = "drop"}. \code{coef()} returns the
 named vector of condition means \code{mu}; \code{confint()} returns a two-column
 matrix of lower/upper bounds; \code{nobs()} returns the number of usable
 transformed observations; \code{logLik()} returns a \code{"logLik"} object with \code{df}
@@ -87,5 +101,6 @@ with this package's Gaussian NLS and TMB log-likelihoods.
 }
 \seealso{
 \code{\link[=fit_dd_linear]{fit_dd_linear()}},
-\code{\link[=anova.beezdiscounting_linear]{anova.beezdiscounting_linear()}}
+\code{\link[=anova.beezdiscounting_linear]{anova.beezdiscounting_linear()}},
+\code{\link[=plot.beezdiscounting_linear]{plot.beezdiscounting_linear()}}
 }

@@ -25,6 +25,18 @@
   `fit_dd_linear()` fit, the F-test with `hypothesis` and `pairwise`, the three
   `boundary` policies and an `eps` sensitivity table on `dd_ip`, and a comparison
   with the two-stage nonlinear fit.
+* `plot()` for `fit_dd_linear()` fits, with the indifference-point tiers'
+  arguments (`type`, `ids`, `n_points`, `x_trans`, `show_observed`):
+  `"population"` (the hyperbola implied by each condition's geometric-mean `k`,
+  `exp(mu)`, over the observed points), `"individual"` (per-subject
+  hyperbolae), `"transformed"` (the linearization itself, `ln(1/D - 1)`
+  against `ln(delay)` per subject with a slope-1 line at ln k),
+  `"parameters"` (subject `k` with t-intervals by condition and the condition
+  geometric means overlaid, or a caterpillar without a factor), and
+  `"resid"`. `predict(type = "parameters")` returns the per-subject table in
+  the package's `k` / `k_lower` / `k_upper` layout, and `augment()` gains
+  `.std_resid` (the transformed-scale residual divided by the model's error
+  standard deviation).
 * Implementation note: written from the published paper; validated against
   `nlme::lme(method = "ML")` and nested `lm()` ANOVA oracles, and then
   (2026-08-26) against the authors' CRAN package `delaydiscount` 0.0.1:

@@ -254,6 +254,9 @@
 #'   Ferreira, M. A. R. (2026). To linearize or not to linearize: That is the Mazur delay
 #'   discounting question. *Journal of Mathematical Psychology, 130*, 103006.
 #'   \doi{10.1016/j.jmp.2026.103006}
+#' @seealso [beezdiscounting_linear-methods] for the S3 surface,
+#'   [plot.beezdiscounting_linear()], [anova.beezdiscounting_linear()],
+#'   [simulate_dd_linear()], and `vignette("linearized-mazur")`.
 #' @examples
 #' fit <- fit_dd_linear(dd_ip)
 #' fit

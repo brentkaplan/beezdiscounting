@@ -72,3 +72,47 @@ describe("beezdiscounting_linear methods", {
     expect_error(anova(fit0), "denominator df")
   })
 })
+
+describe("predict() and .std_resid for beezdiscounting_linear", {
+  fit <- .lin_fit3()
+  it("predict(type = 'parameters') renames the subject table to the plot contract", {
+    sp <- predict(fit, type = "parameters")
+    expect_s3_class(sp, "tbl_df")
+    expect_equal(
+      names(sp),
+      c("id", "condition", "logk", "logk_lower", "logk_upper", "k", "k_lower", "k_upper")
+    )
+    expect_equal(sp$k, fit$subjects$k)
+    expect_equal(sp$k_lower, fit$subjects$k_lo)
+    expect_equal(sp$k_upper, fit$subjects$k_hi)
+    expect_equal(sp$logk_lower, fit$subjects$ci_lo)
+    expect_identical(predict(fit), sp)
+  })
+  it("predict rejects newdata and other types", {
+    expect_error(predict(fit, newdata = fit$data[1:3, ]), "augment")
+    expect_error(predict(fit, type = "response"), "should be")
+  })
+  it("augment .std_resid = (y_lin - logk_i) / sqrt(re$sigma2)", {
+    a <- augment(fit)
+    logk <- fit$subjects$logk[match(a$id, fit$subjects$id)]
+    expect_equal(a$.std_resid, (a$y_lin - logk) / sqrt(fit$re$sigma2))
+    expect_equal(as.vector(tapply(a$.std_resid, a$id, mean)), rep(0, 60), tolerance = 1e-10)
+  })
+  it("augment .std_resid uses the pooled within-subject MS when re is NULL; NA at dropped rows", {
+    unb <- suppressWarnings(fit_dd_linear(dd_ip, boundary = "drop"))
+    a <- augment(unb)
+    expect_true(all(is.na(a$.std_resid[!is.finite(a$y_lin)])))
+    s <- unb$subjects
+    pooled <- sum(s$df * s$s2) / sum(s$df)
+    logk <- s$logk[match(a$id, s$id)]
+    ok <- is.finite(a$y_lin)
+    expect_equal(a$.std_resid[ok], ((a$y_lin - logk) / sqrt(pooled))[ok])
+  })
+  it("augment .std_resid is not identically +/- 1/sqrt(2) for two-delay subjects", {
+    two <- fit_dd_linear(simulate_dd_linear(
+      n_subjects = 6, delays = c(7, 30), mu = -5, sigma2 = 2, g = 5, seed = 4
+    ))
+    r <- abs(augment(two)$.std_resid)
+    expect_false(all(abs(r - 1 / sqrt(2)) < 1e-8))
+  })
+})

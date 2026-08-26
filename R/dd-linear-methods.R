@@ -27,16 +27,27 @@
 #'   table; `"population"` returns the random-effects MLEs `mu_<level>`,
 #'   `sigma2` and `g`.
 #' @param ... Unused; present for S3 generic consistency.
+#' @param type For `predict()`: only `"parameters"` exists, returning the
+#'   per-subject `ln k` and `k` with their t-intervals (`id`, `condition`,
+#'   `logk`, `logk_lower`, `logk_upper`, `k`, `k_lower`, `k_upper`). There is
+#'   no `newdata` prediction; `augment()` gives the fitted curve.
 #' @return `print()` and `print.summary()` return their input invisibly;
 #'   `summary()` returns an object of class `summary.beezdiscounting_linear`;
-#'   `tidy()`, `glance()` and `augment()` return tibbles; `coef()` returns the
+#'   `tidy()`, `glance()`, `augment()` and `predict()` return tibbles.
+#'   `augment()` adds `.fitted` and `.resid` on the raw indifference-point
+#'   scale and `.std_resid`, the transformed-scale residual `y_lin - ln k_i`
+#'   divided by the model's error standard deviation (`sqrt(sigma2)` from the
+#'   random-effects fit, or the pooled within-subject mean square when that
+#'   component is unavailable); `.std_resid` is `NA` for points dropped under
+#'   `boundary = "drop"`. `coef()` returns the
 #'   named vector of condition means `mu`; `confint()` returns a two-column
 #'   matrix of lower/upper bounds; `nobs()` returns the number of usable
 #'   transformed observations; `logLik()` returns a `"logLik"` object with `df`
 #'   and `nobs` attributes. Methods needing the random-effects component error
 #'   when the design was unbalanced and `re` is `NULL`.
 #' @seealso [fit_dd_linear()],
-#'   [anova.beezdiscounting_linear()]
+#'   [anova.beezdiscounting_linear()],
+#'   [plot.beezdiscounting_linear()]
 #' @name beezdiscounting_linear-methods
 NULL
 
@@ -187,10 +198,40 @@ confint.beezdiscounting_linear <- function(object, parm = c("population", "subje
 #' @export
 augment.beezdiscounting_linear <- function(x, ...) {
   d <- x$data
-  k <- x$subjects$k[match(as.character(d$id), as.character(x$subjects$id))]
+  idx <- match(as.character(d$id), as.character(x$subjects$id))
+  k <- x$subjects$k[idx]
   d$.fitted <- 1 / (1 + k * d$x)
   d$.resid <- d$y - d$.fitted
+  # One error variance for the whole model (not the per-subject s2_i, which would
+  # make a two-delay subject's residuals identically +/- 1/sqrt(2)): the ML
+  # sigma2 when the random-effects component exists, else the pooled
+  # within-subject mean square (what sigma2 reduces to in the g > 0 branch).
+  sigma2 <- if (!is.null(x$re)) {
+    x$re$sigma2
+  } else {
+    sum(x$subjects$df * x$subjects$s2, na.rm = TRUE) / sum(x$subjects$df, na.rm = TRUE)
+  }
+  d$.std_resid <- (d$y_lin - x$subjects$logk[idx]) / sqrt(sigma2)
+  d$.std_resid[!is.finite(d$y_lin)] <- NA_real_
   tibble::as_tibble(d)
+}
+
+#' @rdname beezdiscounting_linear-methods
+#' @export
+predict.beezdiscounting_linear <- function(object, type = "parameters", ...) {
+  if ("newdata" %in% names(list(...))) {
+    cli::cli_abort(c(
+      "{.code predict()} for a linearized Mazur fit returns subject parameters only.",
+      "i" = "Use {.code augment()} for fitted values; the curve is {.code 1 / (1 + k * x)}."
+    ))
+  }
+  type <- match.arg(type)
+  s <- object$subjects
+  tibble::tibble(
+    id = s$id, condition = s$condition,
+    logk = s$logk, logk_lower = s$ci_lo, logk_upper = s$ci_hi,
+    k = s$k, k_lower = s$k_lo, k_upper = s$k_hi
+  )
 }
 
 #' @rdname beezdiscounting_linear-methods

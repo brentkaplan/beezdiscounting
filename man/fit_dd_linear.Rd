@@ -74,3 +74,8 @@ Ferreira, M. A. R. (2026). To linearize or not to linearize: That is the Mazur d
 discounting question. \emph{Journal of Mathematical Psychology, 130}, 103006.
 \doi{10.1016/j.jmp.2026.103006}
 }
+\seealso{
+\link{beezdiscounting_linear-methods} for the S3 surface,
+\code{\link[=plot.beezdiscounting_linear]{plot.beezdiscounting_linear()}}, \code{\link[=anova.beezdiscounting_linear]{anova.beezdiscounting_linear()}},
+\code{\link[=simulate_dd_linear]{simulate_dd_linear()}}, and \code{vignette("linearized-mazur")}.
+}

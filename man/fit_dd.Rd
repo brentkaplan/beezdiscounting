@@ -31,7 +31,7 @@ A list object of class \code{"fit_dd"}, containing:
 }
 }
 \description{
-This function fits a delay-discounting model to the given dataset using the specified equation and method.
+Fits a delay-discounting model to a data set with the specified equation and fitting method.
 }
 \examples{
 data <- data.frame(

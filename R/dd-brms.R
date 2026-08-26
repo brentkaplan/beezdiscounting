@@ -114,7 +114,7 @@
 #' Ordered b_logk draw variables, validated against the fitted design
 #'
 #' THE single alignment point between posterior draw names and the stored
-#' TMB-style design matrix (Codex 048-B1: a raw grep() is positional and a
+#' TMB-style design matrix (a raw grep() is positional and a
 #' length check cannot catch reordering or name mangling). Resolution order:
 #' the fit-time map `formula_details$logk_draw_vars` (captured from the brms
 #' standata design, see `.dd_brms_logk_standata_map()`), else the canonical
@@ -418,7 +418,7 @@ fit_dd_brms <- function(
   }
 
   # The TMB design path carries the guards (rank-deficiency rejection,
-  # covariate checks) the bare model.matrix() call would skip (Codex 039-R1).
+  # covariate checks) the bare model.matrix() call would skip.
   design <- .dd_tmb_build_design(
     d,
     factors = factors,
@@ -702,7 +702,6 @@ fit_dd_brms <- function(
         out <- list(
           # full fixed-effect vector: factor/covariate designs get every
           # coefficient centered at the TMB MLE, not just the intercept
-          # (Codex 041-R2)
           beta_k_vec = unname(coefs[names(coefs) == "beta_k"]),
           logk = unname(coefs[names(coefs) == "beta_k"])[1]
         )
@@ -873,7 +872,7 @@ fit_dd_brms <- function(
   )
 
   # Authoritative draw-name map captured at fit time + ordered, validated
-  # alignment of every b_logk_* draw with the design columns (Codex 048-B1).
+  # alignment of every b_logk_* draw with the design columns.
   obj$formula_details$logk_draw_vars <- .dd_brms_logk_standata_map(brmsfit, X)
   draws <- .dd_brms_draws_matrix(obj)
   k_vars <- .dd_brms_logk_draw_vars(obj, colnames(draws))

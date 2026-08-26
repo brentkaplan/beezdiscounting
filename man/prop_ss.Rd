@@ -21,7 +21,7 @@ Calculate proportion of SIR/SS responses at each k value
 \details{
 \code{items} must match the instrument actually administered.
 Question ids 1-21 are valid in both the 21- and 27-item designs, so
-passing the wrong \code{items} does not error -- it silently pools responses
+passing the wrong \code{items} does not error; it silently pools responses
 into the wrong k-rank rows. If the observed question ids do not exactly
 match the requested design, \code{prop_ss()} warns.
 }

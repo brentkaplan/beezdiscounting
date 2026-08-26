@@ -29,7 +29,7 @@ The exact 8-column dd coefficient contract (\code{term}, \code{estimate},
 \code{std.error}, \code{statistic}, \code{p.value}, \code{component}, \code{estimate_scale},
 \code{term_display}). Estimates are posterior medians and \code{std.error}
 posterior SDs of the report-space-transformed draws (exact; no delta
-method); \code{statistic}/\code{p.value} are \code{NA} -- use \code{confint()} for interval
+method); \code{statistic}/\code{p.value} are \code{NA}; use \code{confint()} for interval
 summaries. The shape row (\code{s}, two-parameter equations) carries
 \code{component = "shape"}; variance rows (\code{effects = "ran_pars"}) mirror the
 TMB reporting convention (log10-scale k RE SD; natural phi/sigma).

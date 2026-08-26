@@ -15,8 +15,8 @@
 #' can be inspected, modified row-wise, and passed back via the fitter's
 #' `prior` argument. The `logk` location is the principled fix for k's
 #' delay-unit dependence: with `autoscale = TRUE` (the default whenever
-#' `data` is supplied) it centers `k * median(delay) = 1` -- the delay at
-#' which the Mazur curve crosses 0.5 -- via `normal(-log(median(x)), 2.5)`;
+#' `data` is supplied) it centers `k * median(delay) = 1` (the delay at
+#' which the Mazur curve crosses 0.5) via `normal(-log(median(x)), 2.5)`;
 #' the static fallback is `normal(-4.5, 2.5)`. The anchors used are
 #' attached as `attr(, "autoscale_info")`; numeric values are formatted
 #' with `format(x, digits = 6, scientific = FALSE)`.

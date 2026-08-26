@@ -10,20 +10,20 @@ vignette: >
 
 
 
-A common discounting question is not "what is k?" but "does k differ
-between groups?" -- treatment vs. control, clinical vs. community,
-commodity A vs. commodity B. Both modeling tiers in beezdiscounting answer
+Beyond "what is k?", a common discounting question is "does k differ
+between groups?" (treatment vs. control, clinical vs. community,
+commodity A vs. commodity B). Both modeling tiers in beezdiscounting answer
 it the same way: the discount rate is estimated on the natural-log scale,
 so a between-subject design enters as a linear model on log k
 (`log k = X beta`), and every marginal mean or contrast is a linear
 combination of coefficients. `get_dd_param_emms()` and
 `get_dd_comparisons()` work on top of that shared backbone for:
 
-- `fit_dd_tmb()` -- mixed-effects indifference-point models (Wald
+- `fit_dd_tmb()`: mixed-effects indifference-point models (Wald
   inference),
-- `fit_dd_choice()` -- the structural trial-level choice model (Wald
+- `fit_dd_choice()`: the structural trial-level choice model (Wald
   inference),
-- `fit_dd_brms()` and `fit_dd_choice_brms()` -- their Bayesian
+- `fit_dd_brms()` and `fit_dd_choice_brms()`: their Bayesian
   counterparts (posterior draws; see the last section).
 
 Both the TMB and Bayesian examples below are precomputed (Stan sampling
@@ -85,8 +85,8 @@ tidy(fit)
 #>   term           estimate std.error statistic   p.value component estimate_scale
 #>   <chr>             <dbl>     <dbl>     <dbl>     <dbl> <chr>     <chr>         
 #> 1 k:(Intercept)   0.00923   0.00253    -17.1   1.09e-65 fixed     natural       
-#> 2 k:conditionC2   2.97      0.813        3.98  6.90e- 5 fixed     natural       
-#> 3 k:sitesiteB     1.47      0.403        1.41  1.57e- 1 fixed     natural       
+#> 2 k:conditionC2   2.97      0.949        3.41  6.46e- 4 fixed     natural       
+#> 3 k:sitesiteB     1.47      0.470        1.21  2.26e- 1 fixed     natural       
 #> 4 sigma_u (log1…  0.312    NA           NA    NA        variance  log10         
 #> 5 phi (precisio… 10.5      NA           NA    NA        variance  natural       
 #> # ℹ 1 more variable: term_display <chr>
@@ -156,7 +156,7 @@ cmp$k$contrasts_ratio
 ```
 
 The simulated truth was `k(C2) = 3 k(C1)`, so the displayed `C1 - C2`
-ratio should land near 1/3 -- and it does. With more than one factor,
+ratio should land near 1/3, and it does. With more than one factor,
 `contrast_by` conditions the contrasts on another factor's levels
 (adjustment is applied per by-cell; with no interaction in the model the
 per-site contrasts coincide, as here):
@@ -339,7 +339,7 @@ The tables have the same shape, with draws-based summaries in place of
 Wald machinery:
 
 - Estimates are posterior medians; intervals are equal-tailed quantiles
-  of the (transformed) draws -- the marginal means and contrasts are
+  of the (transformed) draws. The marginal means and contrasts are
   computed per posterior draw over the same reference grid, then
   summarized, so back-transformation is exact (no delta method).
 - `statistic`, `df`, and `p.value` are `NA`. In their place `post.prob`
@@ -358,6 +358,6 @@ familiar adjusted p-values. Reach for the brms fitters when you want
 full posterior uncertainty for derived quantities (the EMM and ratio
 intervals above need no asymptotics), prior information about plausible
 discounting rates, or small-sample inference you can defend without
-appealing to asymptotic normality. The vignette
-`vignette("bayesian-discounting")` covers the Bayesian tier itself --
-priors, families, convergence -- in more depth.
+appealing to asymptotic normality.
+`vignette("bayesian-discounting")` covers the Bayesian tier itself
+(priors, families, convergence) in more depth.

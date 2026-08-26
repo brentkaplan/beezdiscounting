@@ -69,7 +69,7 @@ test_that("intercept-only brms fits return empty contrasts", {
   expect_identical(em$level, "(Intercept)")
 })
 
-test_that("redundant contrast_by is ignored with global contrasts (Codex 041-B1)", {
+test_that("redundant contrast_by is ignored with global contrasts", {
   fit <- dd_grp_fixture()
   expect_message(
     res <- get_dd_comparisons(fit, contrast_by = "group"),
@@ -81,14 +81,14 @@ test_that("redundant contrast_by is ignored with global contrasts (Codex 041-B1)
   expect_identical(attr(res, "contrast_by_used"), "NULL")
 })
 
-test_that("post.prob is tie-aware (Codex 041-R1)", {
+test_that("post.prob is tie-aware", {
   pp <- beezdiscounting:::.dd_brms_post_prob
   expect_identical(pp(rep(0, 8)), 0.5)
   expect_identical(pp(c(1, 1, 1, -1)), 0.75)
   expect_identical(pp(c(1, 1, 0, 0)), 0.75)
 })
 
-test_that("init = 'tmb' uses the FULL beta_k vector for factor designs (Codex 041-R2)", {
+test_that("init = 'tmb' uses the FULL beta_k vector for factor designs", {
   fit <- dd_grp_fixture()
   d <- fit$data
 

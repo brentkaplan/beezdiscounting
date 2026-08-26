@@ -17,10 +17,11 @@
 A tibble with the standard 8-column broom contract.
 }
 \description{
-Fixed-effect (\code{theta}) rows are the logit-scale sensitivities and are ALWAYS
-on the identity scale - never exponentiated across report spaces (mirroring
-the structural \code{beta0}). Variance rows report the random-slope SDs and their
-correlation on the natural scale. Wald \code{statistic}/\code{p.value} are computed on
+Fixed-effect (\code{theta}) rows are the logit-scale sensitivities and are always
+on the identity scale; they are never exponentiated across report spaces
+(mirroring the structural \code{beta0}). Variance rows report the random-slope
+SDs and their correlation on the natural scale. Wald \code{statistic}/\code{p.value}
+are computed on
 the estimation scale.
 }
 \keyword{internal}

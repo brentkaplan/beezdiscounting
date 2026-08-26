@@ -37,8 +37,8 @@ Madden, Petry, & Johnson (2009; see \code{\link[=get_lookup_table]{get_lookup_ta
 }
 \details{
 Unknown or non-coercible question ids raise an error rather
-than silently producing unmatched rows. Ragged input is allowed --
-subjects need not have all items -- and \code{NA} responses are preserved.
+than silently producing unmatched rows. Ragged input is allowed
+(subjects need not have all items) and \code{NA} responses are preserved.
 For the strict scorer see \code{\link[=score_pdq]{score_pdq()}}.
 }
 \examples{

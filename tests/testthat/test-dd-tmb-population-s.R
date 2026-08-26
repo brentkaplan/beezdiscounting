@@ -3,7 +3,7 @@
 # at level = "population". For an s-target 2-RE fit the kernel maps log_s through
 # the per-subject SOFT clamp (re = 0 for the population curve), so the population s
 # must be .dd_soft_clamp_s_log(log_s), NOT exp(log_s) -- they differ near the
-# [0.05, 20] bounds. (Regression guard for the Codex capstone 2026-06-14 finding.)
+# [0.05, 20] bounds. (Regression guard for a 2026-06-14 finding.)
 
 describe(".dd_tmb_population_s", {
   it("returns 1 when the equation has no s (mazur/exponential)", {

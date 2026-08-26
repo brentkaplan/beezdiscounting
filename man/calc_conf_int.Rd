@@ -23,7 +23,7 @@ A numeric vector of length two:
 }
 }
 \description{
-This function computes the lower and upper bounds of the confidence interval for a parameter estimate, given its standard error,
+Computes the lower and upper bounds of a t-based confidence interval for a parameter estimate from its standard error,
 a specified significance level, and the degrees of freedom from the model.
 }
 \examples{

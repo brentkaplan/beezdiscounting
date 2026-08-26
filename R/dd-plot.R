@@ -463,7 +463,7 @@ plot.beezdiscounting_tmb <- function(
 #' Random-effect normal QQ plots for discounting models
 #'
 #' QQ plot of the estimated subject random-effect deviates against a normal
-#' reference -- the standard check on the Gaussian random-effects assumption.
+#' reference (the standard check on the Gaussian random-effects assumption).
 #' Methods exist for the TMB indifference-point ([fit_dd_tmb()]) and choice
 #' ([fit_dd_choice()]) models. Bayesian fits are intentionally excluded; use
 #' `brms::pp_check()` and MCMC diagnostics there instead. The plotted deviates
@@ -699,8 +699,8 @@ plot_qq.beezdiscounting_choice <- function(object, which = NULL, ...) {
 #' [get_dd_comparisons()]. `type = "ratio"` (default) shows each k ratio on a
 #' log axis with a reference line at 1; `type = "difference"` shows the
 #' difference in log10 k with a reference line at 0. A contrast is flagged when
-#' its interval excludes the null -- a backend-agnostic encoding that works for
-#' both the frequentist (TMB) and Bayesian (brms) backends.
+#' its interval excludes the null (a backend-agnostic rule that applies to
+#' both the frequentist (TMB) and Bayesian (brms) backends).
 #'
 #' @param x A `beezdiscounting_comparison` object.
 #' @param type `"ratio"` (default) or `"difference"`.
@@ -845,8 +845,8 @@ plot.beezdiscounting_comparison <- function(
 #'
 #' Visualize a fitted [fit_dd_brms()] model. `type = "population"` (default)
 #' draws the posterior-median discount curve with a credible band for the
-#' population conditional mean (random effects set to zero -- a credible band,
-#' not a posterior-predictive band) over the observed (boundary-squeezed)
+#' population conditional mean (random effects set to zero; a credible band
+#' rather than a posterior-predictive band) over the observed (boundary-squeezed)
 #' indifference points; `type = "individual"` adds per-subject median curves;
 #' `type = "parameters"` shows the posterior subject-`k` caterpillar;
 #' `type = "resid"` plots standardized residuals against fitted values.

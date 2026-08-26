@@ -16,7 +16,7 @@ mcq_to_choice(
 \item{responses}{Long-form data frame with one row per MCQ item per subject,
 holding the columns named by \code{id_var}, \code{question_var}, and \code{response_var}.
 \code{response} is \code{0} for the smaller-immediate reward (SIR/SS) and \code{1} for the
-larger-delayed reward (LDR/LL) -- the same coding \code{\link[=fit_dd_choice]{fit_dd_choice()}} expects,
+larger-delayed reward (LDR/LL), the same coding \code{\link[=fit_dd_choice]{fit_dd_choice()}} expects,
 so no recoding is applied.}
 
 \item{items}{Number of MCQ items: 27 (Kirby, Petry, & Bickel, 1999) or 21
@@ -36,16 +36,16 @@ Reshapes long-form Monetary Choice Questionnaire (MCQ) responses into
 the per-trial smaller-sooner versus larger-later choice frame consumed by
 \code{\link[=fit_dd_choice]{fit_dd_choice()}}, joining each \code{questionid} to the canonical item design
 (immediate amount, delayed amount, delay) bundled in the lookup table (see
-\code{\link[=get_lookup_table]{get_lookup_table()}}) -- Kirby, Petry, & Bickel (1999) for the 27-item MCQ,
-or Kirby & Maraković (1996, Table 1) for the 21-item MCQ.
+\code{\link[=get_lookup_table]{get_lookup_table()}}; Kirby, Petry, & Bickel (1999) for the 27-item MCQ,
+or Kirby & Maraković (1996, Table 1) for the 21-item MCQ).
 }
 \details{
 Unknown or non-coercible question ids raise an error rather than
 silently producing unmatched rows. Question ids 1-21 are valid in both
 the 21- and 27-item designs, so passing the wrong \code{items} does not
-error -- it silently returns the wrong amounts/delays for those ids;
-make sure \code{items} matches the instrument actually administered. Ragged
-input is allowed -- subjects need not have all items -- and \code{NA}
+error; it silently returns the wrong amounts/delays for those ids.
+Make sure \code{items} matches the instrument actually administered. Ragged
+input is allowed (subjects need not have all items) and \code{NA}
 responses are preserved (they are complete-cased by \code{\link[=fit_dd_choice]{fit_dd_choice()}}).
 For the strict scorer see \code{\link[=score_mcq]{score_mcq()}}.
 }

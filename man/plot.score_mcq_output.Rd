@@ -19,10 +19,10 @@
 A ggplot object showing the boxplot of MCQ scores.
 }
 \description{
-This function creates a plot of MCQ scores for
+Boxplots the MCQ scores for
 different metrics (small_k, medium_k, large_k, geomean_k, overall_k).
-The function handles different logarithmic transformations of the k-values
-and adjusts the y-axis label accordingly.
+Log-transformed k values (\code{trans = "log"}/\code{"ln"}) are detected
+and the y-axis label adjusted accordingly.
 }
 \examples{
 dat21 <- data.frame(subjectid = 1:5, questionid = rep(1:21, 5), response = 1)

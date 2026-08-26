@@ -23,7 +23,7 @@ A \link[ggplot2:ggplot]{ggplot2::ggplot} object.
 }
 \description{
 QQ plot of the estimated subject random-effect deviates against a normal
-reference -- the standard check on the Gaussian random-effects assumption.
+reference (the standard check on the Gaussian random-effects assumption).
 Methods exist for the TMB indifference-point (\code{\link[=fit_dd_tmb]{fit_dd_tmb()}}) and choice
 (\code{\link[=fit_dd_choice]{fit_dd_choice()}}) models. Bayesian fits are intentionally excluded; use
 \code{brms::pp_check()} and MCMC diagnostics there instead. The plotted deviates

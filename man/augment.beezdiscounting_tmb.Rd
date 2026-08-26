@@ -26,7 +26,7 @@ diagnostic columns appended:
 \item \code{.fitted}: subject-conditional fitted indifference proportion (clamped to
 \verb{(0, 1)}).
 \item \code{.resid}: raw residual \code{y - .fitted} on the response scale.
-\item \code{.std_resid}: Pearson (standardized) residual - \code{.resid} divided by the
+\item \code{.std_resid}: Pearson (standardized) residual, i.e., \code{.resid} divided by the
 per-row response SD.  For \code{family = "gaussian"} the SD is the constant
 \code{sigma_e}; for \code{family = "sltb"} it is the delta-method SLT SD
 \code{sqrt(mu * (1 - mu) / (phi + 1))}.

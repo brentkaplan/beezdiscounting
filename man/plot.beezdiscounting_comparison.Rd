@@ -21,8 +21,8 @@ Forest plot of the pairwise (or treatment-vs-control) contrasts from
 \code{\link[=get_dd_comparisons]{get_dd_comparisons()}}. \code{type = "ratio"} (default) shows each k ratio on a
 log axis with a reference line at 1; \code{type = "difference"} shows the
 difference in log10 k with a reference line at 0. A contrast is flagged when
-its interval excludes the null -- a backend-agnostic encoding that works for
-both the frequentist (TMB) and Bayesian (brms) backends.
+its interval excludes the null (a backend-agnostic rule that applies to
+both the frequentist (TMB) and Bayesian (brms) backends).
 }
 \examples{
 \donttest{

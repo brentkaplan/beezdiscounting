@@ -12,7 +12,6 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.2)
 set.seed(1)
 library(beezdiscounting)
-library(ggplot2)
 ```
 
 The other modeling tiers in `beezdiscounting` estimate the discount rate by
@@ -174,9 +173,12 @@ logLik(fit)
 ```
 
 `augment()` returns the long data with the transformed value `y_lin`, the value
-actually used after boundary handling `d_used`, and the fitted indifference point
-and residual on the raw scale, `.fitted` and `.resid`. The figures below are built
-from this table.
+actually used after boundary handling `d_used`, the fitted indifference point
+and residual on the raw scale, `.fitted` and `.resid`, and the standardized
+residual on the transformed scale, `.std_resid` (the residual divided by the
+model's error standard deviation, `sqrt(sigma2)`). Together with `tidy()`,
+`coef()` and `confint()`, this table is what you need to reproduce or customize
+the figures that `plot()` draws in the Figures section.
 
 ```{r augment}
 head(augment(fit), 3)
@@ -278,54 +280,40 @@ see `vignette("sltb-discounting")`.
 
 ## Figures
 
-The linearization is easiest to see on the transformed scale. For each subject,
-`ln(1 / D - 1)` plotted against `ln(t)` should scatter around a line of slope 1 whose
-intercept is that subject's ln k:
+`plot()` draws the pictures that go with the fit, with the same arguments as the
+other indifference-point tiers (`type`, `ids`, `n_points`, `x_trans`,
+`show_observed`). The linearization is easiest to see on the transformed scale.
+For each subject, `ln(1 / D - 1)` plotted against `ln(t)` should scatter around a
+line of slope 1 whose intercept is that subject's ln k. `type = "transformed"`
+draws that picture, one panel per subject; `ids` picks the subjects (without it,
+the first twelve are shown):
 
 ```{r fig-transformed, fig.alt = "Six panels, one per simulated subject, plotting ln(1/D - 1) against ln(delay); the points in each panel scatter around a line of slope 1 whose intercept is the subject's estimated ln k."}
-aug <- augment(fit)
 show <- c("A_1", "A_2", "B_1", "B_2", "C_1", "C_2")
-sub  <- tidy(fit)
-d6   <- aug[aug$id %in% show, ]
-d6$logk <- sub$logk[match(d6$id, sub$id)]
-ggplot(d6, aes(x = log(x), y = log(1 / d_used - 1))) +
-  geom_abline(aes(intercept = logk, slope = 1), colour = "grey50") +
-  geom_point() +
-  facet_wrap(~ id, nrow = 2) +
-  labs(x = "ln(delay)", y = "ln(1/D - 1)") +
-  beezdemand::theme_apa()
+plot(fit, type = "transformed", ids = show)
 ```
 
-Back on the raw scale, `.fitted` from `augment()` is the hyperbola implied by each
-subject's `k`:
+Back on the raw scale, `plot(fit)` draws the hyperbola implied by each
+condition's geometric-mean k, `exp(mu)`, over the observed indifference points.
+`type = "individual"` adds each subject's own hyperbola, `1 / (1 + k x)`,
+underneath (here for the same six subjects):
 
-```{r fig-raw, fig.alt = "Six panels, one per simulated subject, showing observed indifference points against delay with the fitted hyperbola drawn through them."}
-grid <- expand.grid(id = show, x = seq(1, 730, length.out = 200))
-grid$k <- sub$k[match(grid$id, sub$id)]
-grid$.fitted <- 1 / (1 + grid$k * grid$x)
-ggplot(d6, aes(x = x, y = y)) +
-  geom_line(data = grid, aes(y = .fitted), colour = "grey50") +
-  geom_point() +
-  facet_wrap(~ id, nrow = 2) +
-  labs(x = "Delay", y = "Indifference point") +
-  beezdemand::theme_apa()
+```{r fig-raw, fig.alt = "Observed indifference points against delay on a log axis, with three coloured condition curves and six thin per-subject hyperbolae drawn underneath them."}
+plot(fit, type = "individual", ids = show)
 ```
 
-The third figure answers the study question. It shows every subject's ln k with
-its t-interval, by condition, with the condition mean and its interval from
-`coef()` and `confint()` overlaid.
+The third figure answers the study question. `type = "parameters"` shows every
+subject's k with its t-interval, by condition, with the condition's
+geometric-mean k and its interval (the exponentiated values from `coef()` and
+`confint()`) overlaid. The axis is k on a log scale; `coef()` and `confint()` report the same
+quantities as ln k.
 
-```{r fig-conditions, fig.alt = "Per-subject ln k estimates with confidence intervals, jittered within three conditions A, B, and C; condition B sits about 1.5 units higher than A and C, and the condition means with their intervals are overlaid in black."}
-pop <- data.frame(condition = names(coef(fit)), mu = coef(fit),
-                  lo = confint(fit)[, 1], hi = confint(fit)[, 2])
-ggplot(sub, aes(x = condition, y = logk)) +
-  geom_pointrange(aes(ymin = ci_lo, ymax = ci_hi), colour = "grey60",
-                  position = position_jitter(width = 0.2, height = 0, seed = 1),
-                  size = 0.2) +
-  geom_pointrange(data = pop, aes(y = mu, ymin = lo, ymax = hi), size = 0.8) +
-  labs(x = "Condition", y = "ln k") +
-  beezdemand::theme_apa()
+```{r fig-conditions, fig.alt = "Per-subject discount rates k with confidence intervals on a log axis, jittered within three conditions A, B, and C; condition B sits higher than A and C, and the condition geometric means with their intervals are overlaid in a contrasting colour."}
+plot(fit, type = "parameters")
 ```
+
+The frames behind these figures come from `augment()`, `tidy()`, `coef()` and
+`confint()`, for anyone who wants a different picture.
 
 ## How this relates to the nonlinear fit
 
@@ -340,7 +328,7 @@ smaller one near the bounds.
 nls_fit <- fit_dd(sim, equation = "mazur", method = "two stage")
 nls_res <- results_dd(nls_fit)
 both <- merge(
-  sub[, c("id", "condition", "logk")],
+  tidy(fit)[, c("id", "condition", "logk")],
   data.frame(id = nls_res$id, logk_nls = log(nls_res$estimate)),
   by = "id"
 )

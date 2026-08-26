@@ -17,11 +17,21 @@ describe(".dd_lin_transform()", {
     expect_equal(out$n_clamped, 2L)
     expect_equal(out$y_lin, log(1 / c(0.995, 0.5, 0.005) - 1) - log(t))
   })
-  it("clamp also pulls interior values inside (eps, 1-eps) and counts those", {
-    out <- .dd_lin_transform(c(0.999, 0.5), c(1, 7), eps = 0.005)
-    expect_equal(out$d_used, c(0.995, 0.5))
+  it("clamp leaves interior values inside (0, eps) and (1 - eps, 1) untouched", {
+    d <- c(0.999, 0.001, 0.5)
+    out <- .dd_lin_transform(d, c(1, 7, 30), eps = 0.005)
+    expect_equal(out$d_used, d)
     expect_equal(out$n_boundary, 0L)
-    expect_equal(out$n_clamped, 1L)
+    expect_equal(out$n_clamped, 0L)
+    expect_equal(out$y_lin, log(1 / d - 1) - log(c(1, 7, 30)))
+  })
+  it("clamp: n_clamped equals n_boundary and only exact 0/1 move", {
+    d <- c(1, 0.999, 0.5, 0.001, 0)
+    out <- .dd_lin_transform(d, c(1, 7, 30, 90, 180), eps = 0.005)
+    expect_equal(out$d_used, c(0.995, 0.999, 0.5, 0.001, 0.005))
+    expect_equal(out$n_boundary, 2L)
+    expect_equal(out$n_clamped, 2L)
+    expect_equal(out$log_jac, -log(out$d_used - out$d_used^2)) # Eq. 13 on the clamped values
   })
   it("drop mode returns NA for boundary points and counts drops", {
     out <- .dd_lin_transform(c(1, 0.5, 0), c(1, 7, 30), boundary = "drop")

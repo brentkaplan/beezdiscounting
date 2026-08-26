@@ -1,12 +1,13 @@
 #' Linearized-Mazur transform (Hinds et al. 2026, Eq. 6) with a boundary policy
 #'
 #' `y = ln(1/D - 1) - ln(t)` is undefined at `D = 0` and `D = 1`. The paper is
-#' silent on those values; the package clamps them to `[eps, 1 - eps]` by
-#' default (spec D1).
+#' silent on those values; by default the package moves exactly-0 to `eps` and
+#' exactly-1 to `1 - eps` and leaves every interior point untouched (spec D1,
+#' ruling 2026-08-25). `eps` is where the boundary points land, not a window.
 #' @param d numeric, normalized indifference points in `[0, 1]`.
 #' @param t numeric, positive delays.
 #' @param boundary one of `"clamp"`, `"drop"`, `"error"`.
-#' @param eps clamp half-width.
+#' @param eps where exact 0 / 1 are placed (`eps` / `1 - eps`).
 #' @return list(y_lin, d_used, n_boundary, n_clamped, n_dropped, log_jac).
 #' @keywords internal
 #' @noRd
@@ -34,9 +35,8 @@
     ))
   }
   if (boundary == "clamp") {
-    clamped <- d < eps | d > 1 - eps
-    d_used <- pmin(pmax(d, eps), 1 - eps)
-    n_clamped <- sum(clamped)
+    d_used[is_boundary] <- pmin(pmax(d[is_boundary], eps), 1 - eps)
+    n_clamped <- n_boundary
   } else if (boundary == "drop") {
     d_used[is_boundary] <- NA_real_
     n_dropped <- n_boundary

@@ -55,8 +55,8 @@ Returns the default prior table used by \code{fit_dd_brms()}, so the defaults
 can be inspected, modified row-wise, and passed back via the fitter's
 \code{prior} argument. The \code{logk} location is the principled fix for k's
 delay-unit dependence: with \code{autoscale = TRUE} (the default whenever
-\code{data} is supplied) it centers \code{k * median(delay) = 1} -- the delay at
-which the Mazur curve crosses 0.5 -- via \code{normal(-log(median(x)), 2.5)};
+\code{data} is supplied) it centers \code{k * median(delay) = 1} (the delay at
+which the Mazur curve crosses 0.5) via \code{normal(-log(median(x)), 2.5)};
 the static fallback is \code{normal(-4.5, 2.5)}. The anchors used are
 attached as \code{attr(, "autoscale_info")}; numeric values are formatted
 with \code{format(x, digits = 6, scientific = FALSE)}.

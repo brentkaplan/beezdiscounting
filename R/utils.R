@@ -116,7 +116,7 @@ long_to_wide_mcq_excel <- function(dat, subj_col = "subjectid",
 
 #' Check for Unsystematic Data Violations
 #'
-#' This function checks a dataset for violations of two criteria commonly used to identify unsystematic delay-discounting data:
+#' Checks a data set against the two Johnson and Bickel (2008) criteria for unsystematic delay-discounting data:
 #' - Criterion 1: Any subsequent value of `y` exceeds the previous value by more than a specified proportion of the larger later reward (`ll`).
 #' - Criterion 2: The last value of `y` is not at least a specified proportion less than the first value of `y`.
 #'
@@ -189,7 +189,7 @@ check_unsystematic <- function(dat, ll = 1, c1 = .2, c2 = .1) {
 
 #' Calculate R-Squared for a Model
 #'
-#' This function calculates the coefficient of determination (\eqn{R^2}) for a given model by comparing the sum of squared errors (SSE)
+#' Calculates the coefficient of determination (\eqn{R^2}) for a fitted model as one minus the ratio of the sum of squared errors (SSE)
 #' to the total sum of squares (SST).
 #'
 #' @param model A fitted model object. The model must have `resid()` and `fitted()` methods to extract residuals and fitted values.
@@ -220,7 +220,7 @@ calc_r2 <- function(model) {
 
 #' Calculate Confidence Intervals for a Parameter
 #'
-#' This function computes the lower and upper bounds of the confidence interval for a parameter estimate, given its standard error,
+#' Computes the lower and upper bounds of a t-based confidence interval for a parameter estimate from its standard error,
 #' a specified significance level, and the degrees of freedom from the model.
 #'
 #' @param estimate A numeric value representing the parameter estimate.
@@ -249,9 +249,9 @@ calc_conf_int <- function(estimate, std_error, model, alpha = 0.05) {
 
 #' Calculate Area-Under-the-Curve (AUC) Metrics for Delay Discounting Data
 #'
-#' This function calculates three types of Area-Under-the-Curve (AUC) metrics for delay discounting data:
+#' Calculates three area-under-the-curve (AUC) metrics for delay-discounting data:
 #' regular AUC (using raw delays), log10 AUC (using logarithmically scaled delays), and ordinal AUC (using ordinally scaled delays).
-#' These metrics provide different perspectives on the rate of delay discounting.
+#' The three differ only in how the delays are scaled before the area is computed.
 #' Metrics are computed separately for each `id`, so a data frame with several
 #' subjects returns one row per subject.
 #'

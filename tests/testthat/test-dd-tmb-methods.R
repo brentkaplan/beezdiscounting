@@ -681,7 +681,7 @@ describe("confint", {
     expect_equal(ci_n$estimate, exp(ci_i$estimate), tolerance = 1e-8)
     expect_equal(ci_n$conf.low, exp(ci_i$conf.low), tolerance = 1e-8)
     expect_equal(ci_n$conf.high, exp(ci_i$conf.high), tolerance = 1e-8)
-    # finite interval => the s SE was populated (Codex 7)
+    # finite interval => the s SE was populated
     expect_true(is.finite(ci_i$conf.low) && is.finite(ci_i$conf.high))
   })
 

@@ -165,7 +165,7 @@ test_that("explicit adjust requests warn on the choice brms path", {
   expect_warning(get_dd_comparisons(fit, adjust = "holm"), "posterior")
 })
 
-# --- b_logk draw/design alignment (Codex 048-B1) ------------------------------------
+# --- b_logk draw/design alignment ---------------------------------------------------
 
 test_that("brms standata design order matches .dd_tmb_build_design for hard designs", {
   set.seed(11)

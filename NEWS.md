@@ -35,7 +35,7 @@
 This is a large release (the first since 0.3.2, January 2025): mixed-effects
 and Bayesian discounting tiers, trial-level choice models, 21-item MCQ and PDQ
 scoring, Monte Carlo power analysis, and ten vignettes (all new since 0.3.2,
-which shipped none).
+which had none).
 
 ### Monte Carlo power analysis
 
@@ -103,8 +103,8 @@ which shipped none).
   errored).
 * New `plot()` method for 21-item `score_mcq()` output
   (`plot.score_mcq_output()`), matching the existing 27-item plot method.
-* Internal (unexported) `inn()` gained a `reg` parameter --
-  `inn(dat, reg, random, verbose)` -- to support both MCQ versions. This is
+* Internal (unexported) `inn()` gained a `reg` parameter
+  (`inn(dat, reg, random, verbose)`) to support both MCQ versions. This is
   a breaking signature change for any code calling
   `beezdiscounting:::inn()` directly.
 
@@ -212,9 +212,9 @@ which shipped none).
   through `fit_dd_brms()` / `fit_dd_choice_brms()` and their S3 surface.
 * New vignette "Comparing discounting rates between groups"
   (`vignette("dd-group-comparisons")`): factor designs on log k, estimated
-  marginal means, and contrasts across both backends -- TMB (Wald + holm)
-  and brms (posterior draws + `post.prob`) -- for indifference-point and
-  trial-level choice models alike.
+  marginal means, and contrasts across both backends (TMB with Wald tests
+  and Holm adjustment; brms with posterior draws and `post.prob`), for
+  indifference-point and trial-level choice models alike.
 
 ### Modeling tiers and choice models
 
@@ -253,8 +253,8 @@ which shipped none).
   there instead.
 
 - **Mixed-effects discounting via TMB** (`fit_dd_tmb()`): fits the
-  indifference-point (IP) family discounting model — Mazur hyperbolic or
-  exponential mean with a subject random intercept on `log k` — under either the
+  indifference-point (IP) family discounting model (Mazur hyperbolic or
+  exponential mean with a subject random intercept on `log k`) under either the
   scale-location-truncated beta (`family = "sltb"`, default) or Gaussian
   (`family = "gaussian"`) observation family. Between-subject factors and
   continuous covariates enter the `log k` fixed-effect design.

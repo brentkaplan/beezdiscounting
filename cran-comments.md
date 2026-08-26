@@ -17,7 +17,7 @@ This is a feature release (0.4.0) of an existing CRAN package (0.3.2, January
 * Monte Carlo power analysis (`power_discounting()`, `find_n_discounting()`);
 * scoring of the 21-item Monetary Choice Questionnaire and the 30-item
   Probability Discounting Questionnaire, plus bundled example data;
-* ten vignettes (all new since 0.3.2, which shipped none).
+* ten vignettes (all new since 0.3.2, which had none).
 
 Compiled code: the 'TMB' C++ templates in `src/` changed since 0.3.2 (new
 model families and random-effect blocks).
@@ -28,11 +28,11 @@ model families and random-effect blocks).
 * GitHub Actions: ubuntu-latest (release, devel, oldrel-1), macOS-latest,
   windows-latest (R-CMD-check workflow)
 * win-builder (R-release and R-devel) and R-hub v2 (linux, macos-arm64,
-  windows, clang-asan, valgrind -- the package ships TMB C++ templates)
+  windows, clang-asan, valgrind; the package contains TMB C++ templates)
 
 ## R CMD check results
 
-Locally (macOS/arm64, R 4.5.x): 0 errors | 1 warning | 1 note -- the single
+Locally (macOS/arm64, R 4.5.x): 0 errors | 1 warning | 1 note. The single
 local warning is environmental (R's own header under a very recent Apple
 'clang'), explained below.
 
@@ -41,16 +41,16 @@ win-builder R-release (R 4.6.1 ucrt, Windows Server 2022, 2026-08-16):
 win-builder R-devel (R Under development 2026-08-15 r90413 ucrt, 2026-08-16):
 0 errors | 0 warnings | 1 note (the pkgdown-site URL note below).
 R-hub v2 (2026-08-16; R-devel on linux/macos-arm64/windows, plus clang-asan
-and valgrind): all five legs OK -- 0 errors, no sanitizer findings; valgrind
-`ERROR SUMMARY: 0 errors`, `definitely lost: 0 bytes`.
+and valgrind): all five legs OK (0 errors, no sanitizer findings; valgrind
+`ERROR SUMMARY: 0 errors`, `definitely lost: 0 bytes`).
 
-* **NOTE — possibly invalid URL** `https://brentkaplan.github.io/beezdiscounting/`:
+* **NOTE, possibly invalid URL** `https://brentkaplan.github.io/beezdiscounting/`:
   this is the package's 'pkgdown' documentation site, which is (re)deployed by the
   release that accompanies this submission; the URL resolves once the site is
   published.
 
-* **Install size (~13 Mb):** the package links to 'TMB' / 'RcppEigen' and ships a
-  compiled shared library; the `libs/` directory accounts for the size, as is
+* **Install size (~13 Mb):** the package links to 'TMB' / 'RcppEigen' and installs
+  a compiled shared library; the `libs/` directory accounts for the size, as is
   typical for a compiled model package.
 
 * **Local-only install WARNING** `-Wfixed-enum-extension`: this originates in R's

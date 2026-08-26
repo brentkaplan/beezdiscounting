@@ -19,10 +19,10 @@
 A ggplot object showing the boxplot of MCQ-27 scores.
 }
 \description{
-This function creates a plot of the MCQ-27 scores for
+Boxplots the MCQ-27 scores for
 different metrics (small_k, medium_k, large_k, geomean_k, overall_k).
-The function handles different logarithmic transformations of the k-values
-and adjusts the y-axis label accordingly.
+Log-transformed k values (\code{trans = "log"}/\code{"ln"}) are detected
+and the y-axis label adjusted accordingly.
 }
 \examples{
 plot(score_mcq27(mcq27))

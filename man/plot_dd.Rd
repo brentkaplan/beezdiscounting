@@ -27,7 +27,7 @@ plot_dd(
 A ggplot object representing the fitted model and data.
 }
 \description{
-This function generates a plot of the delay-discounting data and the fitted model.
+Plots the delay-discounting data with the fitted model overlaid.
 }
 \examples{
 data <- data.frame(

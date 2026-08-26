@@ -156,7 +156,7 @@ test_that("choice priors carry loggamma and optional b0", {
   )
 })
 
-test_that("factor designs add the fold-change coefficient prior in the ACCESSOR (Codex 039-R2)", {
+test_that("factor designs add the fold-change coefficient prior in the ACCESSOR", {
   pri <- default_dd_priors("mazur", family = "beta", factors = "group")
   row <- pri[pri$class == "b" & pri$coef == "" & pri$nlpar == "logk", ]
   expect_identical(nrow(row), 1L)

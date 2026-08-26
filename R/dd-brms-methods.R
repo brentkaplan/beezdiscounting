@@ -111,7 +111,7 @@ logLik.beezdiscounting_brms <- function(object, ...) {
 #' `std.error`, `statistic`, `p.value`, `component`, `estimate_scale`,
 #' `term_display`). Estimates are posterior medians and `std.error`
 #' posterior SDs of the report-space-transformed draws (exact; no delta
-#' method); `statistic`/`p.value` are `NA` -- use `confint()` for interval
+#' method); `statistic`/`p.value` are `NA`; use `confint()` for interval
 #' summaries. The shape row (`s`, two-parameter equations) carries
 #' `component = "shape"`; variance rows (`effects = "ran_pars"`) mirror the
 #' TMB reporting convention (log10-scale k RE SD; natural phi/sigma).
@@ -212,7 +212,6 @@ glance.beezdiscounting_brms <- function(x, ...) {
 #' @export
 augment.beezdiscounting_brms <- function(x, ...) {
   # one epred pass shared by the fitted values and the dispersion scale
-  # (Codex whole-branch review R1/R4)
   ep <- brms::posterior_epred(x$brmsfit, re_formula = NULL)
   fv <- apply(ep, 2, stats::median)
   out <- tibble::as_tibble(x$data)
@@ -224,7 +223,7 @@ augment.beezdiscounting_brms <- function(x, ...) {
 
 #' Posterior-median residual scale: sigma (gaussian) or the beta-implied SD
 #'
-#' Draws-first throughout (Codex whole-branch review R1): for the beta
+#' Draws-first throughout: for the beta
 #' family the per-observation SD draws sqrt(mu_d (1 - mu_d) / (1 + phi_d))
 #' are computed per draw and THEN summarized -- never sqrt() of summarized
 #' mu/phi (the transform is nonlinear, so the order matters).
@@ -504,7 +503,7 @@ residuals.beezdiscounting_brms <- function(
   }
 }
 
-#' Posterior probability of direction, tie-aware (Codex 041-R1)
+#' Posterior probability of direction, tie-aware
 #' @noRd
 .dd_brms_post_prob <- function(d) {
   max(mean(d > 0), mean(d < 0)) + 0.5 * mean(d == 0)
@@ -651,7 +650,7 @@ residuals.beezdiscounting_brms <- function(
   level_combos <- grid$level_combos
   use_factors <- grid$use_factors
 
-  # contrast_by resolution mirroring the TMB path (Codex 041-B1): resolve
+  # contrast_by resolution mirroring the TMB path: resolve
   # against the fitted factor set, abort loudly when a resolved by-var was
   # excluded by compare_specs, and ignore a redundant sole-factor by.
   effective_by <- character(0)

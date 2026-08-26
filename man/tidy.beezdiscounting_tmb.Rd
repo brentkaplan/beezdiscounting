@@ -18,9 +18,9 @@
 \code{"ran_pars"} (the RE SD and the auxiliary precision/scale parameter), or
 both (default).}
 
-\item{report_space}{\code{"natural"}, \code{"log10"}, \code{"internal"}, or \code{"log"} -
-reporting scale for fixed-effect \code{estimate}/\code{std.error} (\code{"internal"} and
-\code{"log"} coincide for the log-k \code{beta_k} rows). Default is \code{"natural"}.}
+\item{report_space}{Reporting scale for fixed-effect \code{estimate}/\code{std.error}:
+\code{"natural"} (default), \code{"log10"}, \code{"internal"}, or \code{"log"} (\code{"internal"}
+and \code{"log"} coincide for the log-k \code{beta_k} rows).}
 
 \item{...}{Unused.}
 }
@@ -38,7 +38,7 @@ rows, following the broom coefficient-table contract.
 \details{
 \code{estimate} and \code{std.error} are reported on the \code{report_space} scale for the
 fixed-effect (\code{beta_k}) rows. \code{statistic} and \code{p.value} are always computed
-on the estimation (log-k) scale - Wald statistics are not recomputed after
+on the estimation (log-k) scale. Wald statistics are not recomputed after
 back-transforming (broom convention; see the \code{summary()} note for details).
 Variance-component rows carry \code{NA} for \code{statistic} and \code{p.value} and are not
 affected by \code{report_space}.

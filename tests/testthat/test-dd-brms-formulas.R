@@ -87,7 +87,7 @@ test_that("exponential / green-myerson / rachlin mu kernels match TMB", {
   expect_setequal(sp_gm$nlpars, c("logk", "logs"))
   expect_true(sp_gm$has_s)
 
-  # rachlin guards pow(0, s): xzero/xsafe data columns (Codex design fold)
+  # rachlin guards pow(0, s): xzero/xsafe data columns
   sp_ra <- beezdiscounting:::.dd_brms_formula(
     equation = "rachlin",
     family = "beta"

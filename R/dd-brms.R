@@ -25,7 +25,7 @@
 #' Ordered b_logk draw variables, validated against the fitted design
 #'
 #' THE single alignment point between posterior draw names and the stored
-#' TMB-style design matrix (Codex 048-B1: a raw grep() is positional and a
+#' TMB-style design matrix (a raw grep() is positional and a
 #' length check cannot catch reordering or name mangling). Resolution order:
 #' the fit-time map `formula_details$logk_draw_vars` (captured from the brms
 #' standata design, see `.dd_brms_logk_standata_map()`), else the canonical
@@ -172,13 +172,13 @@
 #' shape exponent (`logs`) population-level for the two-parameter equations.
 #'
 #' `family = "beta"` (default) uses `Beta(link = "identity")` with the mean
-#' squished into `(1e-6, 1 - 1e-6)` -- the closest brms analog of the TMB
+#' squished into `(1e-6, 1 - 1e-6)`, the closest brms analog of the TMB
 #' SLT-beta (`family = "sltb"` has no brms equivalent and errors with this
 #' pointer). Boundary observations (`y` exactly 0 or 1) are handled per
 #' `boundary`: `"squeeze"` (default) applies the Smithson-Verkuilen
 #' transform `y* = (y (N - 1) + 0.5) / N` to all responses (message reports
 #' the boundary count); `"zoib"` switches to `zero_one_inflated_beta`
-#' (statistically more honest but changes the estimand -- k then describes
+#' (statistically more honest, but it changes the estimand: k then describes
 #' interior responses only); `"error"` refuses to fit.
 #' `family = "gaussian"` matches `fit_dd_tmb(family = "gaussian")`
 #' wherever the TMB template's mu clamp into `[1e-6, 1 - 1e-6]` does not
@@ -313,7 +313,7 @@ fit_dd_brms <- function(
   }
 
   # The TMB design path carries the guards (rank-deficiency rejection,
-  # covariate checks) the bare model.matrix() call would skip (Codex 039-R1).
+  # covariate checks) the bare model.matrix() call would skip.
   design <- .dd_tmb_build_design(
     d,
     factors = factors,
@@ -538,7 +538,6 @@ fit_dd_brms <- function(
         out <- list(
           # full fixed-effect vector: factor/covariate designs get every
           # coefficient centered at the TMB MLE, not just the intercept
-          # (Codex 041-R2)
           beta_k_vec = unname(coefs[names(coefs) == "beta_k"]),
           logk = unname(coefs[names(coefs) == "beta_k"])[1]
         )
@@ -696,7 +695,7 @@ fit_dd_brms <- function(
   )
 
   # Authoritative draw-name map captured at fit time + ordered, validated
-  # alignment of every b_logk_* draw with the design columns (Codex 048-B1).
+  # alignment of every b_logk_* draw with the design columns.
   obj$formula_details$logk_draw_vars <- .dd_brms_logk_standata_map(brmsfit, X)
   draws <- .dd_brms_draws_matrix(obj)
   k_vars <- .dd_brms_logk_draw_vars(obj, colnames(draws))

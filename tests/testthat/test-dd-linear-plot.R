@@ -132,21 +132,36 @@ test_that("transformed: default ids cap at 12 subjects with a message; dropped p
   expect_equal(nrow(.lin_layer_data(pd, "GeomPoint")), sum(is.finite(d$y_lin)))
 })
 
-test_that("parameters with a factor: subject k intervals plus geometric-mean k per condition", {
+test_that("parameters with a factor: subject ln k intervals plus condition mean ln k (default k_scale = 'ln')", {
   skip_on_cran()
   fitf <- .lin_plot_fit_f()
   p <- plot(fitf, type = "parameters")
   b <- ggplot2::ggplot_build(p)
   expect_length(p$layers, 2L)
-  expect_equal(nrow(b$data[[1]]), nrow(fitf$subjects))
+  subj <- b$data[[1]]
+  expect_equal(nrow(subj), nrow(fitf$subjects))
+  expect_setequal(round(subj$y, 8), round(fitf$subjects$logk, 8))
   pop <- b$data[[2]]
   expect_equal(nrow(pop), 2L)
-  # y is log10(k): compare exp(mu) and exp(confint) on the log10 scale
+  ci <- confint(fitf, level = fitf$conf_level)
+  expect_equal(pop$y, unname(fitf$re$mu))
+  expect_equal(pop$ymin, unname(ci[, 1]))
+  expect_equal(pop$ymax, unname(ci[, 2]))
+  expect_equal(p$labels$y, "ln k")
+})
+
+test_that("parameters k_scale = 'log10' shows k on a log10 axis", {
+  skip_on_cran()
+  fitf <- .lin_plot_fit_f()
+  p <- plot(fitf, type = "parameters", k_scale = "log10")
+  b <- ggplot2::ggplot_build(p)
+  pop <- b$data[[2]]
   ci <- confint(fitf, level = fitf$conf_level)
   expect_equal(10^pop$y, unname(exp(fitf$re$mu)), tolerance = 1e-8)
   expect_equal(10^pop$ymin, unname(exp(ci[, 1])), tolerance = 1e-8)
   expect_equal(10^pop$ymax, unname(exp(ci[, 2])), tolerance = 1e-8)
   expect_match(p$labels$y, "log scale")
+  expect_error(plot(fitf, type = "parameters", k_scale = "linear"), "should be one of")
 })
 
 test_that("parameters uses the fit's conf_level for the condition intervals", {
@@ -155,8 +170,8 @@ test_that("parameters uses the fit's conf_level for the condition intervals", {
   pop <- ggplot2::ggplot_build(plot(fit90, type = "parameters"))$data[[2]]
   ci90 <- confint(fit90, level = 0.90)
   ci95 <- confint(fit90, level = 0.95)
-  expect_equal(10^pop$ymin, unname(exp(ci90[, 1])), tolerance = 1e-8)
-  expect_false(isTRUE(all.equal(10^pop$ymin, unname(exp(ci95[, 1])), tolerance = 1e-8)))
+  expect_equal(pop$ymin, unname(ci90[, 1]))
+  expect_false(isTRUE(all.equal(pop$ymin, unname(ci95[, 1]))))
 })
 
 test_that("parameters with a factor but no re: subjects only, with a message", {
@@ -168,22 +183,33 @@ test_that("parameters with a factor but no re: subjects only, with a message", {
   expect_s3_class(p, "ggplot")
 })
 
-test_that("parameters without a factor is the subject-k caterpillar", {
+test_that("parameters without a factor is the subject caterpillar, ln k by default or k on log10", {
   skip_on_cran()
   fit1 <- .lin_plot_fit_1()
   p <- plot(fit1, type = "parameters")
   b <- ggplot2::ggplot_build(p)
   expect_equal(nrow(b$data[[2]]), nrow(fit1$subjects)) # points
+  expect_setequal(round(b$data[[2]]$x, 8), round(fit1$subjects$logk, 8))
+  expect_equal(p$labels$x, "ln k")
   expect_s3_class(p$theme$axis.text.y, "element_blank") # > 30 subjects
   expect_equal(p$labels$y, "Subject (ordered by k)")
+  p10 <- plot(fit1, type = "parameters", k_scale = "log10")
+  b10 <- ggplot2::ggplot_build(p10)
+  expect_equal(sort(10^b10$data[[2]]$x), sort(fit1$subjects$k), tolerance = 1e-8)
+  expect_match(p10$labels$x, "log scale")
 })
 
-test_that("resid plots .std_resid against the raw-scale fitted value", {
+test_that("resid plots .std_resid against ln(delay), dropping non-finite residuals", {
   skip_on_cran()
-  fit <- .lin_plot_fit_f()
+  fit <- .lin_plot_fit_drop()
   p <- plot(fit, type = "resid")
   pts <- .lin_layer_data(p, "GeomPoint")
   a <- augment(fit)
-  expect_equal(nrow(pts), sum(is.finite(a$.std_resid)))
-  expect_setequal(round(pts$x, 8), round(a$.fitted[is.finite(a$.std_resid)], 8))
+  ok <- is.finite(a$.std_resid)
+  expect_gt(sum(!ok), 0L)
+  expect_equal(nrow(pts), sum(ok))
+  expect_setequal(round(pts$x, 8), round(log(a$x[ok]), 8))
+  expect_setequal(round(pts$y, 8), round(a$.std_resid[ok], 8))
+  expect_equal(p$labels$x, "ln(delay)")
+  expect_true(any(vapply(p$layers, function(l) inherits(l$geom, "GeomHline"), logical(1))))
 })

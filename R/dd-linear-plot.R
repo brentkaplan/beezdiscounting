@@ -15,16 +15,18 @@
 #' closed-form hyperbola `1 / (1 + k_i x)` as thin lines; `type =
 #' "transformed"` shows the linearization itself, `ln(1/D - 1)` against
 #' `ln(delay)` per subject with a slope-1 line at that subject's `ln k`;
-#' `type = "parameters"` shows the subject discount rates `k` with their
-#' t-intervals (by condition, with the condition's geometric-mean `k` and its
-#' interval overlaid, when the fit has a factor; otherwise ordered as a
-#' caterpillar); `type = "resid"` plots the standardized residual on the
-#' transformed scale against the raw-scale fitted indifference point.
+#' `type = "parameters"` shows the subject `ln k` estimates with their
+#' t-intervals (by condition, with the condition mean `mu` and its interval
+#' from [confint()] overlaid, when the fit has a factor; otherwise ordered as a
+#' caterpillar), or the same quantities as `k` on a log10 axis with
+#' `k_scale = "log10"`; `type = "resid"` plots the standardized residual on the
+#' transformed scale against `ln(delay)`.
 #'
 #' @details
-#' The arguments match [plot.beezdiscounting_tmb()] except that `at` is absent:
-#' a linearized fit has no covariates or reference grid, so there is nothing to
-#' condition on. `x_trans`, `n_points` and `show_observed` apply to the
+#' The method shares its core arguments (`type`, `ids`, `n_points`, `x_trans`,
+#' `show_observed`) with [plot.beezdiscounting_tmb()]; it adds `k_scale` and
+#' omits `at` (a linearized fit has no covariates or reference grid, so there
+#' is nothing to condition on). `x_trans`, `n_points` and `show_observed` apply to the
 #' `"population"` and `"individual"` curves only; `ids` applies to
 #' `"individual"` (default: every subject) and `"transformed"` (default: the
 #' first 12 subjects, with a message when the fit has more).
@@ -36,18 +38,23 @@
 #' errors, `"individual"` draws the subject curves only, and `"parameters"`
 #' omits the condition means with a message.
 #'
+#' Two pictures deliberately differ from the mixed-model tiers because this
+#' model is fitted on the linearized scale. `"parameters"` defaults to `ln k`
+#' (the scale of `coef()`, `confint()` and `anova()`'s effect size);
+#' `k_scale = "log10"` gives the sibling tiers' picture, `k` on a log10 axis.
+#' `"resid"` plots the transformed-scale residual against `ln(delay)`, the
+#' model's regressor with its slope fixed at 1, so a trend across delay may
+#' indicate delay-dependent lack of fit; the sibling tiers plot
+#' residuals against fitted values instead. `k_scale` affects only
+#' `"parameters"`.
+#'
 #' The `"transformed"` abscissa is `ln(delay)` by construction (a `log10` axis
 #' would break the slope-1 reference), so `x_trans` is ignored there.
 #' Indifference points at exactly 0 or 1 are shown at their observed value on
 #' the raw scale, and at their `boundary`-handled value `d_used` on the
 #' transformed scale; points dropped under `boundary = "drop"` do not appear on
-#' the transformed scale. In `"parameters"`, `k` is drawn on a log10 axis (the
-#' package's convention for subject discount rates); `coef()` and `confint()`
-#' report the same quantities on the natural-log scale. `"resid"` uses
-#' `augment()`'s `.std_resid`, the transformed-scale residual divided by the
-#' model's error standard deviation; the abscissa is the raw-scale `.fitted`,
-#' which is monotone in delay within a subject, so delay-dependent misfit shows
-#' as a trend.
+#' the transformed scale. `"resid"` uses `augment()`'s `.std_resid`, the
+#' transformed-scale residual divided by the model's error standard deviation.
 #'
 #' @param x A `beezdiscounting_linear` object.
 #' @param type One of `"population"`, `"individual"`, `"transformed"`,
@@ -57,6 +64,8 @@
 #' @param n_points Number of delay points in the curve grid.
 #' @param x_trans Delay-axis scale: `"log10"` (default) or `"linear"`.
 #' @param show_observed Overlay the observed indifference points.
+#' @param k_scale For `type = "parameters"`: `"ln"` (default) draws `ln k` on a
+#'   linear axis; `"log10"` draws `k` on a log10 axis as the other tiers do.
 #' @param ... Unused.
 #' @return A [ggplot2::ggplot] object.
 #' @seealso [fit_dd_linear()], [beezdiscounting_linear-methods],
@@ -79,10 +88,12 @@ plot.beezdiscounting_linear <- function(
   n_points = 200,
   x_trans = c("log10", "linear"),
   show_observed = TRUE,
+  k_scale = c("ln", "log10"),
   ...
 ) {
   type <- match.arg(type)
   x_trans <- match.arg(x_trans)
+  k_scale <- match.arg(k_scale)
   fit <- x
 
   switch(
@@ -104,8 +115,8 @@ plot.beezdiscounting_linear <- function(
       show_observed
     ),
     transformed = .dd_lin_plot_transformed(fit, ids),
-    parameters = .dd_lin_plot_parameters(fit),
-    resid = .dd_plot_resid(fit)
+    parameters = .dd_lin_plot_parameters(fit, k_scale),
+    resid = .dd_lin_plot_resid(fit)
   )
 }
 
@@ -258,16 +269,32 @@ plot.beezdiscounting_linear <- function(
     ggplot2::labs(x = "ln(delay)", y = "ln(1/D - 1)")
 }
 
-# Subject k with t-intervals by condition, the condition's geometric-mean k
-# (exp(mu)) and its interval overlaid; the caterpillar when there is no factor.
-.dd_lin_plot_parameters <- function(fit) {
+# Subject ln k (or k on log10) with t-intervals by condition, the condition
+# mean mu (or exp(mu)) and its interval overlaid; the caterpillar when there is
+# no factor.
+.dd_lin_plot_parameters <- function(fit, k_scale = "ln") {
   if (is.null(fit$design$factor)) {
-    return(.dd_plot_k_caterpillar(fit))
+    return(.dd_plot_k_caterpillar(fit, k_scale = k_scale))
   }
   sp <- stats::predict(fit, type = "parameters")
-  p <- ggplot2::ggplot(sp, ggplot2::aes(x = .data$condition, y = .data$k)) +
+  if (k_scale == "ln") {
+    sp$.est <- sp$logk
+    sp$.lo <- sp$logk_lower
+    sp$.hi <- sp$logk_upper
+    tf <- identity
+    y_scale <- NULL
+    ylab <- "ln k"
+  } else {
+    sp$.est <- sp$k
+    sp$.lo <- sp$k_lower
+    sp$.hi <- sp$k_upper
+    tf <- exp
+    y_scale <- ggplot2::scale_y_log10()
+    ylab <- "Subject discount rate k (log scale)"
+  }
+  p <- ggplot2::ggplot(sp, ggplot2::aes(x = .data$condition, y = .data$.est)) +
     ggplot2::geom_pointrange(
-      ggplot2::aes(ymin = .data$k_lower, ymax = .data$k_upper),
+      ggplot2::aes(ymin = .data$.lo, ymax = .data$.hi),
       colour = .dd_col_pop,
       alpha = 0.5,
       size = 0.3,
@@ -279,24 +306,40 @@ plot.beezdiscounting_linear <- function(
       "i" = "Random-effects component was not fitted; condition means are not drawn."
     ))
   } else {
-    ci <- exp(stats::confint(fit, level = fit$conf_level))
+    ci <- tf(stats::confint(fit, level = fit$conf_level))
     pop <- data.frame(
       condition = factor(names(fit$re$mu), levels = levels(sp$condition)),
-      k = exp(unname(fit$re$mu)),
-      k_lower = unname(ci[, 1]),
-      k_upper = unname(ci[, 2])
+      .est = tf(unname(fit$re$mu)),
+      .lo = unname(ci[, 1]),
+      .hi = unname(ci[, 2])
     )
     p <- p +
       ggplot2::geom_pointrange(
         data = pop,
-        ggplot2::aes(ymin = .data$k_lower, ymax = .data$k_upper),
+        ggplot2::aes(ymin = .data$.lo, ymax = .data$.hi),
         colour = .dd_col_accent,
         size = 0.8
       )
   }
 
   p +
-    ggplot2::scale_y_log10() +
+    y_scale +
     .dd_plot_theme() +
-    ggplot2::labs(x = "Condition", y = "Subject discount rate k (log scale)")
+    ggplot2::labs(x = "Condition", y = ylab)
+}
+
+# Transformed-scale standardized residual against ln(delay), the model's
+# regressor (slope fixed at 1): a trend across delay is misfit of the
+# hyperbolic form, which fitted-vs-residual would fold into subject k.
+.dd_lin_plot_resid <- function(fit) {
+  aug <- generics::augment(fit)
+  aug <- aug[is.finite(aug$.std_resid), , drop = FALSE]
+  ggplot2::ggplot(aug, ggplot2::aes(x = log(.data$x), y = .data$.std_resid)) +
+    ggplot2::geom_hline(yintercept = 0, linetype = 2, colour = .dd_col_accent) +
+    ggplot2::geom_point(alpha = 0.3, colour = .dd_col_pop) +
+    .dd_plot_theme() +
+    ggplot2::labs(
+      x = "ln(delay)",
+      y = "Standardized residual (transformed scale)"
+    )
 }

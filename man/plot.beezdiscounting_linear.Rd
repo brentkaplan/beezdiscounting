@@ -11,6 +11,7 @@
   n_points = 200,
   x_trans = c("log10", "linear"),
   show_observed = TRUE,
+  k_scale = c("ln", "log10"),
   ...
 )
 }
@@ -29,6 +30,9 @@
 
 \item{show_observed}{Overlay the observed indifference points.}
 
+\item{k_scale}{For \code{type = "parameters"}: \code{"ln"} (default) draws \verb{ln k} on a
+linear axis; \code{"log10"} draws \code{k} on a log10 axis as the other tiers do.}
+
 \item{...}{Unused.}
 }
 \value{
@@ -41,16 +45,18 @@ draws the hyperbola implied by each condition's geometric-mean discount rate
 the fit has a factor); \code{type = "individual"} adds each subject's own
 closed-form hyperbola \verb{1 / (1 + k_i x)} as thin lines; \code{type = "transformed"} shows the linearization itself, \code{ln(1/D - 1)} against
 \code{ln(delay)} per subject with a slope-1 line at that subject's \verb{ln k};
-\code{type = "parameters"} shows the subject discount rates \code{k} with their
-t-intervals (by condition, with the condition's geometric-mean \code{k} and its
-interval overlaid, when the fit has a factor; otherwise ordered as a
-caterpillar); \code{type = "resid"} plots the standardized residual on the
-transformed scale against the raw-scale fitted indifference point.
+\code{type = "parameters"} shows the subject \verb{ln k} estimates with their
+t-intervals (by condition, with the condition mean \code{mu} and its interval
+from \code{\link[=confint]{confint()}} overlaid, when the fit has a factor; otherwise ordered as a
+caterpillar), or the same quantities as \code{k} on a log10 axis with
+\code{k_scale = "log10"}; \code{type = "resid"} plots the standardized residual on the
+transformed scale against \code{ln(delay)}.
 }
 \details{
-The arguments match \code{\link[=plot.beezdiscounting_tmb]{plot.beezdiscounting_tmb()}} except that \code{at} is absent:
-a linearized fit has no covariates or reference grid, so there is nothing to
-condition on. \code{x_trans}, \code{n_points} and \code{show_observed} apply to the
+The method shares its core arguments (\code{type}, \code{ids}, \code{n_points}, \code{x_trans},
+\code{show_observed}) with \code{\link[=plot.beezdiscounting_tmb]{plot.beezdiscounting_tmb()}}; it adds \code{k_scale} and
+omits \code{at} (a linearized fit has no covariates or reference grid, so there
+is nothing to condition on). \code{x_trans}, \code{n_points} and \code{show_observed} apply to the
 \code{"population"} and \code{"individual"} curves only; \code{ids} applies to
 \code{"individual"} (default: every subject) and \code{"transformed"} (default: the
 first 12 subjects, with a message when the fit has more).
@@ -62,18 +68,23 @@ random-effects component. \code{"population"} requires it (the condition means
 errors, \code{"individual"} draws the subject curves only, and \code{"parameters"}
 omits the condition means with a message.
 
+Two pictures deliberately differ from the mixed-model tiers because this
+model is fitted on the linearized scale. \code{"parameters"} defaults to \verb{ln k}
+(the scale of \code{coef()}, \code{confint()} and \code{anova()}'s effect size);
+\code{k_scale = "log10"} gives the sibling tiers' picture, \code{k} on a log10 axis.
+\code{"resid"} plots the transformed-scale residual against \code{ln(delay)}, the
+model's regressor with its slope fixed at 1, so a trend across delay may
+indicate delay-dependent lack of fit; the sibling tiers plot
+residuals against fitted values instead. \code{k_scale} affects only
+\code{"parameters"}.
+
 The \code{"transformed"} abscissa is \code{ln(delay)} by construction (a \code{log10} axis
 would break the slope-1 reference), so \code{x_trans} is ignored there.
 Indifference points at exactly 0 or 1 are shown at their observed value on
 the raw scale, and at their \code{boundary}-handled value \code{d_used} on the
 transformed scale; points dropped under \code{boundary = "drop"} do not appear on
-the transformed scale. In \code{"parameters"}, \code{k} is drawn on a log10 axis (the
-package's convention for subject discount rates); \code{coef()} and \code{confint()}
-report the same quantities on the natural-log scale. \code{"resid"} uses
-\code{augment()}'s \code{.std_resid}, the transformed-scale residual divided by the
-model's error standard deviation; the abscissa is the raw-scale \code{.fitted},
-which is monotone in delay within a subject, so delay-dependent misfit shows
-as a trend.
+the transformed scale. \code{"resid"} uses \code{augment()}'s \code{.std_resid}, the
+transformed-scale residual divided by the model's error standard deviation.
 }
 \examples{
 sim <- simulate_dd_linear(

@@ -808,7 +808,8 @@ plot.beezdiscounting_comparison <- function(
 
 # Posterior subject-k caterpillar (point + credible interval per subject) on a
 # log10 axis. Shared by both brms tiers.
-.dd_plot_k_caterpillar <- function(fit) {
+.dd_plot_k_caterpillar <- function(fit, k_scale = c("log10", "ln")) {
+  k_scale <- match.arg(k_scale)
   sp <- stats::predict(fit, type = "parameters")
   if (is.null(sp)) {
     cli::cli_abort(c(
@@ -818,16 +819,31 @@ plot.beezdiscounting_comparison <- function(
   }
   sp <- sp[order(sp$k), , drop = FALSE]
   sp$id <- factor(as.character(sp$id), levels = as.character(sp$id))
-  p <- ggplot2::ggplot(sp, ggplot2::aes(y = .data$id, x = .data$k)) +
+  # "ln" (linear tier only) plots the ln k columns on a linear axis; "log10"
+  # (default, all tiers) plots k on a log10 axis.
+  if (k_scale == "ln") {
+    sp$.est <- sp$logk
+    sp$.lo <- sp$logk_lower
+    sp$.hi <- sp$logk_upper
+    x_scale <- NULL
+    xlab <- "ln k"
+  } else {
+    sp$.est <- sp$k
+    sp$.lo <- sp$k_lower
+    sp$.hi <- sp$k_upper
+    x_scale <- ggplot2::scale_x_log10()
+    xlab <- "Subject discount rate k (log scale)"
+  }
+  p <- ggplot2::ggplot(sp, ggplot2::aes(y = .data$id, x = .data$.est)) +
     ggplot2::geom_linerange(
-      ggplot2::aes(xmin = .data$k_lower, xmax = .data$k_upper),
+      ggplot2::aes(xmin = .data$.lo, xmax = .data$.hi),
       colour = .dd_col_pop,
       alpha = 0.6
     ) +
     ggplot2::geom_point(colour = .dd_col_pop) +
-    ggplot2::scale_x_log10() +
+    x_scale +
     .dd_plot_theme() +
-    ggplot2::labs(x = "Subject discount rate k (log scale)", y = "Subject")
+    ggplot2::labs(x = xlab, y = "Subject")
   # Per-subject id labels become an illegible smear once there are many
   # subjects; drop them and label the axis as a rank instead.
   if (nrow(sp) > 30L) {

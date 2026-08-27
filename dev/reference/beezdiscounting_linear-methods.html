@@ -88,12 +88,7 @@ All quantities are closed form; nothing is re-optimized.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'beezdiscounting_linear'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span></span>
-<span>  <span class="va">object</span>,</span>
-<span>  parm <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"population"</span>, <span class="st">"subject"</span><span class="op">)</span>,</span>
-<span>  level <span class="op">=</span> <span class="va">object</span><span class="op">$</span><span class="va">conf_level</span>,</span>
-<span>  <span class="va">...</span></span>
-<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">object</span>, parm <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"population"</span>, <span class="st">"subject"</span><span class="op">)</span>, level <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'beezdiscounting_linear'</span></span>
 <span><span class="fu"><a href="https://generics.r-lib.org/reference/augment.html" class="external-link">augment</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
@@ -140,9 +135,10 @@ per-subject t-intervals on ln k. It does not select parameter names.</p></dd>
 
 
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
-<dd><p>For <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code>, the confidence level; defaults to the fit's
-<code>conf_level</code>, so <code>confint(parm = "subject")</code> reproduces the intervals in
-<code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> / <code>fit$subjects</code> unless a different <code>level</code> is given.
+<dd><p>For <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code>, the confidence level. <code>NULL</code> (default) means
+<code>0.95</code> for <code>parm = "population"</code>, as in the package's other <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code>
+methods, and the fit's <code>conf_level</code> for <code>parm = "subject"</code>, so that call
+reproduces the intervals in <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> / <code>fit$subjects</code>.
 For <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code>, which likelihood to return: <code>"population"</code> (the
 random-effects MLE, <code>df</code> = C + 2) or <code>"subject"</code> (the sum of the per-unit
 log-likelihoods, <code>df</code> = 2 per unit).</p></dd>

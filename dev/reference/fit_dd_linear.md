@@ -65,7 +65,7 @@ fit_dd_linear(
 
   Confidence level for per-subject ln(k) intervals (a single number
   strictly between 0 and 1); also the default `level` of
-  [`confint()`](https://rdrr.io/r/stats/confint.html).
+  `confint(parm = "subject")`.
 
 ## Value
 

@@ -26,12 +26,7 @@ glance(x, ...)
 coef(object, ...)
 
 # S3 method for class 'beezdiscounting_linear'
-confint(
-  object,
-  parm = c("population", "subject"),
-  level = object$conf_level,
-  ...
-)
+confint(object, parm = c("population", "subject"), level = NULL, ...)
 
 # S3 method for class 'beezdiscounting_linear'
 augment(x, ...)
@@ -79,14 +74,16 @@ logLik(
 - level:
 
   For [`confint()`](https://rdrr.io/r/stats/confint.html), the
-  confidence level; defaults to the fit's `conf_level`, so
-  `confint(parm = "subject")` reproduces the intervals in
+  confidence level. `NULL` (default) means `0.95` for
+  `parm = "population"`, as in the package's other
+  [`confint()`](https://rdrr.io/r/stats/confint.html) methods, and the
+  fit's `conf_level` for `parm = "subject"`, so that call reproduces the
+  intervals in
   [`tidy()`](https://generics.r-lib.org/reference/tidy.html) /
-  `fit$subjects` unless a different `level` is given. For
-  [`logLik()`](https://rdrr.io/r/stats/logLik.html), which likelihood to
-  return: `"population"` (the random-effects MLE, `df` = C + 2) or
-  `"subject"` (the sum of the per-unit log-likelihoods, `df` = 2 per
-  unit).
+  `fit$subjects`. For [`logLik()`](https://rdrr.io/r/stats/logLik.html),
+  which likelihood to return: `"population"` (the random-effects MLE,
+  `df` = C + 2) or `"subject"` (the sum of the per-unit log-likelihoods,
+  `df` = 2 per unit).
 
 - type:
 

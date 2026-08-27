@@ -5,21 +5,23 @@ exp(mu) over the observed indifference points (one curve per condition when
 the fit has a factor); type = &quot;individual&quot; adds each subject's own
 closed-form hyperbola 1 / (1 + k_i x) as thin lines; type = &quot;transformed&quot; shows the linearization itself, ln(1/D - 1) against
 ln(delay) per subject with a slope-1 line at that subject's ln k;
-type = &quot;parameters&quot; shows the subject discount rates k with their
-t-intervals (by condition, with the condition's geometric-mean k and its
-interval overlaid, when the fit has a factor; otherwise ordered as a
-caterpillar); type = &quot;resid&quot; plots the standardized residual on the
-transformed scale against the raw-scale fitted indifference point."><meta property="og:description" content="Visualize a fitted fit_dd_linear() model. type = &quot;population&quot; (default)
+type = &quot;parameters&quot; shows the subject ln k estimates with their
+t-intervals (by condition, with the condition mean mu and its interval
+from confint() overlaid, when the fit has a factor; otherwise ordered as a
+caterpillar), or the same quantities as k on a log10 axis with
+k_scale = &quot;log10&quot;; type = &quot;resid&quot; plots the standardized residual on the
+transformed scale against ln(delay)."><meta property="og:description" content="Visualize a fitted fit_dd_linear() model. type = &quot;population&quot; (default)
 draws the hyperbola implied by each condition's geometric-mean discount rate
 exp(mu) over the observed indifference points (one curve per condition when
 the fit has a factor); type = &quot;individual&quot; adds each subject's own
 closed-form hyperbola 1 / (1 + k_i x) as thin lines; type = &quot;transformed&quot; shows the linearization itself, ln(1/D - 1) against
 ln(delay) per subject with a slope-1 line at that subject's ln k;
-type = &quot;parameters&quot; shows the subject discount rates k with their
-t-intervals (by condition, with the condition's geometric-mean k and its
-interval overlaid, when the fit has a factor; otherwise ordered as a
-caterpillar); type = &quot;resid&quot; plots the standardized residual on the
-transformed scale against the raw-scale fitted indifference point."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
+type = &quot;parameters&quot; shows the subject ln k estimates with their
+t-intervals (by condition, with the condition mean mu and its interval
+from confint() overlaid, when the fit has a factor; otherwise ordered as a
+caterpillar), or the same quantities as k on a log10 axis with
+k_scale = &quot;log10&quot;; type = &quot;resid&quot; plots the standardized residual on the
+transformed scale against ln(delay)."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -84,11 +86,12 @@ draws the hyperbola implied by each condition's geometric-mean discount rate
 the fit has a factor); <code>type = "individual"</code> adds each subject's own
 closed-form hyperbola <code>1 / (1 + k_i x)</code> as thin lines; <code>type = "transformed"</code> shows the linearization itself, <code>ln(1/D - 1)</code> against
 <code>ln(delay)</code> per subject with a slope-1 line at that subject's <code>ln k</code>;
-<code>type = "parameters"</code> shows the subject discount rates <code>k</code> with their
-t-intervals (by condition, with the condition's geometric-mean <code>k</code> and its
-interval overlaid, when the fit has a factor; otherwise ordered as a
-caterpillar); <code>type = "resid"</code> plots the standardized residual on the
-transformed scale against the raw-scale fitted indifference point.</p>
+<code>type = "parameters"</code> shows the subject <code>ln k</code> estimates with their
+t-intervals (by condition, with the condition mean <code>mu</code> and its interval
+from <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code> overlaid, when the fit has a factor; otherwise ordered as a
+caterpillar), or the same quantities as <code>k</code> on a log10 axis with
+<code>k_scale = "log10"</code>; <code>type = "resid"</code> plots the standardized residual on the
+transformed scale against <code>ln(delay)</code>.</p>
     </div>
 
     <div class="section level2">
@@ -101,6 +104,7 @@ transformed scale against the raw-scale fitted indifference point.</p>
 <span>  n_points <span class="op">=</span> <span class="fl">200</span>,</span>
 <span>  x_trans <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"log10"</span>, <span class="st">"linear"</span><span class="op">)</span>,</span>
 <span>  show_observed <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  k_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ln"</span>, <span class="st">"log10"</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -135,6 +139,11 @@ transformed scale against the raw-scale fitted indifference point.</p>
 <dd><p>Overlay the observed indifference points.</p></dd>
 
 
+<dt id="arg-k-scale">k_scale<a class="anchor" aria-label="anchor" href="#arg-k-scale"></a></dt>
+<dd><p>For <code>type = "parameters"</code>: <code>"ln"</code> (default) draws <code>ln k</code> on a
+linear axis; <code>"log10"</code> draws <code>k</code> on a log10 axis as the other tiers do.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Unused.</p></dd>
 
@@ -145,9 +154,10 @@ transformed scale against the raw-scale fitted indifference point.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The arguments match <code><a href="plot.beezdiscounting_tmb.html">plot.beezdiscounting_tmb()</a></code> except that <code>at</code> is absent:
-a linearized fit has no covariates or reference grid, so there is nothing to
-condition on. <code>x_trans</code>, <code>n_points</code> and <code>show_observed</code> apply to the
+    <p>The method shares its core arguments (<code>type</code>, <code>ids</code>, <code>n_points</code>, <code>x_trans</code>,
+<code>show_observed</code>) with <code><a href="plot.beezdiscounting_tmb.html">plot.beezdiscounting_tmb()</a></code>; it adds <code>k_scale</code> and
+omits <code>at</code> (a linearized fit has no covariates or reference grid, so there
+is nothing to condition on). <code>x_trans</code>, <code>n_points</code> and <code>show_observed</code> apply to the
 <code>"population"</code> and <code>"individual"</code> curves only; <code>ids</code> applies to
 <code>"individual"</code> (default: every subject) and <code>"transformed"</code> (default: the
 first 12 subjects, with a message when the fit has more).</p>
@@ -157,18 +167,22 @@ random-effects component. <code>"population"</code> requires it (the condition m
 <code>mu</code>); when the design was unbalanced and <code>re</code> is <code>NULL</code>, <code>"population"</code>
 errors, <code>"individual"</code> draws the subject curves only, and <code>"parameters"</code>
 omits the condition means with a message.</p>
+<p>Two pictures deliberately differ from the mixed-model tiers because this
+model is fitted on the linearized scale. <code>"parameters"</code> defaults to <code>ln k</code>
+(the scale of <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>, <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code> and <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code>'s effect size);
+<code>k_scale = "log10"</code> gives the sibling tiers' picture, <code>k</code> on a log10 axis.
+<code>"resid"</code> plots the transformed-scale residual against <code>ln(delay)</code>, the
+model's regressor with its slope fixed at 1, so a trend across delay may
+indicate delay-dependent lack of fit; the sibling tiers plot
+residuals against fitted values instead. <code>k_scale</code> affects only
+<code>"parameters"</code>.</p>
 <p>The <code>"transformed"</code> abscissa is <code>ln(delay)</code> by construction (a <code>log10</code> axis
 would break the slope-1 reference), so <code>x_trans</code> is ignored there.
 Indifference points at exactly 0 or 1 are shown at their observed value on
 the raw scale, and at their <code>boundary</code>-handled value <code>d_used</code> on the
 transformed scale; points dropped under <code>boundary = "drop"</code> do not appear on
-the transformed scale. In <code>"parameters"</code>, <code>k</code> is drawn on a log10 axis (the
-package's convention for subject discount rates); <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> and <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code>
-report the same quantities on the natural-log scale. <code>"resid"</code> uses
-<code><a href="https://generics.r-lib.org/reference/augment.html" class="external-link">augment()</a></code>'s <code>.std_resid</code>, the transformed-scale residual divided by the
-model's error standard deviation; the abscissa is the raw-scale <code>.fitted</code>,
-which is monotone in delay within a subject, so delay-dependent misfit shows
-as a trend.</p>
+the transformed scale. <code>"resid"</code> uses <code><a href="https://generics.r-lib.org/reference/augment.html" class="external-link">augment()</a></code>'s <code>.std_resid</code>, the
+transformed-scale residual divided by the model's error standard deviation.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

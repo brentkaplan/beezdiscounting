@@ -41,10 +41,12 @@
   observed points), `"individual"` (per-subject hyperbolae),
   `"transformed"` (the linearization itself, `ln(1/D - 1)` against
   `ln(delay)` per subject with a slope-1 line at ln k), `"parameters"`
-  (subject `k` with t-intervals by condition and the condition geometric
-  means overlaid, or a caterpillar without a factor), and `"resid"`.
-  `predict(type = "parameters")` returns the per-subject table in the
-  package’s `k` / `k_lower` / `k_upper` layout, and
+  (subject `ln k` with t-intervals by condition and the condition means
+  overlaid, or a caterpillar without a factor; `k_scale = "log10"` shows
+  `k` on a log10 axis as the other tiers do), and `"resid"`
+  (transformed-scale residual against `ln(delay)`, the model’s
+  regressor). `predict(type = "parameters")` returns the per-subject
+  table in the package’s `k` / `k_lower` / `k_upper` layout, and
   [`augment()`](https://generics.r-lib.org/reference/augment.html) gains
   `.std_resid` (the transformed-scale residual divided by the model’s
   error standard deviation).

@@ -488,13 +488,14 @@ preferring a likelihood that treats them as data; see
 ## Figures
 
 [`plot()`](https://rdrr.io/r/graphics/plot.default.html) draws the
-pictures that go with the fit, with the same arguments as the other
-indifference-point tiers (`type`, `ids`, `n_points`, `x_trans`,
-`show_observed`). The linearization is easiest to see on the transformed
-scale. For each subject, `ln(1 / D - 1)` plotted against `ln(t)` should
-scatter around a line of slope 1 whose intercept is that subject’s ln k.
-`type = "transformed"` draws that picture, one panel per subject; `ids`
-picks the subjects (without it, the first twelve are shown):
+pictures that go with the fit and shares its core arguments (`type`,
+`ids`, `n_points`, `x_trans`, `show_observed`) with the other
+indifference-point tiers. The linearization is easiest to see on the
+transformed scale. For each subject, `ln(1 / D - 1)` plotted against
+`ln(t)` should scatter around a line of slope 1 whose intercept is that
+subject’s ln k. `type = "transformed"` draws that picture, one panel per
+subject; `ids` picks the subjects (without it, the first twelve are
+shown):
 
 ``` r
 
@@ -522,23 +523,23 @@ coloured condition curves and six thin per-subject hyperbolae drawn
 underneath them.](linearized-mazur_files/figure-html/fig-raw-1.png)
 
 The third figure answers the study question. `type = "parameters"` shows
-every subject’s k with its t-interval, by condition, with the
-condition’s geometric-mean k and its interval (the exponentiated values
-from [`coef()`](https://rdrr.io/r/stats/coef.html) and
+every subject’s ln k with its t-interval, by condition, with the
+condition mean and its interval (the values from
+[`coef()`](https://rdrr.io/r/stats/coef.html) and
 [`confint()`](https://rdrr.io/r/stats/confint.html)) overlaid. The axis
-is k on a log scale; [`coef()`](https://rdrr.io/r/stats/coef.html) and
-[`confint()`](https://rdrr.io/r/stats/confint.html) report the same
-quantities as ln k.
+is ln k, the scale on which the model is fitted and its effect size is
+defined; `k_scale = "log10"` draws the same picture as k on a log axis,
+the convention of the other tiers.
 
 ``` r
 
 plot(fit, type = "parameters")
 ```
 
-![Per-subject discount rates k with confidence intervals on a log axis,
-jittered within three conditions A, B, and C; condition B sits higher
-than A and C, and the condition geometric means with their intervals are
-overlaid in a contrasting
+![Per-subject ln k estimates with confidence intervals, jittered within
+three conditions A, B, and C; condition B sits about 1.5 units higher
+than A and C, and the condition means with their intervals are overlaid
+in a contrasting
 colour.](linearized-mazur_files/figure-html/fig-conditions-1.png)
 
 The frames behind these figures come from

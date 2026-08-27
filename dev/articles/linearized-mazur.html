@@ -511,15 +511,16 @@ preferring a likelihood that treats them as data; see
 <div class="section level2">
 <h2 id="figures">Figures<a class="anchor" aria-label="anchor" href="#figures"></a>
 </h2>
-<p><code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> draws the pictures that go with the fit, with the
-same arguments as the other indifference-point tiers (<code>type</code>,
-<code>ids</code>, <code>n_points</code>, <code>x_trans</code>,
-<code>show_observed</code>). The linearization is easiest to see on the
-transformed scale. For each subject, <code>ln(1 / D - 1)</code> plotted
-against <code>ln(t)</code> should scatter around a line of slope 1 whose
-intercept is that subject’s ln k. <code>type = "transformed"</code>
-draws that picture, one panel per subject; <code>ids</code> picks the
-subjects (without it, the first twelve are shown):</p>
+<p><code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> draws the pictures that go with the fit and
+shares its core arguments (<code>type</code>, <code>ids</code>,
+<code>n_points</code>, <code>x_trans</code>, <code>show_observed</code>)
+with the other indifference-point tiers. The linearization is easiest to
+see on the transformed scale. For each subject,
+<code>ln(1 / D - 1)</code> plotted against <code>ln(t)</code> should
+scatter around a line of slope 1 whose intercept is that subject’s ln k.
+<code>type = "transformed"</code> draws that picture, one panel per
+subject; <code>ids</code> picks the subjects (without it, the first
+twelve are shown):</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">show</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A_1"</span>, <span class="st">"A_2"</span>, <span class="st">"B_1"</span>, <span class="st">"B_2"</span>, <span class="st">"C_1"</span>, <span class="st">"C_2"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span>, type <span class="op">=</span> <span class="st">"transformed"</span>, ids <span class="op">=</span> <span class="va">show</span><span class="op">)</span></span></code></pre></div>
@@ -533,15 +534,15 @@ each subject’s own hyperbola, <code>1 / (1 + k x)</code>, underneath
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span>, type <span class="op">=</span> <span class="st">"individual"</span>, ids <span class="op">=</span> <span class="va">show</span><span class="op">)</span></span></code></pre></div>
 <p><img src="linearized-mazur_files/figure-html/fig-raw-1.png" class="r-plt" alt="Observed indifference points against delay on a log axis, with three coloured condition curves and six thin per-subject hyperbolae drawn underneath them." width="672"></p>
 <p>The third figure answers the study question.
-<code>type = "parameters"</code> shows every subject’s k with its
-t-interval, by condition, with the condition’s geometric-mean k and its
-interval (the exponentiated values from <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> and
-<code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code>) overlaid. The axis is k on a log scale;
-<code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> and <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code> report the same
-quantities as ln k.</p>
+<code>type = "parameters"</code> shows every subject’s ln k with its
+t-interval, by condition, with the condition mean and its interval (the
+values from <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> and <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code>) overlaid.
+The axis is ln k, the scale on which the model is fitted and its effect
+size is defined; <code>k_scale = "log10"</code> draws the same picture
+as k on a log axis, the convention of the other tiers.</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span>, type <span class="op">=</span> <span class="st">"parameters"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="linearized-mazur_files/figure-html/fig-conditions-1.png" class="r-plt" alt="Per-subject discount rates k with confidence intervals on a log axis, jittered within three conditions A, B, and C; condition B sits higher than A and C, and the condition geometric means with their intervals are overlaid in a contrasting colour." width="672"></p>
+<p><img src="linearized-mazur_files/figure-html/fig-conditions-1.png" class="r-plt" alt="Per-subject ln k estimates with confidence intervals, jittered within three conditions A, B, and C; condition B sits about 1.5 units higher than A and C, and the condition means with their intervals are overlaid in a contrasting colour." width="672"></p>
 <p>The frames behind these figures come from <code><a href="https://generics.r-lib.org/reference/augment.html" class="external-link">augment()</a></code>,
 <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> and <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code>, for
 anyone who wants a different picture.</p>

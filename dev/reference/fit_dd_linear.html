@@ -133,7 +133,8 @@ becomes <code>eps</code>, exact 1 becomes <code>1 - eps</code>, nothing else mov
 
 
 <dt id="arg-conf-level">conf_level<a class="anchor" aria-label="anchor" href="#arg-conf-level"></a></dt>
-<dd><p>Confidence level for per-subject ln(k) intervals.</p></dd>
+<dd><p>Confidence level for per-subject ln(k) intervals (a single
+number strictly between 0 and 1); also the default <code>level</code> of <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -142,7 +143,10 @@ becomes <code>eps</code>, exact 1 becomes <code>1 - eps</code>, nothing else mov
 (per-unit tibble of ln k estimates, intervals and log-likelihoods), <code>re</code>
 (closed-form random-effects MLEs <code>mu</code>, <code>sigma2</code>, <code>g</code>, or <code>NULL</code> if the
 design is unbalanced), <code>design</code> (factor name and levels), <code>transform</code>
-(boundary bookkeeping), <code>data</code> (the long frame with derived columns),
+(boundary bookkeeping; the counts refer to the retained units), <code>data</code>
+(the long frame: <code>id</code>, <code>x</code>, <code>y</code>, the factor, and the derived columns
+<code>condition</code>, <code>unit</code>, <code>y_lin</code>, <code>d_used</code>, <code>log_jac</code>; <code>factors</code> may not name
+one of the derived columns, and other user columns are not carried),
 <code>conf_level</code>, and <code>call</code>.</p>
     </div>
     <div class="section level2">

@@ -48,6 +48,13 @@
   [`augment()`](https://generics.r-lib.org/reference/augment.html) gains
   `.std_resid` (the transformed-scale residual divided by the model’s
   error standard deviation).
+- Polish: `conf_level` is validated; a `factors` column named `unit`,
+  `y_lin`, `d_used` or `log_jac` is rejected rather than overwritten by
+  the derived column; the `transform` counts refer to the retained
+  units; [`confint()`](https://rdrr.io/r/stats/confint.html) defaults to
+  the fit’s `conf_level`; `anova(pairwise = TRUE)` rejects `hypothesis`
+  instead of ignoring it and warns once, not once per pair, when
+  `g-hat = 0`.
 - Implementation note: written from the published paper; validated
   against `nlme::lme(method = "ML")` and nested
   [`lm()`](https://rdrr.io/r/stats/lm.html) ANOVA oracles, and then

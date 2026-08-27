@@ -63,7 +63,9 @@ fit_dd_linear(
 
 - conf_level:
 
-  Confidence level for per-subject ln(k) intervals.
+  Confidence level for per-subject ln(k) intervals (a single number
+  strictly between 0 and 1); also the default `level` of
+  [`confint()`](https://rdrr.io/r/stats/confint.html).
 
 ## Value
 
@@ -71,8 +73,11 @@ An object of class `beezdiscounting_linear`: a list with `subjects`
 (per-unit tibble of ln k estimates, intervals and log-likelihoods), `re`
 (closed-form random-effects MLEs `mu`, `sigma2`, `g`, or `NULL` if the
 design is unbalanced), `design` (factor name and levels), `transform`
-(boundary bookkeeping), `data` (the long frame with derived columns),
-`conf_level`, and `call`.
+(boundary bookkeeping; the counts refer to the retained units), `data`
+(the long frame: `id`, `x`, `y`, the factor, and the derived columns
+`condition`, `unit`, `y_lin`, `d_used`, `log_jac`; `factors` may not
+name one of the derived columns, and other user columns are not
+carried), `conf_level`, and `call`.
 
 ## Details
 

@@ -24,7 +24,8 @@ anova(object, hypothesis = NULL, pairwise = FALSE, ...)
 
 - pairwise:
 
-  If `TRUE`, test every pair of levels (uncorrected p-values).
+  If `TRUE`, test every pair of levels (uncorrected p-values); cannot be
+  combined with `hypothesis`.
 
 - ...:
 

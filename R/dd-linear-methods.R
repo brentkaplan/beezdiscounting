@@ -16,9 +16,10 @@
 #'   an ANOVA-style t-interval on each condition mean, using the between-unit
 #'   mean square with `N - C` degrees of freedom; `"subject"` gives the
 #'   per-subject t-intervals on ln k. It does not select parameter names.
-#' @param level For `confint()`, the confidence level; defaults to the fit's
-#'   `conf_level`, so `confint(parm = "subject")` reproduces the intervals in
-#'   `tidy()` / `fit$subjects` unless a different `level` is given.
+#' @param level For `confint()`, the confidence level. `NULL` (default) means
+#'   `0.95` for `parm = "population"`, as in the package's other `confint()`
+#'   methods, and the fit's `conf_level` for `parm = "subject"`, so that call
+#'   reproduces the intervals in `tidy()` / `fit$subjects`.
 #'   For `logLik()`, which likelihood to return: `"population"` (the
 #'   random-effects MLE, `df` = C + 2) or `"subject"` (the sum of the per-unit
 #'   log-likelihoods, `df` = 2 per unit).
@@ -161,8 +162,14 @@ coef.beezdiscounting_linear <- function(object, ...) {
 #' @rdname beezdiscounting_linear-methods
 #' @export
 confint.beezdiscounting_linear <- function(object, parm = c("population", "subject"),
-                                           level = object$conf_level, ...) {
+                                           level = NULL, ...) {
   parm <- match.arg(parm)
+  # Population intervals default to 0.95 like every other confint() in the
+  # package; subject intervals default to the fit's conf_level so they
+  # reproduce the stored subjects$ci_lo / ci_hi.
+  if (is.null(level)) {
+    level <- if (parm == "subject") object$conf_level else 0.95
+  }
   if (parm == "subject") {
     tq <- stats::qt(1 - (1 - level) / 2, df = object$subjects$df)
     out <- cbind(

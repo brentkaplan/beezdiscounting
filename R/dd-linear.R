@@ -244,7 +244,8 @@
 #' @param eps Where exact 0 / 1 are placed under `boundary = "clamp"`
 #'   (`eps` and `1 - eps`); default `1/(2 * ll)` if `ll` is given, else `0.005`.
 #' @param conf_level Confidence level for per-subject ln(k) intervals (a single
-#'   number strictly between 0 and 1); also the default `level` of `confint()`.
+#'   number strictly between 0 and 1); also the default `level` of
+#'   `confint(parm = "subject")`.
 #' @return An object of class `beezdiscounting_linear`: a list with `subjects`
 #'   (per-unit tibble of ln k estimates, intervals and log-likelihoods), `re`
 #'   (closed-form random-effects MLEs `mu`, `sigma2`, `g`, or `NULL` if the

@@ -42,7 +42,8 @@
 * Polish: `conf_level` is validated; a `factors` column named `unit`, `y_lin`,
   `d_used` or `log_jac` is rejected rather than overwritten by the derived
   column; the `transform` counts refer to the retained units;
-  `confint()` defaults to the fit's `conf_level`; `anova(pairwise = TRUE)`
+  `confint(parm = "subject")` defaults to the fit's `conf_level` (population
+  intervals keep the package-wide 0.95 default); `anova(pairwise = TRUE)`
   rejects `hypothesis` instead of ignoring it and warns once, not once per
   pair, when `g-hat = 0`.
 * Implementation note: written from the published paper; validated against

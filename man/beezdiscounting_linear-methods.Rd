@@ -27,12 +27,7 @@
 
 \method{coef}{beezdiscounting_linear}(object, ...)
 
-\method{confint}{beezdiscounting_linear}(
-  object,
-  parm = c("population", "subject"),
-  level = object$conf_level,
-  ...
-)
+\method{confint}{beezdiscounting_linear}(object, parm = c("population", "subject"), level = NULL, ...)
 
 \method{augment}{beezdiscounting_linear}(x, ...)
 
@@ -62,9 +57,10 @@ an ANOVA-style t-interval on each condition mean, using the between-unit
 mean square with \code{N - C} degrees of freedom; \code{"subject"} gives the
 per-subject t-intervals on ln k. It does not select parameter names.}
 
-\item{level}{For \code{confint()}, the confidence level; defaults to the fit's
-\code{conf_level}, so \code{confint(parm = "subject")} reproduces the intervals in
-\code{tidy()} / \code{fit$subjects} unless a different \code{level} is given.
+\item{level}{For \code{confint()}, the confidence level. \code{NULL} (default) means
+\code{0.95} for \code{parm = "population"}, as in the package's other \code{confint()}
+methods, and the fit's \code{conf_level} for \code{parm = "subject"}, so that call
+reproduces the intervals in \code{tidy()} / \code{fit$subjects}.
 For \code{logLik()}, which likelihood to return: \code{"population"} (the
 random-effects MLE, \code{df} = C + 2) or \code{"subject"} (the sum of the per-unit
 log-likelihoods, \code{df} = 2 per unit).}

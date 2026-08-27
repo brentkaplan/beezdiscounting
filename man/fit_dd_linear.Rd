@@ -37,7 +37,8 @@ becomes \code{eps}, exact 1 becomes \code{1 - eps}, nothing else moves), \code{"
 (\code{eps} and \code{1 - eps}); default \code{1/(2 * ll)} if \code{ll} is given, else \code{0.005}.}
 
 \item{conf_level}{Confidence level for per-subject ln(k) intervals (a single
-number strictly between 0 and 1); also the default \code{level} of \code{confint()}.}
+number strictly between 0 and 1); also the default \code{level} of
+\code{confint(parm = "subject")}.}
 }
 \value{
 An object of class \code{beezdiscounting_linear}: a list with \code{subjects}

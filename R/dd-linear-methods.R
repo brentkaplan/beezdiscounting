@@ -16,8 +16,9 @@
 #'   an ANOVA-style t-interval on each condition mean, using the between-unit
 #'   mean square with `N - C` degrees of freedom; `"subject"` gives the
 #'   per-subject t-intervals on ln k. It does not select parameter names.
-#' @param level For `confint()`, the confidence level (default `0.95`; note
-#'   that `confint(parm = "subject")` uses this, not the fit's `conf_level`).
+#' @param level For `confint()`, the confidence level; defaults to the fit's
+#'   `conf_level`, so `confint(parm = "subject")` reproduces the intervals in
+#'   `tidy()` / `fit$subjects` unless a different `level` is given.
 #'   For `logLik()`, which likelihood to return: `"population"` (the
 #'   random-effects MLE, `df` = C + 2) or `"subject"` (the sum of the per-unit
 #'   log-likelihoods, `df` = 2 per unit).
@@ -160,7 +161,7 @@ coef.beezdiscounting_linear <- function(object, ...) {
 #' @rdname beezdiscounting_linear-methods
 #' @export
 confint.beezdiscounting_linear <- function(object, parm = c("population", "subject"),
-                                           level = 0.95, ...) {
+                                           level = object$conf_level, ...) {
   parm <- match.arg(parm)
   if (parm == "subject") {
     tq <- stats::qt(1 - (1 - level) / 2, df = object$subjects$df)
@@ -268,7 +269,8 @@ logLik.beezdiscounting_linear <- function(object, level = c("population", "subje
 #' @param object A `beezdiscounting_linear` fit with a factor.
 #' @param hypothesis `NULL` (all condition means equal) or a list of character
 #'   vectors, each naming levels constrained equal under H0.
-#' @param pairwise If `TRUE`, test every pair of levels (uncorrected p-values).
+#' @param pairwise If `TRUE`, test every pair of levels (uncorrected p-values);
+#'   cannot be combined with `hypothesis`.
 #' @param ... Unused; present for S3 generic consistency.
 #' @return Tibble of class `beezdiscounting_linear_anova`.
 #' @seealso [beezdiscounting_linear-methods] for the other S3 methods.
@@ -282,8 +284,14 @@ anova.beezdiscounting_linear <- function(object, hypothesis = NULL, pairwise = F
     cli::cli_abort("No conditions to compare: the fit has a single condition.")
   }
   if (pairwise) {
+    if (!is.null(hypothesis)) {
+      cli::cli_abort("{.arg hypothesis} is ignored when {.code pairwise = TRUE}; supply one or the other.")
+    }
+    if (re$g_zero) {
+      cli::cli_warn("g-hat = 0: Prop. 3.5 assumes g > 0; the F statistics are reported as-is.")
+    }
     pairs <- utils::combn(object$design$levels, 2, simplify = FALSE)
-    out <- do.call(rbind, lapply(pairs, function(p) .dd_lin_ftest(re, list(p))))
+    out <- do.call(rbind, lapply(pairs, function(p) .dd_lin_ftest(re, list(p), warn_g_zero = FALSE)))
   } else {
     out <- .dd_lin_ftest(re, hypothesis)
   }

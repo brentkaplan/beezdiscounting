@@ -176,7 +176,7 @@
 #' `F = [(SSE_red - SSE_full) / d_num] / [SSR_{Z|X_full} / d_den]`.
 #' @keywords internal
 #' @noRd
-.dd_lin_ftest <- function(re, hypothesis = NULL) {
+.dd_lin_ftest <- function(re, hypothesis = NULL, warn_g_zero = TRUE) {
   if (!is.null(hypothesis) && !is.list(hypothesis)) hypothesis <- list(hypothesis)
   full <- re$unit_condition
   if (nlevels(full) < 2L) {
@@ -200,7 +200,7 @@
   }
   f_stat <- ((ssr_red - ssr_full) / df1) / (ssr_full / df2)
   p <- stats::pf(f_stat, df1, df2, lower.tail = FALSE)
-  if (re$g_zero) {
+  if (re$g_zero && warn_g_zero) {
     cli::cli_warn("g-hat = 0: Prop. 3.5 assumes g > 0; the F statistic is reported as-is.")
   }
   sets <- if (is.null(hypothesis)) list(levels(full)) else hypothesis
@@ -243,12 +243,16 @@
 #'   (per-subject estimates only unless the design stays balanced), `"error"`.
 #' @param eps Where exact 0 / 1 are placed under `boundary = "clamp"`
 #'   (`eps` and `1 - eps`); default `1/(2 * ll)` if `ll` is given, else `0.005`.
-#' @param conf_level Confidence level for per-subject ln(k) intervals.
+#' @param conf_level Confidence level for per-subject ln(k) intervals (a single
+#'   number strictly between 0 and 1); also the default `level` of `confint()`.
 #' @return An object of class `beezdiscounting_linear`: a list with `subjects`
 #'   (per-unit tibble of ln k estimates, intervals and log-likelihoods), `re`
 #'   (closed-form random-effects MLEs `mu`, `sigma2`, `g`, or `NULL` if the
 #'   design is unbalanced), `design` (factor name and levels), `transform`
-#'   (boundary bookkeeping), `data` (the long frame with derived columns),
+#'   (boundary bookkeeping; the counts refer to the retained units), `data`
+#'   (the long frame: `id`, `x`, `y`, the factor, and the derived columns
+#'   `condition`, `unit`, `y_lin`, `d_used`, `log_jac`; `factors` may not name
+#'   one of the derived columns, and other user columns are not carried),
 #'   `conf_level`, and `call`.
 #' @references Hinds, D., Tegge, A. N., Stein, J. S., LaConte, S. M., McClure, S. M., &
 #'   Ferreira, M. A. R. (2026). To linearize or not to linearize: That is the Mazur delay
@@ -268,6 +272,10 @@ fit_dd_linear <- function(data, y_var = "y", x_var = "x", id_var = "id", factors
   cl <- match.call()
   response_scale <- match.arg(response_scale)
   boundary <- match.arg(boundary)
+  if (!is.numeric(conf_level) || length(conf_level) != 1L || !is.finite(conf_level) ||
+        conf_level <= 0 || conf_level >= 1) {
+    cli::cli_abort("{.arg conf_level} must be a single number strictly between 0 and 1.")
+  }
   if (!is.null(factors) && length(factors) != 1L) {
     cli::cli_abort(c("{.arg factors} must name exactly one column.",
                      "i" = "Paste several factors into one cell-membership column first."))
@@ -278,6 +286,15 @@ fit_dd_linear <- function(data, y_var = "y", x_var = "x", id_var = "id", factors
                                extra_cols = factors, response_scale = response_scale)
   prepared <- .dd_tmb_prepare_data(validated$data, "y", "x", "id", extra_cols = factors)
   long <- prepared$data
+  # .dd_validate_ip() keeps only id/x/y and the factor, so the one user column
+  # that can reach `long` and be overwritten by a derived column is the factor.
+  reserved <- c("unit", "y_lin", "d_used", "log_jac")
+  if (!is.null(factors) && factors %in% reserved) {
+    cli::cli_abort(c(
+      "{.arg factors} = {.val {factors}} names a column reserved by {.fn fit_dd_linear}; rename it.",
+      "i" = "The fit derives {.field unit}, {.field y_lin}, {.field d_used} and {.field log_jac}."
+    ))
+  }
   long$condition <- if (is.null(factors)) {
     factor("(all)")
   } else {
@@ -321,6 +338,11 @@ fit_dd_linear <- function(data, y_var = "y", x_var = "x", id_var = "id", factors
   long$unit <- droplevels(long$unit)
   long$condition <- droplevels(long$condition)
   subjects$condition <- droplevels(subjects$condition)
+  # Boundary bookkeeping refers to the retained units (units with fewer than 2
+  # usable delays were removed above, together with their boundary points).
+  n_boundary <- sum(long$y == 0 | long$y == 1)
+  n_clamped <- if (boundary == "clamp") n_boundary else 0L
+  n_dropped <- if (boundary == "drop") n_boundary else 0L
   subjects <- tibble::as_tibble(subjects)
   subjects <- subjects[, c("id", "condition", "n_delays", "n_boundary", "logk", "se", "df",
                            "ci_lo", "ci_hi", "k", "k_lo", "k_hi", "s2", "loglik_y", "loglik_raw")]
@@ -343,8 +365,8 @@ fit_dd_linear <- function(data, y_var = "y", x_var = "x", id_var = "id", factors
   structure(list(
     subjects = subjects, re = re,
     design = list(factor = factors, levels = levels(long$condition)),
-    transform = list(boundary = boundary, eps = eps, n_boundary = tr$n_boundary,
-                     n_clamped = tr$n_clamped, n_dropped = tr$n_dropped,
+    transform = list(boundary = boundary, eps = eps, n_boundary = as.integer(n_boundary),
+                     n_clamped = as.integer(n_clamped), n_dropped = as.integer(n_dropped),
                      response_scale = response_scale, ll = ll,
                      divided_by = validated$coercion_info$divided_by),
     data = long, conf_level = conf_level, call = cl

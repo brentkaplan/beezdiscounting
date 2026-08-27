@@ -12,7 +12,8 @@
 \item{hypothesis}{\code{NULL} (all condition means equal) or a list of character
 vectors, each naming levels constrained equal under H0.}
 
-\item{pairwise}{If \code{TRUE}, test every pair of levels (uncorrected p-values).}
+\item{pairwise}{If \code{TRUE}, test every pair of levels (uncorrected p-values);
+cannot be combined with \code{hypothesis}.}
 
 \item{...}{Unused; present for S3 generic consistency.}
 }

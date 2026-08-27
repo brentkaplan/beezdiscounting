@@ -79,3 +79,35 @@ describe(".dd_lin_ftest()", {
     expect_equal(r$cohens_d, sqrt(6) * (re$mu[["EFT"]] - re$mu[["NCC"]]) / (sqrt(re$sigma2) * sqrt(re$g + 1)))
   })
 })
+
+describe("anova() guards and labels", {
+  sim <- simulate_dd_linear(n_subjects = 20, delays = c(7, 30, 180, 365, 1095),
+                            mu = c(-6.5, -6, -5.5), sigma2 = 2, g = 10, seed = 3)
+  fit <- fit_dd_linear(sim, factors = "condition")
+  it("pairwise = TRUE rejects a hypothesis instead of ignoring it", {
+    expect_error(anova(fit, hypothesis = list(c("C1", "C2")), pairwise = TRUE), "ignored")
+  })
+  it("the default hypothesis row is labelled with every level", {
+    expect_equal(anova(fit)$hypothesis, "C1 = C2 = C3")
+  })
+  it(".dd_lin_merge_levels rejects a level in two H0 sets", {
+    expect_error(
+      .dd_lin_merge_levels(factor(c("A", "B", "C")), list(c("A", "B"), c("B", "C"))),
+      "more than one H0 set"
+    )
+  })
+  it("g-hat = 0 warns once under pairwise = TRUE, not once per pair", {
+    # identical subject profiles within each condition -> SSR_{Z|X} = 0 -> g-hat = 0
+    d <- data.frame(
+      id = rep(c("a1", "a2", "b1", "b2", "c1", "c2"), each = 2),
+      x = rep(c(1, 7), 6),
+      y = c(0.9, 0.5, 0.9, 0.5, 0.8, 0.4, 0.8, 0.4, 0.7, 0.3, 0.7, 0.3),
+      cond = rep(c("A", "B", "C"), each = 4)
+    )
+    f0 <- fit_dd_linear(d, factors = "cond")
+    expect_true(f0$re$g_zero)
+    w <- capture_warnings(pw <- anova(f0, pairwise = TRUE))
+    expect_equal(nrow(pw), 3L)
+    expect_equal(sum(grepl("g-hat = 0", w)), 1L)
+  })
+})

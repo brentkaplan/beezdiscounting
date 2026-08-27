@@ -83,3 +83,60 @@ describe("fit_dd_linear()", {
     expect_equal(nrow(pw), 1L)
   })
 })
+
+describe("fit_dd_linear polish: argument validation and bookkeeping", {
+  it("rejects conf_level outside (0, 1), non-scalar, or non-numeric", {
+    for (bad in list(0, 1, 1.5, -0.1, c(0.9, 0.95), "a", NA_real_)) {
+      expect_error(fit_dd_linear(dd_ip, conf_level = bad), "strictly between")
+    }
+    expect_s3_class(suppressWarnings(fit_dd_linear(dd_ip, conf_level = 0.9)), "beezdiscounting_linear")
+  })
+  it("rejects a factor column named like a derived column; other user columns are not carried", {
+    sim <- simulate_dd_linear(n_subjects = 4, delays = c(7, 30, 90), mu = c(A = -6, B = -5),
+                              sigma2 = 1, g = 5, seed = 11)
+    for (nm in c("unit", "y_lin", "d_used", "log_jac")) {
+      s <- sim
+      s[[nm]] <- s$condition
+      expect_error(fit_dd_linear(s, factors = nm), "reserved")
+    }
+    # a factor literally named `condition` is the normal case; a renamed copy works too
+    sim$grp <- sim$condition
+    expect_s3_class(fit_dd_linear(sim, factors = "condition"), "beezdiscounting_linear")
+    fg <- fit_dd_linear(sim, factors = "grp")
+    expect_equal(fg$design$levels, c("A", "B"))
+    expect_false("unit_user" %in% names(fg$data))
+    # non-factor user columns never reach the fit (validation keeps id/x/y + factor)
+    d <- dd_ip
+    d$y_lin <- 1
+    expect_false(any(suppressWarnings(fit_dd_linear(d))$data$y_lin == 1))
+  })
+  it("transform counts refer to the retained units (post-drop)", {
+    d <- data.frame(
+      id = rep(c("a", "b", "c"), each = 3), x = rep(c(1, 7, 30), 3),
+      y = c(0.9, 0.5, 0.2, 0, 0, 0.3, 0, 0.5, 0.2)
+    )
+    fit <- suppressWarnings(fit_dd_linear(d, boundary = "drop"))
+    expect_equal(as.character(fit$subjects$id), c("a", "c"))
+    expect_equal(nrow(fit$data), 6L)
+    expect_equal(fit$transform$n_boundary, 1L)
+    expect_equal(fit$transform$n_dropped, 1L)
+    expect_equal(fit$transform$n_clamped, 0L)
+    expect_output(print(fit), "1 point\\(s\\) at 0/1, 0 clamped, 1 dropped")
+  })
+  it("balanced boundary = 'drop' keeps the random-effects component", {
+    sim <- simulate_dd_linear(n_subjects = 6, delays = c(1, 7, 30, 90), mu = -5,
+                              sigma2 = 1, g = 5, seed = 12)
+    sim$y[sim$x == 1] <- 0
+    w <- capture_warnings(fit <- fit_dd_linear(sim, boundary = "drop"))
+    expect_length(w, 0L)
+    expect_false(is.null(fit$re))
+    expect_equal(fit$re$n_delays, 3L)
+    expect_equal(fit$transform$n_dropped, 6L)
+  })
+  it("returned data carries d_used and log_jac = -ln(d_used - d_used^2)", {
+    fit <- suppressWarnings(fit_dd_linear(dd_ip))
+    expect_true(all(c("d_used", "log_jac") %in% names(fit$data)))
+    ok <- is.finite(fit$data$y_lin)
+    expect_equal(fit$data$log_jac[ok], -log(fit$data$d_used[ok] - fit$data$d_used[ok]^2))
+  })
+})

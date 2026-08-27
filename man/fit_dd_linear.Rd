@@ -36,14 +36,18 @@ becomes \code{eps}, exact 1 becomes \code{1 - eps}, nothing else moves), \code{"
 \item{eps}{Where exact 0 / 1 are placed under \code{boundary = "clamp"}
 (\code{eps} and \code{1 - eps}); default \code{1/(2 * ll)} if \code{ll} is given, else \code{0.005}.}
 
-\item{conf_level}{Confidence level for per-subject ln(k) intervals.}
+\item{conf_level}{Confidence level for per-subject ln(k) intervals (a single
+number strictly between 0 and 1); also the default \code{level} of \code{confint()}.}
 }
 \value{
 An object of class \code{beezdiscounting_linear}: a list with \code{subjects}
 (per-unit tibble of ln k estimates, intervals and log-likelihoods), \code{re}
 (closed-form random-effects MLEs \code{mu}, \code{sigma2}, \code{g}, or \code{NULL} if the
 design is unbalanced), \code{design} (factor name and levels), \code{transform}
-(boundary bookkeeping), \code{data} (the long frame with derived columns),
+(boundary bookkeeping; the counts refer to the retained units), \code{data}
+(the long frame: \code{id}, \code{x}, \code{y}, the factor, and the derived columns
+\code{condition}, \code{unit}, \code{y_lin}, \code{d_used}, \code{log_jac}; \code{factors} may not name
+one of the derived columns, and other user columns are not carried),
 \code{conf_level}, and \code{call}.
 }
 \description{

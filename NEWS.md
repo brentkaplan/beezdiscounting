@@ -37,6 +37,12 @@
   the package's `k` / `k_lower` / `k_upper` layout, and `augment()` gains
   `.std_resid` (the transformed-scale residual divided by the model's error
   standard deviation).
+* Polish: `conf_level` is validated; a `factors` column named `unit`, `y_lin`,
+  `d_used` or `log_jac` is rejected rather than overwritten by the derived
+  column; the `transform` counts refer to the retained units;
+  `confint()` defaults to the fit's `conf_level`; `anova(pairwise = TRUE)`
+  rejects `hypothesis` instead of ignoring it and warns once, not once per
+  pair, when `g-hat = 0`.
 * Implementation note: written from the published paper; validated against
   `nlme::lme(method = "ML")` and nested `lm()` ANOVA oracles, and then
   (2026-08-26) against the authors' CRAN package `delaydiscount` 0.0.1:

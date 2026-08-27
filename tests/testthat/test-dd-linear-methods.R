@@ -116,3 +116,18 @@ describe("predict() and .std_resid for beezdiscounting_linear", {
     expect_false(all(abs(r - 1 / sqrt(2)) < 1e-8))
   })
 })
+
+describe("confint() uses the fit's conf_level by default", {
+  sim <- simulate_dd_linear(n_subjects = 10, delays = c(7, 30, 180, 365), mu = c(-6.5, -6),
+                            sigma2 = 2, g = 10, seed = 5)
+  fit90 <- fit_dd_linear(sim, factors = "condition", conf_level = 0.90)
+  it("parm = 'subject' reproduces subjects$ci_lo / ci_hi", {
+    ci <- confint(fit90, parm = "subject")
+    expect_equal(unname(ci[, 1]), fit90$subjects$ci_lo)
+    expect_equal(unname(ci[, 2]), fit90$subjects$ci_hi)
+  })
+  it("population interval defaults to conf_level too; explicit level still wins", {
+    expect_equal(confint(fit90), confint(fit90, level = 0.90))
+    expect_false(isTRUE(all.equal(confint(fit90), confint(fit90, level = 0.95))))
+  })
+})

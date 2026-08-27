@@ -29,9 +29,9 @@ predictor is linear in the fixed effects, which makes each subject’s
 rate `k_i = exp(population log-k + random deviation)`. Integrating the
 random deviations out of the likelihood has no closed form. Template
 Model Builder (TMB) handles it with a Laplace approximation and
-automatic differentiation: exact gradients, a fast compiled objective,
-and maximum-likelihood estimates in seconds rather than minutes. TMB
-must be installed for any of this to run.
+automatic differentiation, which gives exact gradients and a compiled
+objective, so maximum-likelihood estimates take seconds rather than
+minutes. TMB must be installed for any of this to run.
 
 ## Some data
 
@@ -300,8 +300,8 @@ do.call(rbind, lapply(fits, function(f) glance(f)[c("equation", "logLik", "AIC",
 
 Because these data were generated from a hyperbola, Mazur wins on AIC;
 the exponential fits worse, and the extra parameter in Green-Myerson
-does not earn its keep. With real data the ranking is an empirical
-question worth checking.
+does not lower AIC enough to justify it. With real data the ranking is
+an empirical question worth checking.
 
 ## Beyond one group and one random effect
 
@@ -354,7 +354,7 @@ for the full treatment of group inference.
 
 The random-effects structure can grow too. With the SLT-beta family,
 `random_effects = k + phi ~ 1` adds a subject random effect on the
-precision, letting each subject have their own spread around the curve;
+precision, so that each subject has their own spread around the curve;
 the two-parameter equations support `k + s ~ 1` for a random curvature.
 The `covariance_structure` argument controls whether those two random
 effects are allowed to correlate.

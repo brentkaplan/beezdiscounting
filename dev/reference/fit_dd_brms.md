@@ -152,14 +152,14 @@ plus `variance_components`), `brmsfit`, `subject_pars` (`id`, `k`,
 ## Details
 
 `family = "beta"` (default) uses `Beta(link = "identity")` with the mean
-squished into `(1e-6, 1 - 1e-6)` – the closest brms analog of the TMB
+squished into `(1e-6, 1 - 1e-6)`, the closest brms analog of the TMB
 SLT-beta (`family = "sltb"` has no brms equivalent and errors with this
 pointer). Boundary observations (`y` exactly 0 or 1) are handled per
 `boundary`: `"squeeze"` (default) applies the Smithson-Verkuilen
 transform `y* = (y (N - 1) + 0.5) / N` to all responses (message reports
 the boundary count); `"zoib"` switches to `zero_one_inflated_beta`
-(statistically more honest but changes the estimand – k then describes
-interior responses only); `"error"` refuses to fit.
+(statistically more honest, but it changes the estimand: k then
+describes interior responses only); `"error"` refuses to fit.
 `family = "gaussian"` matches `fit_dd_tmb(family = "gaussian")` wherever
 the TMB template's mu clamp into `[1e-6, 1 - 1e-6]` does not bind
 (everywhere except extreme decay underflow).

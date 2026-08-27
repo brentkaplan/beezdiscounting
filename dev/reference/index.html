@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,6 +25,7 @@
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -84,6 +85,43 @@
 
         </dt>
         <dd>Random-effect covariance for a TMB discounting model</dd>
+      </dl></div><div class="section level2">
+      <h2 id="linearized-mazur-closed-form-">Linearized Mazur (closed form)<a class="anchor" aria-label="anchor" href="#linearized-mazur-closed-form-"></a></h2>
+
+      <div class="section-desc"><p>Analytic ln k, closed-form random-effects MLEs, and an exact F-test across conditions (Hinds et al., 2026).</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="fit_dd_linear.html">fit_dd_linear()</a></code>
+
+        </dt>
+        <dd>Fit the linearized Mazur hyperbola (Hinds et al., 2026)</dd>
+
+        <dt>
+
+          <code><a href="beezdiscounting_linear-methods.html">print(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">summary(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">print(<i>&lt;summary.beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">tidy(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">glance(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">coef(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">confint(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">augment(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">predict(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">nobs(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">logLik(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Methods for linearized Mazur fits</dd>
+
+        <dt>
+
+          <code><a href="anova.beezdiscounting_linear.html">anova(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code>
+
+        </dt>
+        <dd>F-test for condition means in a linearized Mazur fit (Hinds et al. 2026, Prop. 3.5)</dd>
+
+        <dt>
+
+          <code><a href="simulate_dd_linear.html">simulate_dd_linear()</a></code>
+
+        </dt>
+        <dd>Simulate indifference points from the linearized Mazur random-effects model</dd>
       </dl></div><div class="section level2">
       <h2 id="power-analysis">Power analysis<a class="anchor" aria-label="anchor" href="#power-analysis"></a></h2>
 
@@ -208,6 +246,13 @@
 
 
       <dl><dt>
+
+          <code><a href="beezdiscounting_linear-methods.html">print(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">summary(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">print(<i>&lt;summary.beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">tidy(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">glance(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">coef(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">confint(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">augment(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">predict(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">nobs(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code> <code><a href="beezdiscounting_linear-methods.html">logLik(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Methods for linearized Mazur fits</dd>
+
+        <dt>
 
           <code><a href="tidy.beezdiscounting_brms.html">tidy(<i>&lt;beezdiscounting_brms&gt;</i>)</a></code>
 
@@ -757,6 +802,13 @@
 
         </dt>
         <dd>Plot group differences in discount rate</dd>
+
+        <dt>
+
+          <code><a href="plot.beezdiscounting_linear.html">plot(<i>&lt;beezdiscounting_linear&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Plot a linearized Mazur discounting fit</dd>
 
         <dt>
 

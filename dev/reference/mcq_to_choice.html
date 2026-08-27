@@ -3,13 +3,13 @@
 the per-trial smaller-sooner versus larger-later choice frame consumed by
 fit_dd_choice(), joining each questionid to the canonical item design
 (immediate amount, delayed amount, delay) bundled in the lookup table (see
-get_lookup_table()) – Kirby, Petry, &amp;amp; Bickel (1999) for the 27-item MCQ,
-or Kirby &amp;amp; Maraković (1996, Table 1) for the 21-item MCQ."><meta property="og:description" content="Reshapes long-form Monetary Choice Questionnaire (MCQ) responses into
+get_lookup_table(); Kirby, Petry, &amp;amp; Bickel (1999) for the 27-item MCQ,
+or Kirby &amp;amp; Maraković (1996, Table 1) for the 21-item MCQ)."><meta property="og:description" content="Reshapes long-form Monetary Choice Questionnaire (MCQ) responses into
 the per-trial smaller-sooner versus larger-later choice frame consumed by
 fit_dd_choice(), joining each questionid to the canonical item design
 (immediate amount, delayed amount, delay) bundled in the lookup table (see
-get_lookup_table()) – Kirby, Petry, &amp;amp; Bickel (1999) for the 27-item MCQ,
-or Kirby &amp;amp; Maraković (1996, Table 1) for the 21-item MCQ."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
+get_lookup_table(); Kirby, Petry, &amp;amp; Bickel (1999) for the 27-item MCQ,
+or Kirby &amp;amp; Maraković (1996, Table 1) for the 21-item MCQ)."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -17,7 +17,7 @@ or Kirby &amp;amp; Maraković (1996, Table 1) for the 21-item MCQ."><meta proper
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,7 @@ or Kirby &amp;amp; Maraković (1996, Table 1) for the 21-item MCQ."><meta proper
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -71,8 +72,8 @@ or Kirby &amp;amp; Maraković (1996, Table 1) for the 21-item MCQ."><meta proper
 the per-trial smaller-sooner versus larger-later choice frame consumed by
 <code><a href="fit_dd_choice.html">fit_dd_choice()</a></code>, joining each <code>questionid</code> to the canonical item design
 (immediate amount, delayed amount, delay) bundled in the lookup table (see
-<code><a href="get_lookup_table.html">get_lookup_table()</a></code>) – Kirby, Petry, &amp; Bickel (1999) for the 27-item MCQ,
-or Kirby &amp; Maraković (1996, Table 1) for the 21-item MCQ.</p>
+<code><a href="get_lookup_table.html">get_lookup_table()</a></code>; Kirby, Petry, &amp; Bickel (1999) for the 27-item MCQ,
+or Kirby &amp; Maraković (1996, Table 1) for the 21-item MCQ).</p>
     </div>
 
     <div class="section level2">
@@ -94,7 +95,7 @@ or Kirby &amp; Maraković (1996, Table 1) for the 21-item MCQ.</p>
 <dd><p>Long-form data frame with one row per MCQ item per subject,
 holding the columns named by <code>id_var</code>, <code>question_var</code>, and <code>response_var</code>.
 <code>response</code> is <code>0</code> for the smaller-immediate reward (SIR/SS) and <code>1</code> for the
-larger-delayed reward (LDR/LL) – the same coding <code><a href="fit_dd_choice.html">fit_dd_choice()</a></code> expects,
+larger-delayed reward (LDR/LL), the same coding <code><a href="fit_dd_choice.html">fit_dd_choice()</a></code> expects,
 so no recoding is applied.</p></dd>
 
 
@@ -120,9 +121,9 @@ input row order. Ready to pass to <code><a href="fit_dd_choice.html">fit_dd_choi
     <p>Unknown or non-coercible question ids raise an error rather than
 silently producing unmatched rows. Question ids 1-21 are valid in both
 the 21- and 27-item designs, so passing the wrong <code>items</code> does not
-error – it silently returns the wrong amounts/delays for those ids;
-make sure <code>items</code> matches the instrument actually administered. Ragged
-input is allowed – subjects need not have all items – and <code>NA</code>
+error; it silently returns the wrong amounts/delays for those ids.
+Make sure <code>items</code> matches the instrument actually administered. Ragged
+input is allowed (subjects need not have all items) and <code>NA</code>
 responses are preserved (they are complete-cased by <code><a href="fit_dd_choice.html">fit_dd_choice()</a></code>).
 For the strict scorer see <code><a href="score_mcq.html">score_mcq()</a></code>.</p>
     </div>

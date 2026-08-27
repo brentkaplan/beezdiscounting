@@ -1,7 +1,7 @@
 # Check for Unsystematic Data Violations
 
-This function checks a dataset for violations of two criteria commonly
-used to identify unsystematic delay-discounting data:
+Checks a data set against the two Johnson and Bickel (2008) criteria for
+unsystematic delay-discounting data:
 
 - Criterion 1: Any subsequent value of `y` exceeds the previous value by
   more than a specified proportion of the larger later reward (`ll`).

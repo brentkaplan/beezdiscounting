@@ -101,13 +101,14 @@ the same ground:
   exactly 0 or 1) are handled by `boundary`: the default `"squeeze"`
   applies the Smithson-Verkuilen transform `(y(N-1) + 0.5)/N` to all
   responses and reports the boundary count; `"zoib"` switches to a
-  zero-one-inflated beta – statistically more explicit about boundary
-  responding, but it **changes the estimand**: k then describes the
-  interior responses only; `"error"` refuses to fit.
+  zero-one-inflated beta, which is more explicit about boundary
+  responding but changes the estimand (k then describes the interior
+  responses only); `"error"` refuses to fit.
 - `family = "gaussian"`: matches `fit_dd_tmb(family = "gaussian")`
-  wherever the TMB mean clamp (into `[1e-6, 1 - 1e-6]`) does not bind –
-  everywhere except extreme decay underflow. In our validation harness
-  the posterior median of log k lands within hundredths of the TMB MLE.
+  wherever the TMB mean clamp (into `[1e-6, 1 - 1e-6]`) does not bind,
+  i.e., everywhere except extreme decay underflow. In our validation
+  harness the posterior median of log k lands within hundredths of the
+  TMB MLE.
 
 ### Priors
 
@@ -185,7 +186,7 @@ head(predict(fitc))     # P(choosing the larger-later), with intervals
 The structural likelihood is identical to
 `fit_dd_choice(mode = "structural")`:
 `logit P(LL) = [b0] + gamma ((ll/ss) D(k, delay) - 1)`. The descriptive
-(Young 2018) mode is not wrapped – it is a plain logistic GLMM you can
+(Young 2018) mode is not wrapped; it is a plain logistic GLMM you can
 fit directly with
 [`brms::brm()`](https://paulbuerkner.com/brms/reference/brm.html) if you
 want it Bayesian.

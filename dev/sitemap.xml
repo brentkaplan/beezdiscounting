@@ -7,6 +7,7 @@
 <url><loc>https://brentkaplan.github.io/beezdiscounting/articles/delay-discounting-basics.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/articles/fivetrial-task.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/articles/index.html</loc></url>
+<url><loc>https://brentkaplan.github.io/beezdiscounting/articles/linearized-mazur.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/articles/pdq-scoring.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/articles/power-analysis.html</loc></url>
@@ -17,11 +18,13 @@
 <url><loc>https://brentkaplan.github.io/beezdiscounting/news/index.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/VarCorr.beezdiscounting_choice.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/VarCorr.beezdiscounting_tmb.html</loc></url>
+<url><loc>https://brentkaplan.github.io/beezdiscounting/reference/anova.beezdiscounting_linear.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/ans_dd.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/ans_pd.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/augment.beezdiscounting_choice.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/augment.beezdiscounting_tmb.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting-package.html</loc></url>
+<url><loc>https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/calc_aucs.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/calc_conf_int.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/calc_dd.html</loc></url>
@@ -74,6 +77,7 @@
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_brms.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice_brms.html</loc></url>
+<url><loc>https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_linear.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/fitted.beezdiscounting_choice.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/fitted.beezdiscounting_tmb.html</loc></url>
@@ -104,6 +108,7 @@
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_choice.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_choice_brms.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_comparison.html</loc></url>
+<url><loc>https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_linear.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_tmb.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/plot.prop_sc_output.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/plot.prop_ss_output.html</loc></url>
@@ -139,6 +144,7 @@
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/score_pdq.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/simulate_dd_choice.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/simulate_dd_ip.html</loc></url>
+<url><loc>https://brentkaplan.github.io/beezdiscounting/reference/simulate_dd_linear.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/summarize_mcq.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/summary.beezdiscounting_brms.html</loc></url>
 <url><loc>https://brentkaplan.github.io/beezdiscounting/reference/summary.beezdiscounting_choice.html</loc></url>

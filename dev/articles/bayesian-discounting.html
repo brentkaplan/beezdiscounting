@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,6 +48,7 @@
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -187,16 +188,16 @@ the differentiable analog of the TMB clamp. Boundary responses
 (<code>y</code> exactly 0 or 1) are handled by <code>boundary</code>:
 the default <code>"squeeze"</code> applies the Smithson-Verkuilen
 transform <code>(y(N-1) + 0.5)/N</code> to all responses and reports the
-boundary count; <code>"zoib"</code> switches to a zero-one-inflated beta
-– statistically more explicit about boundary responding, but it
-<strong>changes the estimand</strong>: k then describes the interior
-responses only; <code>"error"</code> refuses to fit.</li>
+boundary count; <code>"zoib"</code> switches to a zero-one-inflated
+beta, which is more explicit about boundary responding but changes the
+estimand (k then describes the interior responses only);
+<code>"error"</code> refuses to fit.</li>
 <li>
 <code>family = "gaussian"</code>: matches
 <code>fit_dd_tmb(family = "gaussian")</code> wherever the TMB mean clamp
-(into <code>[1e-6, 1 - 1e-6]</code>) does not bind – everywhere except
-extreme decay underflow. In our validation harness the posterior median
-of log k lands within hundredths of the TMB MLE.</li>
+(into <code>[1e-6, 1 - 1e-6]</code>) does not bind, i.e., everywhere
+except extreme decay underflow. In our validation harness the posterior
+median of log k lands within hundredths of the TMB MLE.</li>
 </ul>
 </div>
 <div class="section level3">
@@ -268,7 +269,7 @@ case exactly as the TMB template does).</p>
 <p>The structural likelihood is identical to
 <code>fit_dd_choice(mode = "structural")</code>:
 <code>logit P(LL) = [b0] + gamma ((ll/ss) D(k, delay) - 1)</code>. The
-descriptive (Young 2018) mode is not wrapped – it is a plain logistic
+descriptive (Young 2018) mode is not wrapped; it is a plain logistic
 GLMM you can fit directly with <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brms::brm()</a></code> if you want it
 Bayesian.</p>
 <p>Between-subject designs on <code>log k</code> work as in

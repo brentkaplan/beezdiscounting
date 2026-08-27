@@ -3,16 +3,16 @@
 can be inspected, modified row-wise, and passed back via the fitter's
 prior argument. The logk location is the principled fix for k's
 delay-unit dependence: with autoscale = TRUE (the default whenever
-data is supplied) it centers k * median(delay) = 1 – the delay at
-which the Mazur curve crosses 0.5 – via normal(-log(median(x)), 2.5);
+data is supplied) it centers k * median(delay) = 1 (the delay at
+which the Mazur curve crosses 0.5) via normal(-log(median(x)), 2.5);
 the static fallback is normal(-4.5, 2.5). The anchors used are
 attached as attr(, &quot;autoscale_info&quot;); numeric values are formatted
 with format(x, digits = 6, scientific = FALSE)."><meta property="og:description" content="Returns the default prior table used by fit_dd_brms(), so the defaults
 can be inspected, modified row-wise, and passed back via the fitter's
 prior argument. The logk location is the principled fix for k's
 delay-unit dependence: with autoscale = TRUE (the default whenever
-data is supplied) it centers k * median(delay) = 1 – the delay at
-which the Mazur curve crosses 0.5 – via normal(-log(median(x)), 2.5);
+data is supplied) it centers k * median(delay) = 1 (the delay at
+which the Mazur curve crosses 0.5) via normal(-log(median(x)), 2.5);
 the static fallback is normal(-4.5, 2.5). The anchors used are
 attached as attr(, &quot;autoscale_info&quot;); numeric values are formatted
 with format(x, digits = 6, scientific = FALSE)."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
@@ -23,7 +23,7 @@ with format(x, digits = 6, scientific = FALSE)."><meta property="og:image" conte
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,7 @@ with format(x, digits = 6, scientific = FALSE)."><meta property="og:image" conte
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -77,8 +78,8 @@ with format(x, digits = 6, scientific = FALSE)."><meta property="og:image" conte
 can be inspected, modified row-wise, and passed back via the fitter's
 <code>prior</code> argument. The <code>logk</code> location is the principled fix for k's
 delay-unit dependence: with <code>autoscale = TRUE</code> (the default whenever
-<code>data</code> is supplied) it centers <code>k * median(delay) = 1</code> – the delay at
-which the Mazur curve crosses 0.5 – via <code>normal(-log(median(x)), 2.5)</code>;
+<code>data</code> is supplied) it centers <code>k * median(delay) = 1</code> (the delay at
+which the Mazur curve crosses 0.5) via <code>normal(-log(median(x)), 2.5)</code>;
 the static fallback is <code>normal(-4.5, 2.5)</code>. The anchors used are
 attached as <code>attr(, "autoscale_info")</code>; numeric values are formatted
 with <code>format(x, digits = 6, scientific = FALSE)</code>.</p>

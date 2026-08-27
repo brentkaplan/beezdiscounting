@@ -8,8 +8,8 @@ straddles the target at the cap, the decision falls back to the point
 estimate and the result is flagged uncertain. The selected N and its
 lower neighbor are then re-evaluated with fresh replicates before
 minimality is claimed.
-The returned n is an estimated minimum under Monte Carlo uncertainty,
-not an exact bound. For grant-quality reporting, rerun
+The returned n is an estimated minimum under Monte Carlo uncertainty
+rather than an exact bound. For grant-quality reporting, rerun
 power_discounting() at the returned n with a large n_sim (2000+)
 and report that estimate with its Monte Carlo confidence interval.
 Monotonicity assumption. Bisection presumes that power is
@@ -33,8 +33,8 @@ straddles the target at the cap, the decision falls back to the point
 estimate and the result is flagged uncertain. The selected N and its
 lower neighbor are then re-evaluated with fresh replicates before
 minimality is claimed.
-The returned n is an estimated minimum under Monte Carlo uncertainty,
-not an exact bound. For grant-quality reporting, rerun
+The returned n is an estimated minimum under Monte Carlo uncertainty
+rather than an exact bound. For grant-quality reporting, rerun
 power_discounting() at the returned n with a large n_sim (2000+)
 and report that estimate with its Monte Carlo confidence interval.
 Monotonicity assumption. Bisection presumes that power is
@@ -57,7 +57,7 @@ proceeds upward.'><meta property="og:image" content="https://brentkaplan.github.
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -75,6 +75,7 @@ proceeds upward.'><meta property="og:image" content="https://brentkaplan.github.
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -116,8 +117,8 @@ straddles the target at the cap, the decision falls back to the point
 estimate and the result is flagged <code>uncertain</code>. The selected N and its
 lower neighbor are then re-evaluated with fresh replicates before
 minimality is claimed.</p>
-<p>The returned <code>n</code> is an <em>estimated minimum under Monte Carlo uncertainty</em>,
-not an exact bound. For grant-quality reporting, rerun
+<p>The returned <code>n</code> is an <em>estimated minimum under Monte Carlo uncertainty</em>
+rather than an exact bound. For grant-quality reporting, rerun
 <code><a href="power_discounting.html">power_discounting()</a></code> at the returned <code>n</code> with a large <code>n_sim</code> (2000+)
 and report that estimate with its Monte Carlo confidence interval.</p>
 <p><strong>Monotonicity assumption.</strong> Bisection presumes that power is
@@ -226,9 +227,9 @@ The default <code>k ~ 1</code> matches the simulator's data-generating process (
 single subject random intercept on log k). The simulator ALWAYS
 generates only that intercept: any richer formula (e.g. <code>k + phi ~ 1</code>,
 <code>k + s ~ 1</code>) is accepted but produces a deliberately over-specified
-refit of data with no such variance component – useful for probing
-robustness, not for estimating power under those random effects (out
-of scope in this version).</p></dd>
+refit of data with no such variance component. That refit is useful for
+probing robustness rather than for estimating power under those random
+effects (out of scope in this version).</p></dd>
 
 
 <dt id="arg-multi-start">multi_start<a class="anchor" aria-label="anchor" href="#arg-multi-start"></a></dt>
@@ -259,14 +260,14 @@ search (<code>status = "unresolved"</code>).</p></dd>
 <dd><p><code>"confirmed"</code> (selected N re-confirmed above target and
 N - 1 below), <code>"uncertain"</code> (a decision relied on a point estimate,
 N - 1 also cleared the target on reconfirmation, or an evaluated
-lower N read above the target – so the returned N may not be
+lower N read above the target, so the returned N may not be
 minimal), <code>"unresolved"</code> (the selected N failed its
 own reconfirmation; <code>n</code> is <code>NA</code>), or <code>"at_lower_bound"</code> (the target
 was already met at <code>n_range[1]</code> on two independent looks; smaller N
-was not explored – widen <code>n_range</code> downward if that matters). These
-labels describe a heuristic Monte Carlo decision rule – repeated
-looks at ordinary Wilson intervals across several N – not a formal
-sequential error guarantee.</p></dd>
+was not explored; widen <code>n_range</code> downward if that matters). These
+labels describe a heuristic Monte Carlo decision rule (repeated
+looks at ordinary Wilson intervals across several N) rather than a
+formal sequential error guarantee.</p></dd>
 
 <dt>uncertain</dt>
 <dd><p>Logical; <code>TRUE</code> when any search decision was made on

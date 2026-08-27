@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,6 +48,7 @@
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -99,8 +100,8 @@ Kaplan</h4>
 <p>The 30-item Probability Discounting Questionnaire (PDQ; Madden,
 Petry, &amp; Johnson, 2009) measures preference between smaller
 guaranteed rewards and larger probabilistic rewards. Items form three
-10-question blocks – $20 for sure vs. a chance of $80, $40 vs. $100, and
-$40 vs. $60 – each an ascending ladder of discount rates (h) at
+10-question blocks ($20 for sure vs. a chance of $80, $40 vs. $100, and
+$40 vs. $60), each an ascending ladder of discount rates (h) at
 indifference under the hyperbolic odds-against model V = A / (1 + h *
 theta), where theta = (1 - p) / p (Rachlin, Raineri, &amp; Cross,
 1991).</p>
@@ -131,7 +132,7 @@ al. (2016) scoring syntax for every possible response pattern.</p>
 discount rates; <code>mean_h</code> is the arithmetic mean recommended
 by Gray et al. (2016) and <code>geomean_h</code> the geometric mean.
 <code>block*_proportion</code> is the risky choice ratio (RCR).
-<code>overall_h</code> is a beezdiscounting extension – the published
+<code>overall_h</code> is a beezdiscounting extension. The published
 scoring has no overall 30-item ladder, so <code>overall_h</code> pools
 all 30 items into a single ascending ladder and applies the same
 consistency-maximization (see <code><a href="../reference/score_pdq.html">?score_pdq</a></code> for the pooling
@@ -143,8 +144,8 @@ consistency on any block.</p>
 <h2 id="proportions-by-h-rank">Proportions by h rank<a class="anchor" aria-label="anchor" href="#proportions-by-h-rank"></a>
 </h2>
 <p><code><a href="../reference/prop_sc.html">prop_sc()</a></code> reports the proportion choosing the
-<em>guaranteed</em> reward at each h rank – the complement of the risky
-choice ratio above.</p>
+<em>guaranteed</em> reward at each h rank (the complement of the risky
+choice ratio above).</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/prop_sc.html">prop_sc</a></span><span class="op">(</span><span class="va">pdq</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 2</span></span></span>
@@ -167,8 +168,8 @@ choice ratio above.</p>
 <h2 id="trial-level-modeling-bridge">Trial-level modeling bridge<a class="anchor" aria-label="anchor" href="#trial-level-modeling-bridge"></a>
 </h2>
 <p><code><a href="../reference/pdq_to_choice.html">pdq_to_choice()</a></code> reshapes responses into one row per
-choice with the item design attached – including <code>theta</code>, the
-odds against winning – ready for trial-level modeling of probability
+choice with the item design attached (including <code>theta</code>, the
+odds against winning), ready for trial-level modeling of probability
 discounting:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdq_to_choice.html">pdq_to_choice</a></span><span class="op">(</span><span class="va">pdq</span><span class="op">)</span><span class="op">)</span></span>

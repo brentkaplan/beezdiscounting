@@ -4,8 +4,8 @@
 method for `beezdiscounting_comparison` objects (returned by
 [`get_dd_comparisons()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_comparisons.md)).
 Produces a flat long tibble whose **column names and order** match the
-beezdemand `beezdemand_comparison` tidier, enabling downstream consumers
-to bind rows from both backends into a single frame. Note that the
+beezdemand `beezdemand_comparison` tidier, so downstream consumers can
+bind rows from both backends into a single frame. Note that the
 `contrast` label dialect differs: beezdiscounting emits native
 `factor=level` labels (e.g. `"condition=C1 - condition=C2"`), while
 beezdemand emits bare level labels (e.g. `"C1 - C2"`). Fully uniform

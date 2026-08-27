@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,6 +25,7 @@
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -82,7 +83,7 @@
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Data frame keyed by <code>id</code>. For a 1-RE fit (<code>k ~ 1</code>): the standardized
 random-intercept deviate <code>u_i</code> (such that <code>log k_i = X beta + sigma_u * u_i</code>) and the resolved per-subject discount rate <code>k</code> (no <code>phi</code> or <code>s</code>
-column - both are population-level). For a phi-target 2-RE fit
+column; both are population-level). For a phi-target 2-RE fit
 (<code>k + phi ~ 1</code>): <code>(re_k, re_phi)</code> offsets plus per-subject <code>k</code> and <code>phi</code>.
 For an s-target 2-RE fit (<code>k + s ~ 1</code>, GM/Rachlin only): <code>(re_k, re_s)</code>
 offsets plus per-subject <code>k</code> and <code>s</code> (soft-clamped toward <code>(0.05, 20)</code>).</p>

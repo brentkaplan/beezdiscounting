@@ -4,7 +4,7 @@ diagnostic columns appended:
 .fitted: subject-conditional fitted indifference proportion (clamped to
 (0, 1)).
 .resid: raw residual y - .fitted on the response scale.
-.std_resid: Pearson (standardized) residual - .resid divided by the
+.std_resid: Pearson (standardized) residual, i.e., .resid divided by the
 per-row response SD.  For family = "gaussian" the SD is the constant
 sigma_e; for family = "sltb" it is the delta-method SLT SD
 sqrt(mu * (1 - mu) / (phi + 1)).
@@ -14,7 +14,7 @@ diagnostic columns appended:
 .fitted: subject-conditional fitted indifference proportion (clamped to
 (0, 1)).
 .resid: raw residual y - .fitted on the response scale.
-.std_resid: Pearson (standardized) residual - .resid divided by the
+.std_resid: Pearson (standardized) residual, i.e., .resid divided by the
 per-row response SD.  For family = "gaussian" the SD is the constant
 sigma_e; for family = "sltb" it is the delta-method SLT SD
 sqrt(mu * (1 - mu) / (phi + 1)).
@@ -27,7 +27,7 @@ sqrt(mu * (1 - mu) / (phi + 1)).
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -45,6 +45,7 @@ sqrt(mu * (1 - mu) / (phi + 1)).
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -81,7 +82,7 @@ sqrt(mu * (1 - mu) / (phi + 1)).
 diagnostic columns appended:</p><ul><li><p><code>.fitted</code>: subject-conditional fitted indifference proportion (clamped to
 <code>(0, 1)</code>).</p></li>
 <li><p><code>.resid</code>: raw residual <code>y - .fitted</code> on the response scale.</p></li>
-<li><p><code>.std_resid</code>: Pearson (standardized) residual - <code>.resid</code> divided by the
+<li><p><code>.std_resid</code>: Pearson (standardized) residual, i.e., <code>.resid</code> divided by the
 per-row response SD.  For <code>family = "gaussian"</code> the SD is the constant
 <code>sigma_e</code>; for <code>family = "sltb"</code> it is the delta-method SLT SD
 <code>sqrt(mu * (1 - mu) / (phi + 1))</code>.</p></li>

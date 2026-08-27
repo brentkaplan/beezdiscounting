@@ -48,6 +48,32 @@ indifference-point data using TMB, and simulate from the same model.
 - [`VarCorr(`*`<beezdiscounting_tmb>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/VarCorr.beezdiscounting_tmb.md)
   : Random-effect covariance for a TMB discounting model
 
+## Linearized Mazur (closed form)
+
+Analytic ln k, closed-form random-effects MLEs, and an exact F-test
+across conditions (Hinds et al., 2026).
+
+- [`fit_dd_linear()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_linear.md)
+  : Fit the linearized Mazur hyperbola (Hinds et al., 2026)
+- [`print(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`summary(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`print(`*`<summary.beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`tidy(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`glance(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`coef(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`confint(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`augment(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`predict(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`nobs(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`logLik(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  : Methods for linearized Mazur fits
+- [`anova(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/anova.beezdiscounting_linear.md)
+  : F-test for condition means in a linearized Mazur fit (Hinds et al.
+  2026, Prop. 3.5)
+- [`simulate_dd_linear()`](https://brentkaplan.github.io/beezdiscounting/reference/simulate_dd_linear.md)
+  : Simulate indifference points from the linearized Mazur
+  random-effects model
+
 ## Power analysis
 
 Monte Carlo power estimation and sample-size search for between-subject
@@ -104,6 +130,18 @@ mixed-effects discounting models.
 
 S3 methods for extracting information from fitted models.
 
+- [`print(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`summary(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`print(`*`<summary.beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`tidy(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`glance(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`coef(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`confint(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`augment(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`predict(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`nobs(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  [`logLik(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/beezdiscounting_linear-methods.md)
+  : Methods for linearized Mazur fits
 - [`tidy(`*`<beezdiscounting_brms>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/tidy.beezdiscounting_brms.md)
   : Tidy a beezdiscounting_brms model
 - [`tidy(`*`<beezdiscounting_choice>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/tidy.beezdiscounting_choice.md)
@@ -291,6 +329,8 @@ diagnostics – plus plotting for scored task outputs.
   : Plot a Bayesian (brms) choice-based discounting model
 - [`plot(`*`<beezdiscounting_comparison>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_comparison.md)
   : Plot group differences in discount rate
+- [`plot(`*`<beezdiscounting_linear>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_linear.md)
+  : Plot a linearized Mazur discounting fit
 - [`plot(`*`<beezdiscounting_tmb>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.beezdiscounting_tmb.md)
   : Plot a mixed-effects discounting model
 - [`plot(`*`<prop_sc_output>`*`)`](https://brentkaplan.github.io/beezdiscounting/reference/plot.prop_sc_output.md)
@@ -357,6 +397,8 @@ Generics re-exported from other packages.
   AUC](https://brentkaplan.github.io/beezdiscounting/articles/delay-discounting-basics.md):
 - [Scoring the 5.5-trial discounting
   task](https://brentkaplan.github.io/beezdiscounting/articles/fivetrial-task.md):
+- [The linearized Mazur hyperbola: closed-form k and an F-test for
+  conditions](https://brentkaplan.github.io/beezdiscounting/articles/linearized-mazur.md):
 - [Scoring the Monetary Choice Questionnaire (21- and
   27-Item)](https://brentkaplan.github.io/beezdiscounting/articles/mcq27-scoring.md):
 - [Scoring the Probability Discounting Questionnaire

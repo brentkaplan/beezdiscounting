@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,6 +48,7 @@
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -117,7 +118,7 @@ however small, is preferred (<strong>complete
 discounting</strong>).</li>
 </ul>
 <p>Real titration data pile up at both ends, and the example data
-shipped with this package (<code>data(dd_ip)</code>) reproduce the
+included with this package (<code>data(dd_ip)</code>) reproduce the
 pattern: a meaningful fraction of observations sit <em>exactly</em> at 0
 or 1. That single fact rules out the two error distributions people
 reach for first:</p>
@@ -163,11 +164,12 @@ B(a,b)}
 <p>where the truncation normalizer is <span class="math inline">Z =
 \mathrm{pbeta}(\tfrac{1}{s}{+}l,\,a,\,b) -
 \mathrm{pbeta}(l,\,a,\,b)</span>.</p>
-<p>The intuition is a <em>microscopic stretch</em>: the data window
+<p>The intuition is a <em>microscopic stretch</em>. The data window
 <span class="math inline">y\in[0,1]</span> is mapped just inside the
-open interval where the ordinary beta density is finite; the kernel is
-therefore never evaluated at exactly 0 or 1. As <span class="math inline">s\to 1</span> and <span class="math inline">l\to
-0</span> the SLT-beta collapses to the ordinary beta.</p>
+open interval where the ordinary beta density is finite, so the kernel
+is never evaluated at exactly 0 or 1. As <span class="math inline">s\to
+1</span> and <span class="math inline">l\to 0</span> the SLT-beta
+collapses to the ordinary beta.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">slt_logpdf</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">y</span>, <span class="va">mu</span>, <span class="va">phi</span>, <span class="va">s</span> <span class="op">=</span> <span class="fl">1.0000001</span>, <span class="va">l</span> <span class="op">=</span> <span class="fl">1e-8</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">phi</span>; <span class="va">b</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">mu</span><span class="op">)</span> <span class="op">*</span> <span class="va">phi</span></span>
@@ -193,21 +195,20 @@ there.
 </div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span><span class="va">op</span><span class="op">)</span></span></code></pre></div>
-<p>Because the variance of a beta is <span class="math inline">\mu(1-\mu)/(\phi+1)</span>, the SLT-beta
-automatically gives <strong>less</strong> noise near the floor and
-ceiling and <strong>more</strong> in the middle: the heteroscedastic
-pattern real IP data actually show, and exactly what a Gaussian model
-gets wrong.</p>
+<p>Because the variance of a beta is <span class="math inline">\mu(1-\mu)/(\phi+1)</span>, the SLT-beta gives less
+noise near the floor and ceiling and more in the middle. That is the
+heteroscedastic pattern real IP data show, and it is what a Gaussian
+model gets wrong.</p>
 </div>
 <div class="section level2">
 <h2 id="the-boundary-problem-in-the-example-data">The boundary problem, in the example data<a class="anchor" aria-label="anchor" href="#the-boundary-problem-in-the-example-data"></a>
 </h2>
-<p>The package ships <code>dd_ip</code>, a synthetic delay-discounting
-dataset (100 subjects across six delays, in the <code>id</code>,
-<code>x</code> (delay), <code>y</code> (indifference point) long format)
-that reproduces the boundary pattern of real titration data. A handful
-of synthetic values fall just above 1 and are clamped to the
-ceiling.</p>
+<p>The package includes <code>dd_ip</code>, a synthetic
+delay-discounting dataset (100 subjects across six delays, in the
+<code>id</code>, <code>x</code> (delay), <code>y</code> (indifference
+point) long format) that reproduces the boundary pattern of real
+titration data. A handful of synthetic values fall just above 1 and are
+clamped to the ceiling.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">dd_ip</span><span class="op">)</span></span>
 <span><span class="va">dd_ip</span><span class="op">$</span><span class="va">id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">dd_ip</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
@@ -271,12 +272,13 @@ model:</p>
 <span>        <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">k_slt</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">k_nls</span><span class="op">)</span>, use <span class="op">=</span> <span class="st">"complete.obs"</span><span class="op">)</span>,</span>
 <span>        <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">k_slt</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">k_nls</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "cor(log k): SLT vs NLS = 0.978   |   median k: SLT = 0.5328, NLS = 0.5038"</span></span></code></pre></div>
-<p>A caveat the next section resolves: fit <em>one subject at a
-time</em> and the SLT-beta likelihood can occasionally run off to a
+<p>One caveat, which the next section resolves, is that fitting <em>one
+subject at a time</em> can let the SLT-beta likelihood run off to a
 degenerate solution. For a person whose indifference points are almost
 all 0s and 1s, a fit with near-zero precision that places all its mass
 on the endpoints can score a higher likelihood than any sensible
-discounting curve. The fix is not to fit people in isolation.</p>
+discounting curve. The fix is to fit people jointly rather than in
+isolation.</p>
 </div>
 <div class="section level2">
 <h2 id="fitting-the-mixed-effects-model">Fitting the mixed-effects model<a class="anchor" aria-label="anchor" href="#fitting-the-mixed-effects-model"></a>
@@ -548,7 +550,7 @@ moments, and recovers known discount rates from simulated data (rank
 correlation 0.99 for Mazur, 0.95 for the exponential). On the bundled
 example data, every boundary subject is fit successfully where ordinary
 beta regression cannot be evaluated at all. The full Monte-Carlo study
-lives in the package’s <code>dev/</code> directory.</p>
+lives in the package’s development repository on GitHub.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

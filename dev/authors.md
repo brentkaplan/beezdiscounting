@@ -11,13 +11,13 @@ Source:
 [`inst/CITATION`](https://github.com/brentkaplan/beezdiscounting/blob/develop/inst/CITATION)
 
 Kaplan B (2026). *beezdiscounting: Behavioral Economic Easy
-Discounting*. R package version 0.4.0,
+Discounting*. R package version 0.4.0.9000,
 <https://brentkaplan.github.io/beezdiscounting/>.
 
     @Manual{,
       title = {beezdiscounting: Behavioral Economic Easy Discounting},
       author = {Brent A. Kaplan},
       year = {2026},
-      note = {R package version 0.4.0},
+      note = {R package version 0.4.0.9000},
       url = {https://brentkaplan.github.io/beezdiscounting/},
     }

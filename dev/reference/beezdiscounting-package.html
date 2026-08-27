@@ -5,13 +5,15 @@ Facilitates some of the analyses performed in studies of behavioral economic dis
 ), calculating k values (Mazur's simple hyperbolic and exponential) using nonlinear regression, calculating various Area Under the Curve (AUC) measures, plotting regression curves for both fit-to-group and two-stage approaches, checking for unsystematic discounting (Johnson &amp;amp; Bickel, 2008; doi:10.1037/1064-1297.16.3.264
 ) and scoring of the minute discounting task (see Koffarnus &amp;amp; Bickel, 2014; doi:10.1037/a0035973
 ) using the Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide; doi:10.13140/RG.2.2.26495.79527
-), which is also available as a .qsf file in this package. The package also fits mixed-effects (hierarchical) discounting models with a scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1 (Kim, Kaplan, Koffarnus, and Franck, 2025; arXiv:2509.13167)."><meta property="og:description" content="
+), which is also available as a .qsf file in this package. The package also fits mixed-effects (hierarchical) discounting models with a scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1 (Kim, Kaplan, Koffarnus, and Franck, 2025; arXiv:2509.13167). The package also implements the linearized Mazur estimator, random-effects model, and F-test of Hinds et al. (2026; doi:10.1016/j.jmp.2026.103006
+)."><meta property="og:description" content="
 Facilitates some of the analyses performed in studies of behavioral economic discounting. The package supports scoring of the 21- and 27-Item Monetary Choice Questionnaires (see Kaplan et al., 2016; doi:10.1007/s40614-016-0070-9
 ), scoring of the 30-Item Probability Discounting Questionnaire (see Madden et al., 2009; doi:10.1037/a0016806
 ), calculating k values (Mazur's simple hyperbolic and exponential) using nonlinear regression, calculating various Area Under the Curve (AUC) measures, plotting regression curves for both fit-to-group and two-stage approaches, checking for unsystematic discounting (Johnson &amp;amp; Bickel, 2008; doi:10.1037/1064-1297.16.3.264
 ) and scoring of the minute discounting task (see Koffarnus &amp;amp; Bickel, 2014; doi:10.1037/a0035973
 ) using the Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide; doi:10.13140/RG.2.2.26495.79527
-), which is also available as a .qsf file in this package. The package also fits mixed-effects (hierarchical) discounting models with a scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1 (Kim, Kaplan, Koffarnus, and Franck, 2025; arXiv:2509.13167)."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
+), which is also available as a .qsf file in this package. The package also fits mixed-effects (hierarchical) discounting models with a scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1 (Kim, Kaplan, Koffarnus, and Franck, 2025; arXiv:2509.13167). The package also implements the linearized Mazur estimator, random-effects model, and F-test of Hinds et al. (2026; doi:10.1016/j.jmp.2026.103006
+)."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -19,7 +21,7 @@ Facilitates some of the analyses performed in studies of behavioral economic dis
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +39,7 @@ Facilitates some of the analyses performed in studies of behavioral economic dis
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -75,7 +78,8 @@ Facilitates some of the analyses performed in studies of behavioral economic dis
 ), calculating k values (Mazur's simple hyperbolic and exponential) using nonlinear regression, calculating various Area Under the Curve (AUC) measures, plotting regression curves for both fit-to-group and two-stage approaches, checking for unsystematic discounting (Johnson &amp; Bickel, 2008; <a href="https://doi.org/10.1037/1064-1297.16.3.264" class="external-link">doi:10.1037/1064-1297.16.3.264</a>
 ) and scoring of the minute discounting task (see Koffarnus &amp; Bickel, 2014; <a href="https://doi.org/10.1037/a0035973" class="external-link">doi:10.1037/a0035973</a>
 ) using the Qualtrics 5-trial discounting template (see the Qualtrics Minute Discounting User Guide; <a href="https://doi.org/10.13140/RG.2.2.26495.79527" class="external-link">doi:10.13140/RG.2.2.26495.79527</a>
-), which is also available as a .qsf file in this package. The package also fits mixed-effects (hierarchical) discounting models with a scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1 (Kim, Kaplan, Koffarnus, and Franck, 2025; <a href="https://arxiv.org/abs/2509.13167" class="external-link">arXiv:2509.13167</a>).</p>
+), which is also available as a .qsf file in this package. The package also fits mixed-effects (hierarchical) discounting models with a scale-location-truncated beta likelihood that admits indifference points at exactly 0 and 1 (Kim, Kaplan, Koffarnus, and Franck, 2025; <a href="https://arxiv.org/abs/2509.13167" class="external-link">arXiv:2509.13167</a>). The package also implements the linearized Mazur estimator, random-effects model, and F-test of Hinds et al. (2026; <a href="https://doi.org/10.1016/j.jmp.2026.103006" class="external-link">doi:10.1016/j.jmp.2026.103006</a>
+).</p>
     </div>
 
 

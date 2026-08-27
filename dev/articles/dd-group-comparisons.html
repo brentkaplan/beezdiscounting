@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,6 +48,7 @@
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -96,9 +97,9 @@ Kaplan</h4>
 
     
     
-<p>A common discounting question is not “what is k?” but “does k differ
-between groups?” – treatment vs. control, clinical vs. community,
-commodity A vs. commodity B. Both modeling tiers in beezdiscounting
+<p>Beyond “what is k?”, a common discounting question is “does k differ
+between groups?” (treatment vs. control, clinical vs. community,
+commodity A vs. commodity B). Both modeling tiers in beezdiscounting
 answer it the same way: the discount rate is estimated on the
 natural-log scale, so a between-subject design enters as a linear model
 on log k (<code>log k = X beta</code>), and every marginal mean or
@@ -107,13 +108,13 @@ contrast is a linear combination of coefficients.
 work on top of that shared backbone for:</p>
 <ul>
 <li>
-<code><a href="../reference/fit_dd_tmb.html">fit_dd_tmb()</a></code> – mixed-effects indifference-point models
+<code><a href="../reference/fit_dd_tmb.html">fit_dd_tmb()</a></code>: mixed-effects indifference-point models
 (Wald inference),</li>
 <li>
-<code><a href="../reference/fit_dd_choice.html">fit_dd_choice()</a></code> – the structural trial-level choice
+<code><a href="../reference/fit_dd_choice.html">fit_dd_choice()</a></code>: the structural trial-level choice
 model (Wald inference),</li>
 <li>
-<code><a href="../reference/fit_dd_brms.html">fit_dd_brms()</a></code> and <code><a href="../reference/fit_dd_choice_brms.html">fit_dd_choice_brms()</a></code> –
+<code><a href="../reference/fit_dd_brms.html">fit_dd_brms()</a></code> and <code><a href="../reference/fit_dd_choice_brms.html">fit_dd_choice_brms()</a></code>:
 their Bayesian counterparts (posterior draws; see the last
 section).</li>
 </ul>
@@ -173,8 +174,8 @@ vignette quick; leave the default on for real analyses.)</p>
 <span><span class="co">#&gt;   term           estimate std.error statistic   p.value component estimate_scale</span></span>
 <span><span class="co">#&gt;   &lt;chr&gt;             &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;     &lt;chr&gt;         </span></span>
 <span><span class="co">#&gt; 1 k:(Intercept)   0.00923   0.00253    -17.1   1.09e-65 fixed     natural       </span></span>
-<span><span class="co">#&gt; 2 k:conditionC2   2.97      0.813        3.98  6.90e- 5 fixed     natural       </span></span>
-<span><span class="co">#&gt; 3 k:sitesiteB     1.47      0.403        1.41  1.57e- 1 fixed     natural       </span></span>
+<span><span class="co">#&gt; 2 k:conditionC2   2.97      0.949        3.41  6.46e- 4 fixed     natural       </span></span>
+<span><span class="co">#&gt; 3 k:sitesiteB     1.47      0.470        1.21  2.26e- 1 fixed     natural       </span></span>
 <span><span class="co">#&gt; 4 sigma_u (log1…  0.312    NA           NA    NA        variance  log10         </span></span>
 <span><span class="co">#&gt; 5 phi (precisio… 10.5      NA           NA    NA        variance  natural       </span></span>
 <span><span class="co">#&gt; # ℹ 1 more variable: term_display &lt;chr&gt;</span></span></code></pre></div>
@@ -234,7 +235,7 @@ discounts three times as steeply. P-values are adjusted with
 <span><span class="co">#&gt;   &lt;chr&gt;                       &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;</span></span>
 <span><span class="co">#&gt; 1 condition=C1 - condition=C2 0.336    0.180     0.629 0.000646</span></span></code></pre></div>
 <p>The simulated truth was <code>k(C2) = 3 k(C1)</code>, so the
-displayed <code>C1 - C2</code> ratio should land near 1/3 – and it does.
+displayed <code>C1 - C2</code> ratio should land near 1/3, and it does.
 With more than one factor, <code>contrast_by</code> conditions the
 contrasts on another factor’s levels (adjustment is applied per by-cell;
 with no interaction in the model the per-site contrasts coincide, as
@@ -408,7 +409,7 @@ accept the fits directly:</p>
 of Wald machinery:</p>
 <ul>
 <li>Estimates are posterior medians; intervals are equal-tailed
-quantiles of the (transformed) draws – the marginal means and contrasts
+quantiles of the (transformed) draws. The marginal means and contrasts
 are computed per posterior draw over the same reference grid, then
 summarized, so back-transformation is exact (no delta method).</li>
 <li>
@@ -431,9 +432,9 @@ with familiar adjusted p-values. Reach for the brms fitters when you
 want full posterior uncertainty for derived quantities (the EMM and
 ratio intervals above need no asymptotics), prior information about
 plausible discounting rates, or small-sample inference you can defend
-without appealing to asymptotic normality. The vignette
+without appealing to asymptotic normality.
 <code><a href="../articles/bayesian-discounting.html">vignette("bayesian-discounting")</a></code> covers the Bayesian tier
-itself – priors, families, convergence – in more depth.</p>
+itself (priors, families, convergence) in more depth.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

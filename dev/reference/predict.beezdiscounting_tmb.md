@@ -36,7 +36,7 @@ predict(
 
   For `type = "response"`: `"subject"` (default; conditions on each
   subject's estimated random intercept, requires the id column) and/or
-  `"population"` (random effects set to zero - the population-mean
+  `"population"` (random effects set to zero, i.e., the population-mean
   curve; no id column needed). Pass `c("population", "subject")` for
   both columns side-by-side. A numeric nlme-style level is rejected with
   an error. For an s-target 2-RE fit (`k + s ~ 1`), the subject level

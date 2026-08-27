@@ -1,12 +1,11 @@
 # Calculate Area-Under-the-Curve (AUC) Metrics for Delay Discounting Data
 
-This function calculates three types of Area-Under-the-Curve (AUC)
-metrics for delay discounting data: regular AUC (using raw delays),
-log10 AUC (using logarithmically scaled delays), and ordinal AUC (using
-ordinally scaled delays). These metrics provide different perspectives
-on the rate of delay discounting. Metrics are computed separately for
-each `id`, so a data frame with several subjects returns one row per
-subject.
+Calculates three area-under-the-curve (AUC) metrics for
+delay-discounting data: regular AUC (using raw delays), log10 AUC (using
+logarithmically scaled delays), and ordinal AUC (using ordinally scaled
+delays). The three differ only in how the delays are scaled before the
+area is computed. Metrics are computed separately for each `id`, so a
+data frame with several subjects returns one row per subject.
 
 ## Usage
 

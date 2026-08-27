@@ -1,7 +1,7 @@
 # Extract Results from Delay-Discounting Model
 
-This function extracts model parameter estimates, fit statistics, and
-confidence intervals from a fitted delay-discounting model.
+Extracts parameter estimates, fit statistics, and confidence intervals
+from a fitted delay-discounting model.
 
 ## Usage
 

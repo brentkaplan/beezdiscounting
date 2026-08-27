@@ -79,10 +79,10 @@ power_discounting(
   Degrees of freedom for the Wald test's t reference distribution.
   `NULL` (default) uses `n_subjects - 2`, the two-sample df of the
   between-subject design. This is an *empirically calibrated*
-  small-sample correction, not a model-derived df (the TMB fit has no
-  exact t sampling theory); it passes the package's Type I calibration
-  battery, while the asymptotic z-test (`df = Inf`) is anticonservative
-  at study-relevant sample sizes.
+  small-sample correction rather than a model-derived df (the TMB fit
+  has no exact t sampling theory); it passes the package's Type I
+  calibration battery, while the asymptotic z-test (`df = Inf`) is
+  anticonservative at study-relevant sample sizes.
 
 - seed:
 
@@ -109,9 +109,9 @@ power_discounting(
   single subject random intercept on log k). The simulator ALWAYS
   generates only that intercept: any richer formula (e.g. `k + phi ~ 1`,
   `k + s ~ 1`) is accepted but produces a deliberately over-specified
-  refit of data with no such variance component – useful for probing
-  robustness, not for estimating power under those random effects (out
-  of scope in this version).
+  refit of data with no such variance component. That refit is useful
+  for probing robustness rather than for estimating power under those
+  random effects (out of scope in this version).
 
 - multi_start:
 
@@ -223,9 +223,9 @@ An object of class `beezdiscounting_power`: a list with
 A replicate whose fit fails (non-convergence, non-positive-definite
 Hessian, unusable standard error, or an error) is excluded from the
 power denominator and reported through the `n_*` counts and
-`$replicates$status` – it is never counted as "no effect detected",
-which would bias power in an unpredictable direction. A warning is
-issued when fewer than 95% of replicates are usable.
+`$replicates$status`. It is never counted as "no effect detected", which
+would bias power in an unpredictable direction. A warning is issued when
+fewer than 95% of replicates are usable.
 
 The v1 scope is a single fixed-effect `delta_k` under the package's
 existing between-subject simulator. Effects on `s` or `phi`, power for

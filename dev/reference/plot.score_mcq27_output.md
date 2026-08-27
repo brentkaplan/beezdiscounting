@@ -1,9 +1,9 @@
 # Plot MCQ-27 Scores
 
-This function creates a plot of the MCQ-27 scores for different metrics
-(small_k, medium_k, large_k, geomean_k, overall_k). The function handles
-different logarithmic transformations of the k-values and adjusts the
-y-axis label accordingly.
+Boxplots the MCQ-27 scores for different metrics (small_k, medium_k,
+large_k, geomean_k, overall_k). Log-transformed k values
+(`trans = "log"`/`"ln"`) are detected and the y-axis label adjusted
+accordingly.
 
 ## Usage
 

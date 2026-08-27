@@ -2,8 +2,8 @@
 
 The 30-item Probability Discounting Questionnaire (PDQ; Madden, Petry, &
 Johnson, 2009) measures preference between smaller guaranteed rewards
-and larger probabilistic rewards. Items form three 10-question blocks –
-\$20 for sure vs. a chance of \$80, \$40 vs. \$100, and \$40 vs. \$60 –
+and larger probabilistic rewards. Items form three 10-question blocks
+(\$20 for sure vs. a chance of \$80, \$40 vs. \$100, and \$40 vs. \$60),
 each an ascending ladder of discount rates (h) at indifference under the
 hyperbolic odds-against model V = A / (1 + h \* theta), where theta =
 (1 - p) / p (Rachlin, Raineri, & Cross, 1991).
@@ -37,10 +37,9 @@ score_pdq(pdq)
 `block1_h`-`block3_h` are the per-block discount rates; `mean_h` is the
 arithmetic mean recommended by Gray et al. (2016) and `geomean_h` the
 geometric mean. `block*_proportion` is the risky choice ratio (RCR).
-`overall_h` is a beezdiscounting extension – the published scoring has
-no overall 30-item ladder, so `overall_h` pools all 30 items into a
-single ascending ladder and applies the same consistency-maximization
-(see
+`overall_h` is a beezdiscounting extension. The published scoring has no
+overall 30-item ladder, so `overall_h` pools all 30 items into a single
+ascending ladder and applies the same consistency-maximization (see
 [`?score_pdq`](https://brentkaplan.github.io/beezdiscounting/reference/score_pdq.md)
 for the pooling conventions); prefer `mean_h` when following the
 published scoring exactly. Gray et al. recommend excluding subjects
@@ -49,8 +48,8 @@ below 80% consistency on any block.
 ## Proportions by h rank
 
 [`prop_sc()`](https://brentkaplan.github.io/beezdiscounting/reference/prop_sc.md)
-reports the proportion choosing the *guaranteed* reward at each h rank –
-the complement of the risky choice ratio above.
+reports the proportion choosing the *guaranteed* reward at each h rank
+(the complement of the risky choice ratio above).
 
 ``` r
 
@@ -77,7 +76,7 @@ plot(prop_sc(pdq))
 
 [`pdq_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/pdq_to_choice.md)
 reshapes responses into one row per choice with the item design attached
-– including `theta`, the odds against winning – ready for trial-level
+(including `theta`, the odds against winning), ready for trial-level
 modeling of probability discounting:
 
 ``` r

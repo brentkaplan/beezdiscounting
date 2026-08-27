@@ -22,7 +22,11 @@ Discounting User Guide;
 also fits mixed-effects (hierarchical) discounting models with a
 scale-location-truncated beta likelihood that admits indifference points
 at exactly 0 and 1 (Kim, Kaplan, Koffarnus, and Franck, 2025;
-[arXiv:2509.13167](https://arxiv.org/abs/2509.13167)).
+[arXiv:2509.13167](https://arxiv.org/abs/2509.13167)). The package also
+implements the linearized Mazur estimator, random-effects model, and
+F-test of Hinds et al. (2026;
+[doi:10.1016/j.jmp.2026.103006](https://doi.org/10.1016/j.jmp.2026.103006)
+).
 
 ## See also
 

@@ -1,8 +1,8 @@
 # Calculate Confidence Intervals for a Parameter
 
-This function computes the lower and upper bounds of the confidence
-interval for a parameter estimate, given its standard error, a specified
-significance level, and the degrees of freedom from the model.
+Computes the lower and upper bounds of a t-based confidence interval for
+a parameter estimate from its standard error, a specified significance
+level, and the degrees of freedom from the model.
 
 ## Usage
 

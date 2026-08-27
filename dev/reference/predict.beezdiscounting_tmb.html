@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,6 +25,7 @@
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -94,7 +95,7 @@ regardless of the <code>id_var</code>/<code>x_var</code>/<code>y_var</code> you 
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
 <dd><p>For <code>type = "response"</code>: <code>"subject"</code> (default; conditions on
 each subject's estimated random intercept, requires the id column) and/or
-<code>"population"</code> (random effects set to zero - the population-mean curve;
+<code>"population"</code> (random effects set to zero, i.e., the population-mean curve;
 no id column needed). Pass <code>c("population", "subject")</code> for both columns
 side-by-side. A numeric nlme-style level is rejected with an error. For
 an s-target 2-RE fit (<code>k + s ~ 1</code>), the subject level uses each subject's

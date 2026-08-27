@@ -1,8 +1,8 @@
 # Random-effect normal QQ plots for discounting models
 
 QQ plot of the estimated subject random-effect deviates against a normal
-reference – the standard check on the Gaussian random-effects
-assumption. Methods exist for the TMB indifference-point
+reference (the standard check on the Gaussian random-effects
+assumption). Methods exist for the TMB indifference-point
 ([`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md))
 and choice
 ([`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md))

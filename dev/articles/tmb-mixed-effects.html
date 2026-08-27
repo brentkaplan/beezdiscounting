@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,6 +48,7 @@
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -121,9 +122,9 @@ subject’s rate
 <code>k_i = exp(population log-k + random deviation)</code>. Integrating
 the random deviations out of the likelihood has no closed form. Template
 Model Builder (TMB) handles it with a Laplace approximation and
-automatic differentiation: exact gradients, a fast compiled objective,
-and maximum-likelihood estimates in seconds rather than minutes. TMB
-must be installed for any of this to run.</p>
+automatic differentiation, which gives exact gradients and a compiled
+objective, so maximum-likelihood estimates take seconds rather than
+minutes. TMB must be installed for any of this to run.</p>
 </div>
 <div class="section level2">
 <h2 id="some-data">Some data<a class="anchor" aria-label="anchor" href="#some-data"></a>
@@ -359,8 +360,8 @@ them with <code><a href="https://generics.r-lib.org/reference/glance.html" class
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> green-myerson   87.5 -<span style="color: #BB0000;">167.</span> -<span style="color: #BB0000;">157.</span></span></span></code></pre></div>
 <p>Because these data were generated from a hyperbola, Mazur wins on
 AIC; the exponential fits worse, and the extra parameter in
-Green-Myerson does not earn its keep. With real data the ranking is an
-empirical question worth checking.</p>
+Green-Myerson does not lower AIC enough to justify it. With real data
+the ranking is an empirical question worth checking.</p>
 </div>
 <div class="section level2">
 <h2 id="beyond-one-group-and-one-random-effect">Beyond one group and one random effect<a class="anchor" aria-label="anchor" href="#beyond-one-group-and-one-random-effect"></a>
@@ -404,7 +405,7 @@ with Holm-adjusted p-values:</p>
 treatment of group inference.</p>
 <p>The random-effects structure can grow too. With the SLT-beta family,
 <code>random_effects = k + phi ~ 1</code> adds a subject random effect
-on the precision, letting each subject have their own spread around the
+on the precision, so that each subject has their own spread around the
 curve; the two-parameter equations support <code>k + s ~ 1</code> for a
 random curvature. The <code>covariance_structure</code> argument
 controls whether those two random effects are allowed to correlate.</p>

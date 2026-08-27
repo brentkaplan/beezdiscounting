@@ -1,7 +1,7 @@
 # Plot Proportion of SIR/SS Choices by k Value
 
-This function creates a plot of the proportion of SIR/SS choices by k
-value using the output of the `prop_ss` function.
+Plots the proportion of SIR/SS choices by k value using the output of
+the `prop_ss` function.
 
 ## Usage
 

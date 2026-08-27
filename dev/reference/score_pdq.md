@@ -82,7 +82,7 @@ rather than silently mis-scoring. Contrast with
 lenient, ragged contract.
 
 The published scoring (Madden et al., 2009; Gray et al., 2016) has no
-overall 30-item ladder – blocks are scored separately, and `mean_h` is
+overall 30-item ladder; blocks are scored separately, and `mean_h` is
 Gray et al.'s recommended composite. `overall_h` and
 `overall_consistency` are a beezdiscounting extension: all 30 items are
 pooled into a single ascending ladder (exact-rational h order, ties

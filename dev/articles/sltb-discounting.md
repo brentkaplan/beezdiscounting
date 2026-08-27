@@ -13,7 +13,7 @@ reward*. By construction an IP lives on the closed interval \[0, 1\]:
 - y = 0: any immediate amount, however small, is preferred (**complete
   discounting**).
 
-Real titration data pile up at both ends, and the example data shipped
+Real titration data pile up at both ends, and the example data included
 with this package (`data(dd_ip)`) reproduce the pattern: a meaningful
 fraction of observations sit *exactly* at 0 or 1. That single fact rules
 out the two error distributions people reach for first:
@@ -51,10 +51,10 @@ exponential \mu = e^{-kD}, and let \phi be a precision parameter (larger
 where the truncation normalizer is Z =
 \mathrm{pbeta}(\tfrac{1}{s}{+}l,\\a,\\b) - \mathrm{pbeta}(l,\\a,\\b).
 
-The intuition is a *microscopic stretch*: the data window y\in\[0,1\] is
+The intuition is a *microscopic stretch*. The data window y\in\[0,1\] is
 mapped just inside the open interval where the ordinary beta density is
-finite; the kernel is therefore never evaluated at exactly 0 or 1. As
-s\to 1 and l\to 0 the SLT-beta collapses to the ordinary beta.
+finite, so the kernel is never evaluated at exactly 0 or 1. As s\to 1
+and l\to 0 the SLT-beta collapses to the ordinary beta.
 
 ``` r
 
@@ -89,13 +89,13 @@ par(op)
 ```
 
 Because the variance of a beta is \mu(1-\mu)/(\phi+1), the SLT-beta
-automatically gives **less** noise near the floor and ceiling and
-**more** in the middle: the heteroscedastic pattern real IP data
-actually show, and exactly what a Gaussian model gets wrong.
+gives less noise near the floor and ceiling and more in the middle. That
+is the heteroscedastic pattern real IP data show, and it is what a
+Gaussian model gets wrong.
 
 ## The boundary problem, in the example data
 
-The package ships `dd_ip`, a synthetic delay-discounting dataset (100
+The package includes `dd_ip`, a synthetic delay-discounting dataset (100
 subjects across six delays, in the `id`, `x` (delay), `y` (indifference
 point) long format) that reproduces the boundary pattern of real
 titration data. A handful of synthetic values fall just above 1 and are
@@ -173,12 +173,13 @@ sprintf("cor(log k): SLT vs NLS = %.3f   |   median k: SLT = %.4f, NLS = %.4f",
 #> [1] "cor(log k): SLT vs NLS = 0.978   |   median k: SLT = 0.5328, NLS = 0.5038"
 ```
 
-A caveat the next section resolves: fit *one subject at a time* and the
-SLT-beta likelihood can occasionally run off to a degenerate solution.
-For a person whose indifference points are almost all 0s and 1s, a fit
-with near-zero precision that places all its mass on the endpoints can
-score a higher likelihood than any sensible discounting curve. The fix
-is not to fit people in isolation.
+One caveat, which the next section resolves, is that fitting *one
+subject at a time* can let the SLT-beta likelihood run off to a
+degenerate solution. For a person whose indifference points are almost
+all 0s and 1s, a fit with near-zero precision that places all its mass
+on the endpoints can score a higher likelihood than any sensible
+discounting curve. The fix is to fit people jointly rather than in
+isolation.
 
 ## Fitting the mixed-effects model
 
@@ -425,7 +426,7 @@ and recovers known discount rates from simulated data (rank correlation
 0.99 for Mazur, 0.95 for the exponential). On the bundled example data,
 every boundary subject is fit successfully where ordinary beta
 regression cannot be evaluated at all. The full Monte-Carlo study lives
-in the package’s `dev/` directory.
+in the package’s development repository on GitHub.
 
 ## References
 

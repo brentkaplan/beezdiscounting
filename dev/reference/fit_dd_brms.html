@@ -17,7 +17,7 @@ shape exponent (logs) population-level for the two-parameter equations.'><meta p
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,7 @@ shape exponent (logs) population-level for the two-parameter equations.'><meta p
     <li><a class="dropdown-item" href="../articles/fivetrial-task.html">The 5.5-trial task</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Modeling</h6></li>
+    <li><a class="dropdown-item" href="../articles/linearized-mazur.html">Linearized Mazur (closed form)</a></li>
     <li><a class="dropdown-item" href="../articles/tmb-mixed-effects.html">Mixed-effects discounting (TMB)</a></li>
     <li><a class="dropdown-item" href="../articles/choice-discounting.html">Discounting from trial-level choices</a></li>
     <li><a class="dropdown-item" href="../articles/sltb-discounting.html">Bounded error distributions (SLT-beta)</a></li>
@@ -209,13 +210,13 @@ divergences, bulk ESS &gt;= 400), <code>mcmc_info</code>, <code>loo</code>, <cod
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>family = "beta"</code> (default) uses <code>Beta(link = "identity")</code> with the mean
-squished into <code>(1e-6, 1 - 1e-6)</code> – the closest brms analog of the TMB
+squished into <code>(1e-6, 1 - 1e-6)</code>, the closest brms analog of the TMB
 SLT-beta (<code>family = "sltb"</code> has no brms equivalent and errors with this
 pointer). Boundary observations (<code>y</code> exactly 0 or 1) are handled per
 <code>boundary</code>: <code>"squeeze"</code> (default) applies the Smithson-Verkuilen
 transform <code>y* = (y (N - 1) + 0.5) / N</code> to all responses (message reports
 the boundary count); <code>"zoib"</code> switches to <code>zero_one_inflated_beta</code>
-(statistically more honest but changes the estimand – k then describes
+(statistically more honest, but it changes the estimand: k then describes
 interior responses only); <code>"error"</code> refuses to fit.
 <code>family = "gaussian"</code> matches <code>fit_dd_tmb(family = "gaussian")</code>
 wherever the TMB template's mu clamp into <code>[1e-6, 1 - 1e-6]</code> does not

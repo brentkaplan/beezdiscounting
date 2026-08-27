@@ -4,7 +4,7 @@ Visualize a fitted
 [`fit_dd_brms()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_brms.md)
 model. `type = "population"` (default) draws the posterior-median
 discount curve with a credible band for the population conditional mean
-(random effects set to zero – a credible band, not a
+(random effects set to zero; a credible band rather than a
 posterior-predictive band) over the observed (boundary-squeezed)
 indifference points; `type = "individual"` adds per-subject median
 curves; `type = "parameters"` shows the posterior subject-`k`

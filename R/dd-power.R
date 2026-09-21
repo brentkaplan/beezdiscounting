@@ -1208,8 +1208,14 @@ print.beezdiscounting_power_n <- function(x, ...) {
     ))
     cat("  This is an estimated minimum under Monte Carlo uncertainty;\n")
     if (identical(x$status, "uncertain")) {
-      cat("  at least one decision fell back to a point estimate, so the true\n")
-      cat("  power at this N may be below the target.\n")
+      dec <- x$evaluations$decision
+      if (any(grepl("^ambiguous", dec))) {
+        cat("  at least one decision fell back to a point estimate, so the true\n")
+        cat("  power at this N may be below the target.\n")
+      } else {
+        cat("  the minimality / monotonicity checks could not confirm this N,\n")
+        cat("  so the true minimum may differ.\n")
+      }
     }
     cat(
       "  Validate it with an independent power_discounting() run at this N\n"

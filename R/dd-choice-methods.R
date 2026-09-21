@@ -246,10 +246,11 @@ VarCorr.beezdiscounting_choice <- function(x, sigma = 1, ...) {
 #'   or `"parameters"` (the per-subject parameter tibble).
 #' @param level For `type = "prob"`: `"subject"` (default; conditions on each
 #'   subject's estimated random intercept, requires the id column) or
-#'   `"population"` (random effects set to zero, i.e. the curve of a typical
-#'   subject with `log k` at its population mean; no id column needed). This
-#'   is not the population-averaged choice probability, which integrates over
-#'   the random effects and is flatter.
+#'   `"population"` (random effects set to zero -- the typical subject: in
+#'   structural mode `log k` at its population value, in descriptive mode the
+#'   random slopes at zero; no id column needed). This is not the
+#'   population-averaged choice probability, which integrates over the random
+#'   effects and is flatter.
 #' @param ... Unused.
 #'
 #' @return

@@ -24,10 +24,11 @@ or \code{"parameters"} (the per-subject parameter tibble).}
 
 \item{level}{For \code{type = "prob"}: \code{"subject"} (default; conditions on each
 subject's estimated random intercept, requires the id column) or
-\code{"population"} (random effects set to zero, i.e. the curve of a typical
-subject with \verb{log k} at its population mean; no id column needed). This
-is not the population-averaged choice probability, which integrates over
-the random effects and is flatter.}
+\code{"population"} (random effects set to zero -- the typical subject: in
+structural mode \verb{log k} at its population value, in descriptive mode the
+random slopes at zero; no id column needed). This is not the
+population-averaged choice probability, which integrates over the random
+effects and is flatter.}
 
 \item{...}{Unused.}
 }

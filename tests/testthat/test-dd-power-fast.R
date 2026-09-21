@@ -357,3 +357,16 @@ test_that("a failed confirmation returns NA with status unresolved", {
   expect_equal(res$status, "unresolved")
   expect_equal(res$uncertain, TRUE)
 })
+
+test_that("print.beezdiscounting_power_n states why a result is uncertain (F-BZ8-3)", {
+  mk <- function(decisions) structure(list(
+    target_power = 0.8, effect = list(name = "delta_k", delta = 1), alpha = 0.05,
+    n = 12L, status = "uncertain",
+    evaluations = tibble::tibble(n_subjects = seq_along(decisions),
+                                 decision = decisions)),
+    class = "beezdiscounting_power_n")
+  expect_output(print(mk(c("above", "ambiguous_above"))), "fell back to a point estimate")
+  out <- capture.output(print(mk(c("above", "below"))))
+  expect_true(any(grepl("minimality / monotonicity", out)))
+  expect_false(any(grepl("point estimate", out)))
+})

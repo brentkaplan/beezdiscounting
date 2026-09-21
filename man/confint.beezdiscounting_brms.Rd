@@ -29,6 +29,7 @@ A tibble.
 }
 \description{
 Equal-tailed quantile credible intervals on the report-space-transformed
-draws. Columns match \code{confint.beezdiscounting_tmb()}: \code{term},
-\code{estimate}, \code{conf.low}, \code{conf.high}, \code{level}.
+draws. Columns: \code{term}, \code{estimate}, \code{conf.low}, \code{conf.high}, \code{level}
+(the first five columns of \code{confint.beezdiscounting_tmb()}, which adds
+\code{estimate_scale}).
 }

@@ -273,8 +273,9 @@ augment.beezdiscounting_brms <- function(x, ...) {
 #' Credible intervals for a beezdiscounting_brms model
 #'
 #' Equal-tailed quantile credible intervals on the report-space-transformed
-#' draws. Columns match `confint.beezdiscounting_tmb()`: `term`,
-#' `estimate`, `conf.low`, `conf.high`, `level`.
+#' draws. Columns: `term`, `estimate`, `conf.low`, `conf.high`, `level`
+#' (the first five columns of `confint.beezdiscounting_tmb()`, which adds
+#' `estimate_scale`).
 #'
 #' @param object A `beezdiscounting_brms` object.
 #' @param parm Optional terms (display, e.g. `"k:(Intercept)"`/`"s"`, or

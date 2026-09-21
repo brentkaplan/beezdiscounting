@@ -76,6 +76,15 @@ describe("fit_dd_tmb() non-convergence gate", {
     )
   })
 
+  it("tiers a single-start fit with the multi-start predicates", {
+    fit <- suppressWarnings(
+      fit_dd_tmb(sim, equation = "mazur", verbose = 0, multi_start = FALSE,
+                 start_values = list(beta_k = 100)))
+    blow <- .dd_logk_blowup(fit$opt, fit$formula_details$X)
+    expect_identical(fit$multi_start_info$tier,
+                     if (fit$converged && !blow) 1L else if (!blow) 2L else 3L)
+  })
+
   it("stays silent for a converged fit", {
     fit <- expect_no_warning(fit_dd_tmb(sim, equation = "mazur", verbose = 0))
     expect_true(fit$converged)

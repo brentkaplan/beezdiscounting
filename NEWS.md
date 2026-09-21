@@ -12,8 +12,9 @@ which shipped none).
   amount-scale data (e.g. `y` in dollars with `ll = 100`) were judged against
   the bare proportions `c1`/`c2` and received wrong verdicts. Criterion 2 is
   now strict: a decline of exactly `c2 * ll` passes. `ll`, `c1` and `c2` are
-  validated. Verdicts on proportion data with `ll = 1` change only at the
-  exact C2 threshold.
+  validated. Verdicts on proportion data with `ll = 1` change only for
+  changes of exactly `c1` or `c2`, which floating-point error previously
+  judged either way (e.g. `y = c(0.6, 0.8, 0.1)` used to fail C1).
 * `check_unsystematic()` and `calc_aucs()` now error on missing `y`/`x`
   values and on duplicate delays within a subject, which previously gave a
   silent `NA`/`TRUE` verdict or a result that depended on row order.
@@ -35,8 +36,9 @@ which shipped none).
 * `fit_dd_tmb()` and `fit_dd_choice()` (both modes) no longer let a
   non-converged start displace a converged one on negative log-likelihood
   alone: the multi-start keeps the lowest-NLL converged start that passes the
-  log-k sanity guard, falling back to non-converged starts only when none
-  converged (recorded in the new `multi_start_info` element). A non-converged
+  log-k sanity guard, falling back to other starts only when no start both
+  converged and passed the guard (recorded in the new `multi_start_info`
+  element). A non-converged
   fit now raises a classed `beezdiscounting_convergence_warning` at fit time
   regardless of `verbose`, and `tidy()`, `confint()`, `summary()`,
   `get_dd_param_emms()` and `get_dd_comparisons()` repeat it. Previously such
@@ -45,9 +47,9 @@ which shipped none).
   `sdreport()` warnings are likewise no longer silenced by `verbose = 0`.
 * `simulate_dd_ip(family = "gaussian")` no longer clamps draws to `[0, 1]`,
   and `fit_dd_tmb(family = "gaussian")` / `fit_dd_brms(family = "gaussian")`
-  no longer clamp responses outside `[0, 1]` (nor stop on a few values
-  above 1.5 as an "ambiguous scale"; clearly percent-scaled data are still
-  divided by 100). The Gaussian likelihood is unbounded, so the clamp made
+  keep responses as supplied: no clamping to `[0, 1]` and no automatic
+  percent detection (data that look percent-scaled get a warning; an explicit
+  `response_scale = "percent"` or `"amount"` still converts). The Gaussian likelihood is unbounded, so the clamp made
   the simulated data, and the data the model saw, differ from the model
   being fitted: near delay 0 about half the draws piled up at 1.
   Gaussian-family simulations and `power_discounting(family = "gaussian")`
@@ -307,9 +309,10 @@ which shipped none).
 
 ### Notes
 
-- The data validator coerces percent/amount response scales to `[0, 1]` and
-  clamps mild out-of-range values, **warning loudly** and naming the number of
-  values coerced or clamped.
+- The data validator coerces percent/amount response scales to `[0, 1]` and,
+  for the SLT-beta and beta families, clamps mild out-of-range values,
+  **warning loudly** and naming the number of values coerced or clamped
+  (Gaussian fits keep responses as supplied).
 
 ### Bug fixes (scoring)
 

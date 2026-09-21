@@ -41,9 +41,9 @@
 #'   `"amount"`.
 #' @param clamp Logical; clamp post-scaling `y` into `[0, 1]` (default). The
 #'   Gaussian-family fitters pass `FALSE`: their likelihood is unbounded, so
-#'   out-of-range responses are kept as observed and a few values above 1.5 are
-#'   not treated as an ambiguous scale (clearly percent-scaled data are still
-#'   divided by 100).
+#'   responses are kept as supplied -- no clamping and no automatic percent
+#'   detection (data that look percent-scaled get a warning); an explicit
+#'   `response_scale = "percent"` or `"amount"` still converts.
 #' @param extra_cols Optional character vector of additional column names in
 #'   `data` to carry through onto the returned frame (the union of `factors`
 #'   and `continuous_covariates`). These are retained verbatim so the model
@@ -195,9 +195,22 @@
       "Applied percent scaling as requested (response_scale = 'percent'); divided y by 100 to map to [0, 1].",
       call. = FALSE
     )
+  } else if (response_scale == "proportion" && !isTRUE(clamp) &&
+             is.finite(max_y) && max_y > 1.5) {
+    # Gaussian likelihood (clamp = FALSE): values beyond [0, 1] are legitimate
+    # draws, and large residual noise can put most positive values above 1.5,
+    # so never rescale automatically (F-BZ8-1 end-pass fold). Flag data that
+    # look percent-scaled; an explicit response_scale still converts.
+    pos <- long$y[is.finite(long$y) & long$y > 0]
+    if (length(pos) && mean(pos > 1.5) >= 0.5 && max_y <= 100) {
+      warning(
+        "Most positive responses exceed 1.5; they were NOT rescaled (the ",
+        "gaussian family keeps y as supplied). If they are percentages, set ",
+        "response_scale = 'percent'.",
+        call. = FALSE
+      )
+    }
   } else if (response_scale == "proportion" && is.finite(max_y) && max_y > 1.5) {
-    # (With clamp = FALSE -- a Gaussian likelihood -- values beyond [0, 1] are
-    # legitimate draws, so only the unambiguous percent case is acted on.)
     # B9: robust auto-detect. Divide by 100 ONLY when the data are clearly
     # percent -- a MAJORITY of the positive values exceed 1.5 AND the maximum is
     # <= 100. A few out-of-range values among otherwise-valid proportions are
@@ -213,7 +226,7 @@
         "Detected percent-scale responses (most positive values > 1.5); divided y by 100 to map to [0, 1].",
         call. = FALSE
       )
-    } else if (isTRUE(clamp)) {
+    } else {
       stop(
         sprintf(
           paste0("Ambiguous response scale: %d value(s) exceed 1.5 but the data ",

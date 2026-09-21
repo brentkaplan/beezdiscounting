@@ -204,10 +204,17 @@ describe(".dd_validate_ip(clamp = FALSE) (gaussian likelihoods, F-BZ8-1)", {
     expect_warning(res <- .dd_validate_ip(d2), "Clamped")
     expect_true(all(res$data$y >= 0 & res$data$y <= 1))
   })
-  it("still rescales clearly percent-scaled data", {
+  it("never auto-rescales; warns on percent-looking data; explicit scale converts", {
     dp <- d
     dp$y <- c(90, 50, 10, 95, 40, 5)
-    expect_warning(res <- .dd_validate_ip(dp, clamp = FALSE), "percent")
-    expect_equal(res$data$y, dp$y / 100)
+    expect_warning(res <- .dd_validate_ip(dp, clamp = FALSE), "NOT rescaled")
+    expect_identical(res$data$y, dp$y)
+    expect_warning(res2 <- .dd_validate_ip(dp, clamp = FALSE,
+                                           response_scale = "percent"), "percent")
+    expect_equal(res2$data$y, dp$y / 100)
+    # large-noise gaussian draws (Codex end-pass reproducer) are kept as is
+    g <- simulate_dd_ip(n_subjects = 30, family = "gaussian", sigma_e = 3, seed = 9)
+    res3 <- suppressWarnings(.dd_validate_ip(g, clamp = FALSE))
+    expect_identical(res3$data$y, g$y)
   })
 })

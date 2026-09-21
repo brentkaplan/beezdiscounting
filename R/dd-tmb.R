@@ -1133,7 +1133,8 @@ NULL
 #' @param family Observation family: `"sltb"` (default) or `"gaussian"`.
 #'   For `"sltb"`, responses outside `[0, 1]` after scaling are clamped (with a
 #'   warning); for `"gaussian"`, whose likelihood is unbounded, they are kept
-#'   as observed.
+#'   as observed and percent-scaled data are not detected automatically (set
+#'   `response_scale = "percent"`).
 #' @param random_effects RE formula: `k ~ 1` (single random intercept on
 #'   `log k`), `k + phi ~ 1` (a joint 2-D random intercept on
 #'   `(log k, log phi)`, SLT-beta only), or `k + s ~ 1` (a joint 2-D random
@@ -1416,9 +1417,12 @@ fit_dd_tmb <- function(data,
 
   converged <- isTRUE(opt$convergence == 0)
   if (!isTRUE(multi_start)) {
+    # Same tier predicates as .dd_select_start() (converged + sane / sane / any).
+    blowup <- .dd_logk_blowup(opt, tmb_data$X)
     multi_start_info <- list(
       n_starts = 1L, n_finite = 1L, n_converged = as.integer(converged),
-      selected_start = 1L, tier = if (converged) 1L else 2L,
+      selected_start = 1L,
+      tier = if (converged && !blowup) 1L else if (!blowup) 2L else 3L,
       lower_nll_nonconverged = FALSE
     )
   }

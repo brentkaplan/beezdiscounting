@@ -335,6 +335,10 @@ score_one_mcq27 <- function(dat, impute_method = "none", round = 6) {
 #' @param dat A single subject's MCQ data in long form
 #' @param reg Registry list from `.instrument_registry()` / `.mcq_registry()`
 #' @param random Boolean whether to insert a random draw (0 or 1) for NAs
+#'   whose neighbours disagree or are all missing. When the observed
+#'   neighbours agree (e.g. responses `1, NA, NA` within a rank group) the NAs
+#'   take that value even with `random = TRUE`, following Yeh et al. (2023).
+#'   Items that stay missing are reported with a warning.
 #' @param verbose Boolean whether to print subject and question ids pertaining
 #' to missing data
 #'
@@ -388,6 +392,19 @@ inn <- function(dat, reg, random, verbose) {
     }
   }
   dat <- dat[order(as.numeric(dat$questionid)), ]
+  # Audit F-BZ1-3: a group whose observed responses disagree (random = FALSE)
+  # or that is entirely missing stays NA, and the NA propagates to the
+  # subject's scores; say so instead of leaving it silent.
+  n_left <- sum(is.na(dat$response))
+  if (n_left > 0L) {
+    warning(
+      "INN imputation left ", n_left, " item(s) missing for subject ",
+      unique(dat$subjectid)[1], " (neighbours disagree or are all missing",
+      if (!isTRUE(random)) "; `random = TRUE` would fill them" else "",
+      "); scores that need them will be NA.",
+      call. = FALSE
+    )
+  }
   dat[, c("subjectid", "questionid", "response")]
 }
 

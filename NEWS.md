@@ -20,6 +20,10 @@ which shipped none).
   silent `NA`/`TRUE` verdict or a result that depended on row order.
   `calc_aucs()` documents that `auc_log10` uses `log10(x + 1)` and therefore
   depends on the delay unit.
+* INN imputation (`score_mcq()`, `score_mcq27()`, `score_pdq()` with
+  `impute_method = "inn"`) now warns when items stay missing (neighbours
+  disagree with `random = FALSE`, or a whole rank group is missing) instead
+  of letting the resulting `NA` scores pass silently.
 * `score_dd()`, `ans_dd()` and `calc_dd()` read numeric Qualtrics exports per
   item. The bundled 5.5-trial template codes `Attend-LL` in reverse order
   (1 = "in 25 years", 2 = "now"), so numeric exports previously flagged

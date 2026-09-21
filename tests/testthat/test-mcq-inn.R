@@ -40,7 +40,10 @@ test_that("21-item INN with disagreeing neighbors leaves NA unless random", {
   # rank 4 group: qids 14, 10, 3, 18 -> make them disagree and one NA
   dat$response[dat$questionid == 14] <- 0
   dat$response[dat$questionid == 10] <- NA
-  res <- score_mcq(dat, items = 21, impute_method = "inn", return_data = TRUE)
+  expect_warning(
+    res <- score_mcq(dat, items = 21, impute_method = "inn", return_data = TRUE),
+    "left 1 item"
+  )
   expect_true(is.na(res$data$newresponse[res$data$questionid == 10]))
 })
 
@@ -84,4 +87,20 @@ test_that("27-item INN aligns newresponse by questionid on shuffled input", {
     out$newresponse[out$questionid != 13] == out$response[out$questionid != 13]
   ))
   expect_equal(out$newresponse[out$questionid == 13], agree)
+})
+
+test_that("inn() warns when items stay missing (audit F-BZ1-3)", {
+  reg <- beezdiscounting:::.mcq_registry(27)
+  dat <- data.frame(subjectid = 1, questionid = 1:27, response = 1)
+  grp <- reg$table$questionid[reg$table[[reg$rank_col]] ==
+                                reg$table[[reg$rank_col]][1]]
+  dat$response[dat$questionid %in% grp] <- c(0, 1, NA)
+  expect_warning(out <- beezdiscounting:::inn(dat, reg, random = FALSE, verbose = FALSE),
+                 "left 1 item\\(s\\) missing for subject 1")
+  expect_equal(sum(is.na(out$response)), 1L)
+  expect_no_warning(beezdiscounting:::inn(dat, reg, random = TRUE, verbose = FALSE))
+  # agreeing neighbours fill deterministically, no warning
+  dat$response[dat$questionid %in% grp] <- c(1, NA, NA)
+  expect_no_warning(out2 <- beezdiscounting:::inn(dat, reg, random = TRUE, verbose = FALSE))
+  expect_true(all(out2$response[out2$questionid %in% grp] == 1))
 })

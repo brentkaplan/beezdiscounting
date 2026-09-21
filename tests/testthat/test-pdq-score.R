@@ -172,7 +172,10 @@ test_that("score_pdq INN imputes within h-rank groups (one item per block)", {
   dat2 <- data.frame(subjectid = 1, questionid = 1:30, response = 1)
   dat2$response[dat2$questionid == 11] <- 0
   dat2$response[dat2$questionid == 21] <- NA
-  res2 <- score_pdq(dat2, impute_method = "inn", return_data = TRUE)
+  expect_warning(
+    res2 <- score_pdq(dat2, impute_method = "inn", return_data = TRUE),
+    "left 1 item"
+  )
   expect_true(is.na(res2$data$newresponse[res2$data$questionid == 21]))
   expect_true(is.na(res2$results$block3_h))
 

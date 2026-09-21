@@ -12,7 +12,11 @@ inn(dat, reg, random, verbose)
 
 \item{reg}{Registry list from \code{.instrument_registry()} / \code{.mcq_registry()}}
 
-\item{random}{Boolean whether to insert a random draw (0 or 1) for NAs}
+\item{random}{Boolean whether to insert a random draw (0 or 1) for NAs
+whose neighbours disagree or are all missing. When the observed
+neighbours agree (e.g. responses \verb{1, NA, NA} within a rank group) the NAs
+take that value even with \code{random = TRUE}, following Yeh et al. (2023).
+Items that stay missing are reported with a warning.}
 
 \item{verbose}{Boolean whether to print subject and question ids pertaining
 to missing data}

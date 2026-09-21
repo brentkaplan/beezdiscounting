@@ -119,8 +119,12 @@ lower neighbor are then re-evaluated with fresh replicates before
 minimality is claimed.
 
 The returned \code{n} is an \emph{estimated minimum under Monte Carlo uncertainty},
-not an exact bound. For grant-quality reporting, rerun
-\code{\link[=power_discounting]{power_discounting()}} at the returned \code{n} with a large \code{n_sim} (2000+)
+not an exact bound. The adaptive rule looks at the Wilson interval
+repeatedly at the same N, and those looks have no simultaneous coverage
+guarantee; at the replicate cap a point estimate at or above the target
+can select an N whose true power is below it (status \code{"uncertain"}). For
+grant-quality reporting, validate the returned \code{n} with an independent,
+fixed-budget \code{\link[=power_discounting]{power_discounting()}} run (large \code{n_sim}, 2000+, new seed)
 and report that estimate with its Monte Carlo confidence interval.
 
 \strong{Monotonicity assumption.} Bisection presumes that power is

@@ -47,7 +47,9 @@ asymptotics can be unreliable at realistic study sizes.
    the Wald CI exclude 0). Both are referred to a t distribution with
    `n_subjects - 2` degrees of freedom (the design's two-sample df) rather
    than the asymptotic normal, which is anticonservative at study-relevant
-   N; `df = Inf` recovers the z-test. The two verdicts use the same
+   N. This df is an empirical calibration device, not a df derived from the
+   mixed model (the TMB fit has no exact t sampling theory); `df = Inf`
+   recovers the z-test. The two verdicts use the same
    standard error and reference distribution, so they always agree -- both
    report formats are returned.
 5. Repeat `n_sim` times. Power is the proportion of *usable* fits
@@ -167,7 +169,7 @@ tolerance bands fixed before the tests were first run:
   errors that excludes both half and 1.5 times the nominal rate.
   `n_sim = 1200` was computed from that tolerance
   (`9 * .05 * .95 / .02^2 ≈ 1069`), not guessed. A second null check runs
-  at N = 60. The t(n - 2) reference distribution these checks validate was
+  at N = 60. The t(n - 2) reference distribution these checks calibrate was
   adopted after the sibling beezdemand calibration battery showed the
   asymptotic z-test is anticonservative at study-relevant sample sizes.
 - **Convergence handling**: a configuration that reliably produces

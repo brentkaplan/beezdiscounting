@@ -986,8 +986,12 @@ print.beezdiscounting_power <- function(x, ...) {
 #' minimality is claimed.
 #'
 #' The returned `n` is an *estimated minimum under Monte Carlo uncertainty*,
-#' not an exact bound. For grant-quality reporting, rerun
-#' [power_discounting()] at the returned `n` with a large `n_sim` (2000+)
+#' not an exact bound. The adaptive rule looks at the Wilson interval
+#' repeatedly at the same N, and those looks have no simultaneous coverage
+#' guarantee; at the replicate cap a point estimate at or above the target
+#' can select an N whose true power is below it (status `"uncertain"`). For
+#' grant-quality reporting, validate the returned `n` with an independent,
+#' fixed-budget [power_discounting()] run (large `n_sim`, 2000+, new seed)
 #' and report that estimate with its Monte Carlo confidence interval.
 #'
 #' **Monotonicity assumption.** Bisection presumes that power is
@@ -1203,9 +1207,14 @@ print.beezdiscounting_power_n <- function(x, ...) {
       x$status
     ))
     cat("  This is an estimated minimum under Monte Carlo uncertainty;\n")
+    if (identical(x$status, "uncertain")) {
+      cat("  at least one decision fell back to a point estimate, so the true\n")
+      cat("  power at this N may be below the target.\n")
+    }
     cat(
-      "  rerun the power function at this N with a large n_sim to report it.\n"
+      "  Validate it with an independent power_discounting() run at this N\n"
     )
+    cat("  (large n_sim, new seed) before reporting.\n")
   }
   cat("\n  Evaluations:\n")
   print(as.data.frame(x$evaluations), row.names = FALSE)

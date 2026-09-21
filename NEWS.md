@@ -62,8 +62,10 @@ which shipped none).
   confidence interval, p-value and CI-exclusion hit rates, and convergence
   diagnostics; non-usable fits are excluded from the denominator and
   surfaced, never counted as misses. The Wald test uses a t reference with
-  the design's two-sample df (`n - 2`), validated by Type I calibration
-  tests.
+  the design's two-sample df (`n - 2`): an empirical small-sample
+  calibration, not a model-derived df, chosen because it keeps the Type I
+  error near nominal in the package's calibration tests where the z-test
+  runs high.
 * `find_n_discounting()` searches for the smallest total N reaching a
   target power via bisection, adding replicates adaptively where the Monte
   Carlo verdict is ambiguous and re-confirming the selected N before

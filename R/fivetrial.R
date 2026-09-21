@@ -1,10 +1,67 @@
-normalize_dd_response <- function(x) {
-  x_char <- as.character(x)
-  dplyr::case_when(
-    x_char == "1"                      ~ "ss",
-    x_char == "2"                      ~ "ll",
-    stringr::str_detect(x_char, "now") ~ "ss",
-    TRUE                               ~ "ll"
+# Shared closed-vocabulary normaliser for the 5.5-trial Qualtrics templates
+# (audit 2026-09-06 F-BZ2-2 / F-BZ2-3). Recognises the template's numeric
+# export codes per item and its option texts; blank = unanswered (NA); any other
+# non-missing value is an error rather than a silent default.
+#   first / second: labels for the first-listed / second-listed choice
+#   first_text, second_text: regexes identifying each option's text
+#   reversed_items: items whose numeric codes are swapped in the template
+.normalize_fivetrial_response <- function(x, index, first, second,
+                                          first_text, second_text,
+                                          reversed_items, instrument) {
+  x_char <- trimws(as.character(x))
+  x_char[!is.na(x_char) & x_char == ""] <- NA_character_
+  if (is.null(index)) index <- rep("", length(x_char))
+  index <- as.character(index)
+  if (length(index) != length(x_char)) {
+    stop("`index` must have one entry per response.", call. = FALSE)
+  }
+  reversed <- index %in% reversed_items
+  out <- rep(NA_character_, length(x_char))
+
+  code1 <- x_char %in% "1"
+  code2 <- x_char %in% "2"
+  out[code1] <- ifelse(reversed[code1], second, first)
+  out[code2] <- ifelse(reversed[code2], first, second)
+
+  is_first <- grepl(first_text, x_char, ignore.case = TRUE, perl = TRUE)
+  is_second <- grepl(second_text, x_char, ignore.case = TRUE, perl = TRUE)
+  txt <- !code1 & !code2
+  out[txt & is_first & !is_second] <- first
+  out[txt & is_second & !is_first] <- second
+
+  bad <- !is.na(x_char) & is.na(out)
+  if (any(bad)) {
+    shown <- utils::head(unique(sprintf("%s = \"%s\"", index[bad], x_char[bad])), 5L)
+    msg <- paste0(
+      "Unrecognised ", instrument, " response value(s) in ", sum(bad),
+      " cell(s): ", paste(shown, collapse = "; "),
+      if (sum(bad) > length(shown)) "; ..." else "", ". ",
+      "Expected the template's numeric codes (1/2), its option text, ",
+      "or a blank/NA for an unanswered item."
+    )
+    stop(structure(
+      class = c("beezdiscounting_response_error", "error", "condition"),
+      list(message = msg, call = NULL)
+    ))
+  }
+  out
+}
+
+# Numeric codes follow inst/5.5_Trial_Discounting_Template_1k.qsf: every
+# I-item and Attend-SS export 1 = the immediate ("now") option and 2 = the
+# delayed option, but Attend-LL lists the delayed option first
+# (1 = "... in 25 years", 2 = "... now").
+normalize_dd_response <- function(x, index = NULL) {
+  .normalize_fivetrial_response(
+    x, index,
+    first = "ss", second = "ll",
+    first_text = "\\bnow\\b",
+    second_text = paste0(
+      "\\bin\\s+[0-9]+(\\.[0-9]+)?\\s*",
+      "(minute|hour|day|week|month|year)s?\\b"
+    ),
+    reversed_items = c("Attend-LL", "AttendLL"),
+    instrument = "delay-discounting"
   )
 }
 
@@ -15,6 +72,13 @@ normalize_dd_response <- function(x) {
 #' @return A dataframe with id, indexes, response, k value, and effective delay 50.
 #' @details
 #' Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
+#'
+#' Responses may be exported from Qualtrics either as choice text or as the
+#' template's numeric codes. Numeric codes are read per item: every `I` item
+#' and `Attend-SS` code 1 = the immediate ("now") option and 2 = the delayed
+#' option, while `Attend-LL` lists the delayed option first (1 = "in 25 years",
+#' 2 = "now"). Blank cells are treated as unanswered and dropped; any other
+#' unrecognised value is an error.
 #' @importFrom stats complete.cases
 #' @export
 #'
@@ -28,7 +92,8 @@ score_dd <- function(df) {
   ddframe <- dd1 |>
     tidyr::pivot_longer(cols = 2:ncol(dd1), names_to = "index", values_to = "response") %>%
     dplyr::filter(complete.cases(.)) |>
-    dplyr::mutate(response = normalize_dd_response(response))
+    dplyr::mutate(response = normalize_dd_response(response, index)) |>
+    dplyr::filter(!is.na(response))
   ddframe$kval <- NA
   ddframe$attentionflag <- "No"
   indexes <- paste0("I", seq(1, 31, by = 2))
@@ -114,7 +179,8 @@ ans_dd <- function(df) {
     dplyr::select(-dplyr::contains("Timing"), -dplyr::contains("_DO")) %>%
     tidyr::pivot_longer(cols = 2:ncol(.), names_to = "index", values_to = "response") %>%
     dplyr::filter(complete.cases(.)) |>
-    dplyr::mutate(response = normalize_dd_response(response))
+    dplyr::mutate(response = normalize_dd_response(response, index)) |>
+    dplyr::filter(!is.na(response))
   ans$index <- gsub("-", "", ans$index)
   return(ans)
 }
@@ -135,13 +201,17 @@ calc_dd <- function(df) {
            dplyr::arrange(ResponseId, q))
 }
 
-normalize_pd_response <- function(x) {
-  x_char <- as.character(x)
-  dplyr::case_when(
-    x_char == "1"                           ~ "sc",
-    x_char == "2"                           ~ "lu",
-    stringr::str_detect(x_char, "for sure") ~ "sc",
-    TRUE                                    ~ "lu"
+# Numeric codes: 1 = the certain ("for sure") option, 2 = the uncertain option,
+# for every item. (No probability template ships with the package; the
+# attention items are assumed to follow the same order.)
+normalize_pd_response <- function(x, index = NULL) {
+  .normalize_fivetrial_response(
+    x, index,
+    first = "sc", second = "lu",
+    first_text = "\\bfor sure\\b",
+    second_text = "\\bchance\\b",
+    reversed_items = character(0),
+    instrument = "probability-discounting"
   )
 }
 
@@ -152,6 +222,11 @@ normalize_pd_response <- function(x) {
 #' @return A dataframe with id, indexes, response, h value, and effective probability 50.
 #' @details
 #' Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
+#'
+#' Responses may be exported from Qualtrics either as choice text (the certain
+#' option contains "for sure", the uncertain option "chance") or as numeric
+#' codes (1 = certain, 2 = uncertain). Blank cells are treated as unanswered
+#' and dropped; any other unrecognised value is an error.
 #' @importFrom stats complete.cases
 #' @export
 #'
@@ -165,7 +240,8 @@ score_pd <- function(df) {
   pdframe <- pd1 |>
     tidyr::pivot_longer(cols = 2:ncol(pd1), names_to = "index", values_to = "response") %>%
     dplyr::filter(complete.cases(.)) |>
-    dplyr::mutate(response = normalize_pd_response(response))
+    dplyr::mutate(response = normalize_pd_response(response, index)) |>
+    dplyr::filter(!is.na(response))
   pdframe$hval <- NA
   pdframe$attentionflag <- "No"
   indexes <- paste0("I", seq(1, 31, by = 2))
@@ -252,7 +328,8 @@ ans_pd <- function(df) {
     dplyr::select(-dplyr::contains("Timing"), -dplyr::contains("_DO")) %>%
     tidyr::pivot_longer(cols = 2:ncol(.), names_to = "index", values_to = "response") %>%
     dplyr::filter(complete.cases(.)) |>
-    dplyr::mutate(response = normalize_pd_response(response))
+    dplyr::mutate(response = normalize_pd_response(response, index)) |>
+    dplyr::filter(!is.na(response))
   ans$index <- gsub("-", "", ans$index)
   return(ans)
 }

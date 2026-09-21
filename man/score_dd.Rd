@@ -17,6 +17,13 @@ Score 5.5 trial delay discounting from Qualtrics template
 }
 \details{
 Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
+
+Responses may be exported from Qualtrics either as choice text or as the
+template's numeric codes. Numeric codes are read per item: every \code{I} item
+and \code{Attend-SS} code 1 = the immediate ("now") option and 2 = the delayed
+option, while \code{Attend-LL} lists the delayed option first (1 = "in 25 years",
+2 = "now"). Blank cells are treated as unanswered and dropped; any other
+unrecognised value is an error.
 }
 \examples{
 score_dd(five.fivetrial_dd)

@@ -14,6 +14,19 @@ which shipped none).
   now strict: a decline of exactly `c2 * ll` passes. `ll`, `c1` and `c2` are
   validated. Verdicts on proportion data with `ll = 1` change only at the
   exact C2 threshold.
+* `score_dd()`, `ans_dd()` and `calc_dd()` read numeric Qualtrics exports per
+  item. The bundled 5.5-trial template codes `Attend-LL` in reverse order
+  (1 = "in 25 years", 2 = "now"), so numeric exports previously flagged
+  respondents who chose "now" and passed those who chose the 25-year option,
+  and applied the attention-item k to the wrong respondents. Text exports were
+  unaffected.
+* The 5.5-trial delay and probability scorers (`score_dd()`, `ans_dd()`,
+  `calc_dd()`, `score_pd()`, `ans_pd()`, `calc_pd()`) now recognise only the
+  template's numeric codes and option texts. Previously any other value
+  (a typo, `"-99"`, a relabelled export, a blank cell) was silently scored as
+  the delayed/uncertain choice with a real k or h. Blank cells are now
+  treated as unanswered and dropped, and other unrecognised values raise an
+  error naming the item and value.
 
 ### Monte Carlo power analysis
 

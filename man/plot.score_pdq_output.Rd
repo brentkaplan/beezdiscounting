@@ -21,7 +21,9 @@ A ggplot object showing the boxplot of PDQ scores.
 \description{
 Boxplot of PDQ h metrics (block1_h, block2_h, block3_h, mean_h,
 geomean_h, and the pooled overall_h extension), handling the same log
-transformations as \code{\link[=plot.score_mcq_output]{plot.score_mcq_output()}}.
+transformations as \code{\link[=plot.score_mcq_output]{plot.score_mcq_output()}}. A caption marks \code{overall_h}
+as a pooled beezdiscounting extension: pooling the three blocks presumes a
+common h across reward amounts.
 }
 \examples{
 plot(score_pdq(pdq))

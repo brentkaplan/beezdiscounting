@@ -55,6 +55,16 @@ ids, none missing) and responses coded 0, 1, or \code{NA} (numeric, logical, or
 character/factor values that coerce to 0/1). Malformed input errors
 rather than silently mis-scoring. Contrast with \code{\link[=mcq_to_choice]{mcq_to_choice()}}'s
 lenient, ragged contract, which accepts partial per-subject coverage.
+
+Ladder edges follow the Kaplan et al. (2014) Excel scorers. The overall
+(all-item) ladder appends a fixed edge value past the steepest item:
+0.25 for the 27-item MCQ and 0.1333 for the 21-item MCQ. The small /
+medium / large magnitude ladders instead repeat their own last k. A
+respondent who chooses the smaller-sooner reward on every item therefore
+gets an overall k that is not the mean of their magnitude k's (for the
+21-item MCQ roughly 0.132 overall vs 0.133 / 0.129 / 0.131 by magnitude).
+The 21-item ladder keeps the published item order within each k rank,
+which is not strictly ascending in k; it must not be re-sorted.
 }
 \examples{
 score_mcq(mcq27, items = 27)

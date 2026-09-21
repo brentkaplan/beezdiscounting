@@ -282,7 +282,9 @@ score_one_pdq <- function(dat, reg, impute_method = "none", round = 6) {
 #'
 #' Boxplot of PDQ h metrics (block1_h, block2_h, block3_h, mean_h,
 #' geomean_h, and the pooled overall_h extension), handling the same log
-#' transformations as [plot.score_mcq_output()].
+#' transformations as [plot.score_mcq_output()]. A caption marks `overall_h`
+#' as a pooled beezdiscounting extension: pooling the three blocks presumes a
+#' common h across reward amounts.
 #'
 #' @param x A data frame returned by the `score_pdq` function.
 #' @param ... Additional arguments passed to methods.
@@ -294,7 +296,7 @@ score_one_pdq <- function(dat, reg, impute_method = "none", round = 6) {
 #'
 #' @examples plot(score_pdq(pdq))
 plot.score_pdq_output <- function(x, ..., xlab = "Metric", alpha = 0.3) {
-  .plot_score_mcq(
+  p <- .plot_score_mcq(
     x,
     xlab = xlab,
     alpha = alpha,
@@ -307,6 +309,13 @@ plot.score_pdq_output <- function(x, ..., xlab = "Metric", alpha = 0.3) {
       "overall_h"
     ),
     param = "h"
+  )
+  # Audit F-BZ2-4: the pooled ladder is not part of the published scoring.
+  p + ggplot2::labs(
+    caption = paste0(
+      "overall_h pools all 30 items (a beezdiscounting extension that assumes ",
+      "one h across amounts); mean_h is the published composite."
+    )
   )
 }
 

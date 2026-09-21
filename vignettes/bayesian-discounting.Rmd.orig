@@ -39,7 +39,7 @@ fit <- fit_dd_brms(
 summary(fit)
 tidy(fit)        # k on the natural scale (posterior medians of exp draws)
 confint(fit)     # equal-tailed credible intervals
-head(ranef(fit)) # per-subject k posterior summaries
+head(ranef(fit)) # per-subject log k offsets (ln scale) and k
 ```
 
 The posterior discount curve is what the Bayesian fit adds over a point
@@ -108,8 +108,20 @@ fit2 <- fit_dd_brms(
 
 The two-parameter equations (`"green-myerson"`, `"rachlin"`) add a
 population-level shape exponent with prior `normal(0, 0.5)` on log s
-(s near 1 a priori); zero delays are valid for Rachlin (the implementation
-guards the `0^s` case exactly as the TMB template does).
+(s near 1 a priori, 95% of the prior mass on roughly 0.38--2.66); zero
+delays are valid for Rachlin (the implementation guards the `0^s` case
+exactly as the TMB template does).
+
+These defaults are weakly *regularising*, not uninformative. With few
+subjects, the `log s` prior pulls the k--s pair of the two-parameter
+equations toward s = 1 (the pair is poorly identified from indifference
+points alone), and the half-t priors on the random-effect SDs matter when
+there are about 30 subjects or fewer. For Rachlin the `logk` anchor is
+also delay-unit dependent in a second way: changing the delay unit by a
+factor c rescales k by c^s, not c, so the same prior centre describes a
+different curve prior whenever s is far from 1. Report a prior-sensitivity
+check (refit with wider `logk`/`logs` priors) alongside two-parameter
+fits.
 
 ## Trial-level choice
 
@@ -168,8 +180,13 @@ get_dd_comparisons(fitc_grp)     # log10 contrasts + ratios, post.prob
 
 ## v1 scope
 
-Random effects are intercept-only on k (`k ~ 1`); the TMB tier's
-`k + phi ~ 1` is planned via a distributional formula.
+Random effects are an intercept on log k (`k ~ 1`), optionally with a
+per-subject precision intercept (`k + phi ~ 1`, beta family), as in the TMB
+tier. Two differences from the TMB tier remain: the TMB SLT-beta fit bounds
+the precision below at phi = 0.1 while the brms beta fit does not, and
+`ranef()` returns each subject's log k offset on the natural-log scale,
+whereas `ranef()` on a one-random-effect TMB fit returns the standardised
+deviate u.
 `get_dd_param_emms()` and `get_dd_comparisons()` accept Bayesian
 indifference-point and structural choice fits (quantile credible
 intervals; `post.prob` in place of adjusted p-values). Both Bayesian

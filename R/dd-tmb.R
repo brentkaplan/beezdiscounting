@@ -1118,10 +1118,49 @@ NULL
 
 #' Fit an indifference-point mixed-effects discounting model via TMB
 #'
-#' Fits a 1-parameter discounting model (Mazur hyperbolic or exponential) with a
-#' random intercept on `log k`, between-subject fixed effects, and either an
-#' SLT-beta or Gaussian observation family, using Template Model Builder for
-#' exact AD + Laplace approximation.
+#' Fits a discounting model (Mazur hyperbolic, exponential, or the
+#' two-parameter Green-Myerson / Rachlin hyperboloids) with a random intercept
+#' on `log k`, between-subject fixed effects, and either an SLT-beta or
+#' Gaussian observation family, using Template Model Builder for exact AD +
+#' Laplace approximation.
+#'
+#' @section Scales, guards and floors:
+#' * **Random-effect scales.** [VarCorr()] reports the subject SD of `log k`
+#'   on the natural-log scale (`Term = "k"` means log k); [tidy()] and
+#'   [summary()] convert it to the log10 scale and label it so. [ranef()]
+#'   returns the standardised deviate `u_i` for a `k ~ 1` fit but
+#'   natural-log offsets (`re_k`, `re_phi` / `re_s`) for a two-random-effect
+#'   fit.
+#' * **Mean guard.** The fitted mean is held inside `[1e-6, 1 - 1e-6]`. For
+#'   the exponential equation this binds once `k * delay` exceeds about
+#'   13.8 (for `k = 0.01`, delays beyond roughly 1,400 days); such
+#'   observations carry no information about `k`, so very steep discounters
+#'   measured at long delays lose curvature. The hyperbolic forms are
+#'   essentially unaffected.
+#' * **Shape `s`.** The reported `s` is the unclamped population value
+#'   `exp(log_s)`. With `k + s ~ 1` each subject's effective `s` is
+#'   soft-clamped into `(0.05, 20)`, and the `VarCorr()` SD of `s` is on the
+#'   latent (pre-clamp) log scale.
+#' * **Precision floor.** SLT-beta precision is bounded below at
+#'   `phi = 0.1`. For `k ~ 1` this is an optimizer bound that
+#'   `tmb_control$lower` can relax; with `k + phi ~ 1` each subject's `phi`
+#'   is floored at 0.1 inside the likelihood and cannot be relaxed.
+#'
+#' @section Two-parameter equations (Green-Myerson, Rachlin):
+#' `k` and `s` trade off against each other, and with the few delays of a
+#' typical titration task (about 7) their maximum-likelihood estimates are
+#' biased at realistic sample sizes. In simulation (N = 80 to 400 subjects,
+#' 7 delays) `log k` came out low by roughly 0.1 to 0.25 and `s` high by
+#' up to about 0.2, with small biases in the random-effect SDs for
+#' `k + s ~ 1`. This is a property of the estimator with this design, not of
+#' the code: an independent likelihood reproduces the same estimates. The
+#' pair is also sensitive to how responses near zero are recorded. The SLT-beta
+#' log-density grows steeply as a response approaches 0, so the same data
+#' rounded to 3 decimals, or floored at 0.001, can move `(log k, s)` by
+#' several tenths; Mazur fits to the same data move very little. Report the
+#' recording resolution of the indifference points, keep it identical
+#' across groups being compared, and treat `(k, s)` from these equations as
+#' less stable than a one-parameter `k`.
 #'
 #' @param data Long data frame with subject id, delay, and indifference
 #'   proportion columns.

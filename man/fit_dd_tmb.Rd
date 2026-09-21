@@ -112,11 +112,56 @@ columns), row-aligned with the design matrix.}
 }
 }
 \description{
-Fits a 1-parameter discounting model (Mazur hyperbolic or exponential) with a
-random intercept on \verb{log k}, between-subject fixed effects, and either an
-SLT-beta or Gaussian observation family, using Template Model Builder for
-exact AD + Laplace approximation.
+Fits a discounting model (Mazur hyperbolic, exponential, or the
+two-parameter Green-Myerson / Rachlin hyperboloids) with a random intercept
+on \verb{log k}, between-subject fixed effects, and either an SLT-beta or
+Gaussian observation family, using Template Model Builder for exact AD +
+Laplace approximation.
 }
+\section{Scales, guards and floors}{
+
+\itemize{
+\item \strong{Random-effect scales.} \code{\link[nlme:VarCorr]{nlme::VarCorr()}} reports the subject SD of \verb{log k}
+on the natural-log scale (\code{Term = "k"} means log k); \code{\link[=tidy]{tidy()}} and
+\code{\link[=summary]{summary()}} convert it to the log10 scale and label it so. \code{\link[=ranef]{ranef()}}
+returns the standardised deviate \code{u_i} for a \code{k ~ 1} fit but
+natural-log offsets (\code{re_k}, \code{re_phi} / \code{re_s}) for a two-random-effect
+fit.
+\item \strong{Mean guard.} The fitted mean is held inside \verb{[1e-6, 1 - 1e-6]}. For
+the exponential equation this binds once \code{k * delay} exceeds about
+13.8 (for \code{k = 0.01}, delays beyond roughly 1,400 days); such
+observations carry no information about \code{k}, so very steep discounters
+measured at long delays lose curvature. The hyperbolic forms are
+essentially unaffected.
+\item \strong{Shape \code{s}.} The reported \code{s} is the unclamped population value
+\code{exp(log_s)}. With \code{k + s ~ 1} each subject's effective \code{s} is
+soft-clamped into \verb{(0.05, 20)}, and the \code{VarCorr()} SD of \code{s} is on the
+latent (pre-clamp) log scale.
+\item \strong{Precision floor.} SLT-beta precision is bounded below at
+\code{phi = 0.1}. For \code{k ~ 1} this is an optimizer bound that
+\code{tmb_control$lower} can relax; with \code{k + phi ~ 1} each subject's \code{phi}
+is floored at 0.1 inside the likelihood and cannot be relaxed.
+}
+}
+
+\section{Two-parameter equations (Green-Myerson, Rachlin)}{
+
+\code{k} and \code{s} trade off against each other, and with the few delays of a
+typical titration task (about 7) their maximum-likelihood estimates are
+biased at realistic sample sizes. In simulation (N = 80 to 400 subjects,
+7 delays) \verb{log k} came out low by roughly 0.1 to 0.25 and \code{s} high by
+up to about 0.2, with small biases in the random-effect SDs for
+\code{k + s ~ 1}. This is a property of the estimator with this design, not of
+the code: an independent likelihood reproduces the same estimates. The
+pair is also sensitive to how responses near zero are recorded. The SLT-beta
+log-density grows steeply as a response approaches 0, so the same data
+rounded to 3 decimals, or floored at 0.001, can move \verb{(log k, s)} by
+several tenths; Mazur fits to the same data move very little. Report the
+recording resolution of the indifference points, keep it identical
+across groups being compared, and treat \verb{(k, s)} from these equations as
+less stable than a one-parameter \code{k}.
+}
+
 \examples{
 \donttest{
 # Small two-subject long-format indifference-point data frame.

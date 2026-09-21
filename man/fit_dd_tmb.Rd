@@ -36,7 +36,10 @@ proportion columns.}
 population nonlinearity exponent \code{s} (estimated on the log scale) and
 reduce to \code{"mazur"} at \code{s = 1}.}
 
-\item{family}{Observation family: \code{"sltb"} (default) or \code{"gaussian"}.}
+\item{family}{Observation family: \code{"sltb"} (default) or \code{"gaussian"}.
+For \code{"sltb"}, responses outside \verb{[0, 1]} after scaling are clamped (with a
+warning); for \code{"gaussian"}, whose likelihood is unbounded, they are kept
+as observed.}
 
 \item{random_effects}{RE formula: \code{k ~ 1} (single random intercept on
 \verb{log k}), \code{k + phi ~ 1} (a joint 2-D random intercept on

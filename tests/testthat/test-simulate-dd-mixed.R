@@ -55,11 +55,32 @@ describe("simulate_dd_ip()", {
     expect_lt(max(abs(by_delay - mu_true)), 0.02)
   })
 
-  it("gaussian draws clamp to [0,1]", {
+  it("gaussian draws are unclamped, matching the fitted Gaussian likelihood (F-BZ8-1)", {
     sim <- simulate_dd_ip(
       n_subjects = 50, family = "gaussian", sigma_e = 0.4, seed = 7
     )
+    expect_true(any(sim$y > 1))
+    expect_true(any(sim$y < 0))
+    # at delay 0 the mean is exactly 1; clamping would pull the sample mean to ~0.84
+    sim0 <- simulate_dd_ip(n_subjects = 4000, delays = 0, family = "gaussian",
+                           sigma_e = 0.4, seed = 8)
+    expect_lt(abs(mean(sim0$y) - 1), 0.02)
+  })
+
+  it("sltb draws stay in [0,1]", {
+    sim <- simulate_dd_ip(n_subjects = 50, family = "sltb", phi = 3, seed = 7)
     expect_true(all(sim$y >= 0 & sim$y <= 1))
+  })
+
+  it("fit_dd_tmb(family = 'gaussian') fits the unclamped draws as simulated", {
+    sim <- simulate_dd_ip(n_subjects = 30, family = "gaussian", sigma_e = 0.3,
+                          seed = 9)
+    expect_true(any(sim$y > 1) && any(sim$y < 0))
+    fit <- expect_no_warning(
+      fit_dd_tmb(sim, equation = "mazur", family = "gaussian", verbose = 0))
+    expect_identical(fit$data$y, sim$y)
+    expect_identical(fit$coercion_info$n_clamped_hi, 0L)
+    expect_identical(fit$coercion_info$n_clamped_lo, 0L)
   })
 
   it("green-myerson draws track the (1+k*x)^(-s) mean curve in expectation", {

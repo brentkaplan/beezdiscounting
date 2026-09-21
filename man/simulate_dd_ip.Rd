@@ -97,8 +97,9 @@ discount rate \verb{log k_i = log_k_pop + delta_k[condition] + u_i},
 discounting function \code{mu} (Mazur hyperbola, exponential, Green-Myerson, or
 Rachlin), and observed \code{y}
 is drawn from the scale-location-truncated beta (\code{family = "sltb"}) via the
-inverse-CDF on the truncated beta, or from a clamped Gaussian
-(\code{family = "gaussian"}).
+inverse-CDF on the truncated beta, or from an unclamped Gaussian
+(\code{family = "gaussian"}, \code{y ~ N(mu, sigma_e^2)}, the likelihood
+\code{\link[=fit_dd_tmb]{fit_dd_tmb()}} fits; draws can fall outside \verb{[0, 1]}).
 }
 \details{
 The SLT draw uses the same constants as the C++ template and the verified

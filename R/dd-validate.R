@@ -27,7 +27,7 @@
 #'   \item `response_scale = "amount"`: divide by `ll` (the larger-later
 #'     reward); `ll` is required.
 #' }
-#' After scaling, values `> 1` are clamped to 1 and values `< 0` to 0, each
+#' After scaling (unless `clamp = FALSE`), values `> 1` are clamped to 1 and values `< 0` to 0, each
 #' with a warning naming the count. `0` and `1` are valid (the SLT-beta
 #' family's purpose), so they are never warned about.
 #'
@@ -39,6 +39,11 @@
 #'   `response_scale = "amount"`.
 #' @param response_scale One of `"proportion"` (default), `"percent"`,
 #'   `"amount"`.
+#' @param clamp Logical; clamp post-scaling `y` into `[0, 1]` (default). The
+#'   Gaussian-family fitters pass `FALSE`: their likelihood is unbounded, so
+#'   out-of-range responses are kept as observed and a few values above 1.5 are
+#'   not treated as an ambiguous scale (clearly percent-scaled data are still
+#'   divided by 100).
 #' @param extra_cols Optional character vector of additional column names in
 #'   `data` to carry through onto the returned frame (the union of `factors`
 #'   and `continuous_covariates`). These are retained verbatim so the model
@@ -59,7 +64,8 @@
                             id_var = "id",
                             ll = NULL,
                             extra_cols = NULL,
-                            response_scale = c("proportion", "percent", "amount")) {
+                            response_scale = c("proportion", "percent", "amount"),
+                            clamp = TRUE) {
   response_scale <- match.arg(response_scale)
 
   if (!is.data.frame(data)) {
@@ -190,6 +196,8 @@
       call. = FALSE
     )
   } else if (response_scale == "proportion" && is.finite(max_y) && max_y > 1.5) {
+    # (With clamp = FALSE -- a Gaussian likelihood -- values beyond [0, 1] are
+    # legitimate draws, so only the unambiguous percent case is acted on.)
     # B9: robust auto-detect. Divide by 100 ONLY when the data are clearly
     # percent -- a MAJORITY of the positive values exceed 1.5 AND the maximum is
     # <= 100. A few out-of-range values among otherwise-valid proportions are
@@ -205,7 +213,7 @@
         "Detected percent-scale responses (most positive values > 1.5); divided y by 100 to map to [0, 1].",
         call. = FALSE
       )
-    } else {
+    } else if (isTRUE(clamp)) {
       stop(
         sprintf(
           paste0("Ambiguous response scale: %d value(s) exceed 1.5 but the data ",
@@ -219,8 +227,10 @@
   }
 
   # --- clamp mild out-of-range (loud, named counts) ------------------------
-  n_clamped_hi <- sum(long$y > 1, na.rm = TRUE)
-  n_clamped_lo <- sum(long$y < 0, na.rm = TRUE)
+  # Skipped for Gaussian likelihoods (clamp = FALSE): their density is
+  # unbounded, so clamping would censor the data the model describes (F-BZ8-1).
+  n_clamped_hi <- if (isTRUE(clamp)) sum(long$y > 1, na.rm = TRUE) else 0L
+  n_clamped_lo <- if (isTRUE(clamp)) sum(long$y < 0, na.rm = TRUE) else 0L
   if (n_clamped_hi > 0L) long$y[!is.na(long$y) & long$y > 1] <- 1
   if (n_clamped_lo > 0L) long$y[!is.na(long$y) & long$y < 0] <- 0
   if (n_clamped_hi > 0L || n_clamped_lo > 0L) {

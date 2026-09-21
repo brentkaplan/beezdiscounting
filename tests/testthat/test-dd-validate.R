@@ -187,3 +187,27 @@ describe(".dd_validate_ip", {
     expect_false(grepl("as requested", w))
   })
 })
+
+describe(".dd_validate_ip(clamp = FALSE) (gaussian likelihoods, F-BZ8-1)", {
+  d <- data.frame(id = rep(1:2, each = 3), x = rep(c(1, 10, 100), 2),
+                  y = c(1.2, 0.5, -0.1, 1.6, 0.4, 0.1))
+  it("keeps out-of-range y and does not raise the ambiguous-scale error", {
+    res <- expect_no_warning(.dd_validate_ip(d, clamp = FALSE))
+    expect_identical(res$data$y, d$y)
+    expect_identical(res$coercion_info$n_clamped_hi, 0L)
+    expect_identical(res$coercion_info$scale_detected, "proportion")
+  })
+  it("still clamps (and errors on the ambiguous mix) by default", {
+    expect_error(.dd_validate_ip(d), "Ambiguous response scale")
+    d2 <- d
+    d2$y[4] <- 1.4
+    expect_warning(res <- .dd_validate_ip(d2), "Clamped")
+    expect_true(all(res$data$y >= 0 & res$data$y <= 1))
+  })
+  it("still rescales clearly percent-scaled data", {
+    dp <- d
+    dp$y <- c(90, 50, 10, 95, 40, 5)
+    expect_warning(res <- .dd_validate_ip(dp, clamp = FALSE), "percent")
+    expect_equal(res$data$y, dp$y / 100)
+  })
+})

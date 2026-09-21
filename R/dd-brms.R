@@ -298,7 +298,8 @@ fit_dd_brms <- function(
     id_var = id_var,
     ll = ll,
     extra_cols = unique(c(factors, continuous_covariates)),
-    response_scale = response_scale
+    response_scale = response_scale,
+    clamp = !identical(family, "gaussian")
   )
   prep <- .dd_tmb_prepare_data(
     validated$data,

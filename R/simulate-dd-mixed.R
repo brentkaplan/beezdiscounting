@@ -7,8 +7,9 @@
 #' discounting function `mu` (Mazur hyperbola, exponential, Green-Myerson, or
 #' Rachlin), and observed `y`
 #' is drawn from the scale-location-truncated beta (`family = "sltb"`) via the
-#' inverse-CDF on the truncated beta, or from a clamped Gaussian
-#' (`family = "gaussian"`).
+#' inverse-CDF on the truncated beta, or from an unclamped Gaussian
+#' (`family = "gaussian"`, `y ~ N(mu, sigma_e^2)`, the likelihood
+#' [fit_dd_tmb()] fits; draws can fall outside `[0, 1]`).
 #'
 #' The SLT draw uses the same constants as the C++ template and the verified
 #' reference density: `s_slt = 1.0000001`, `l = 1e-8`, with
@@ -210,10 +211,12 @@ simulate_dd_ip <- function(
     hi <- stats::pbeta(1 / s_slt + l, a, b)
     uu <- stats::runif(length(mu), lo, hi)
     y <- (stats::qbeta(uu, a, b) - l) * s_slt
+    y <- pmin(pmax(y, 0), 1)   # guard only: the SLT draw is already in [0, 1]
   } else {
+    # Unclamped, matching the unbounded Gaussian density fitted by
+    # fit_dd_tmb(family = "gaussian") (F-BZ8-1).
     y <- stats::rnorm(length(mu), mu, sigma_e)
   }
-  y <- pmin(pmax(y, 0), 1)
 
   out <- if (n_conditions > 1) {
     tibble::tibble(id = id, condition = rep(cond_lab, each = n_delays),

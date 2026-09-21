@@ -38,6 +38,15 @@ which shipped none).
   fits (e.g. `tmb_control = list(iter_max = 3)`) returned finite p-values and
   intervals with no warning. Non-positive-definite Hessian and failed
   `sdreport()` warnings are likewise no longer silenced by `verbose = 0`.
+* `simulate_dd_ip(family = "gaussian")` no longer clamps draws to `[0, 1]`,
+  and `fit_dd_tmb(family = "gaussian")` / `fit_dd_brms(family = "gaussian")`
+  no longer clamp responses outside `[0, 1]` (nor stop on a few values
+  above 1.5 as an "ambiguous scale"; clearly percent-scaled data are still
+  divided by 100). The Gaussian likelihood is unbounded, so the clamp made
+  the simulated data, and the data the model saw, differ from the model
+  being fitted: near delay 0 about half the draws piled up at 1.
+  Gaussian-family simulations and `power_discounting(family = "gaussian")`
+  results change; the SLT-beta family is unaffected.
 
 ### Monte Carlo power analysis
 

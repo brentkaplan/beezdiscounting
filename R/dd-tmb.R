@@ -1131,6 +1131,9 @@ NULL
 #'   population nonlinearity exponent `s` (estimated on the log scale) and
 #'   reduce to `"mazur"` at `s = 1`.
 #' @param family Observation family: `"sltb"` (default) or `"gaussian"`.
+#'   For `"sltb"`, responses outside `[0, 1]` after scaling are clamped (with a
+#'   warning); for `"gaussian"`, whose likelihood is unbounded, they are kept
+#'   as observed.
 #' @param random_effects RE formula: `k ~ 1` (single random intercept on
 #'   `log k`), `k + phi ~ 1` (a joint 2-D random intercept on
 #'   `(log k, log phi)`, SLT-beta only), or `k + s ~ 1` (a joint 2-D random
@@ -1260,7 +1263,8 @@ fit_dd_tmb <- function(data,
   validated <- .dd_validate_ip(data, y_var = y_var, x_var = x_var,
                                id_var = id_var, ll = ll,
                                extra_cols = extra_cols,
-                               response_scale = response_scale)
+                               response_scale = response_scale,
+                               clamp = !identical(family, "gaussian"))
   long <- validated$data            # canonical id/x/y + retained extras
   coercion_info <- validated$coercion_info
 

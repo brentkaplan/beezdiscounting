@@ -40,6 +40,10 @@ rows, following the broom coefficient-table contract.
 fixed-effect (\code{beta_k}) rows. \code{statistic} and \code{p.value} are always computed
 on the estimation (log-k) scale - Wald statistics are not recomputed after
 back-transforming (broom convention; see the \code{summary()} note for details).
+Each test is of the log-scale coefficient against 0: for the intercept row
+that is \code{k = 1} (rarely a meaningful null), and for a condition or
+covariate row it is a fold-change of 1 (no difference). The \code{s} row tests
+\code{s = 1}.
 Variance-component rows carry \code{NA} for \code{statistic} and \code{p.value} and are not
 affected by \code{report_space}.
 }

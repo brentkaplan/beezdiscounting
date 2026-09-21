@@ -32,7 +32,10 @@ scales).}
 }
 \value{
 A tibble with columns \code{term}, \code{estimate}, \code{conf.low}, \code{conf.high},
-\code{level}.
+\code{level}, and \code{estimate_scale} (structural mode: \code{"log"} or \code{"natural"}
+for the \code{beta_k}/\code{log_gamma} rows, \code{"internal"} otherwise; descriptive
+mode: \code{"logit"} for the fixed effects, \code{"correlation"} for \code{cor_slopes},
+\code{"internal"} for the log SDs).
 }
 \description{
 Wald (Hessian-based) confidence intervals: \verb{estimate +/- z * se} on the

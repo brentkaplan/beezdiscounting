@@ -33,7 +33,10 @@ scale).}
 }
 \value{
 A tibble with columns \code{term}, \code{estimate}, \code{conf.low}, \code{conf.high},
-\code{level}.
+\code{level}, and \code{estimate_scale} (\code{"log"} or \code{"natural"} for the \code{beta_k}
+and \code{log_s} rows, \code{"internal"} for the variance/auxiliary rows). Note that
+\code{confint()} defaults to the internal scale while \code{\link[=tidy]{tidy()}} defaults to the
+natural scale.
 }
 \description{
 Wald (Hessian-based) confidence intervals: \verb{estimate +/- z * se} on the

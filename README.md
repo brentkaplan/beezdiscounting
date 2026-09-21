@@ -536,6 +536,10 @@ same k value” ([Yeh et al,
 tbl4 <- score_mcq27(fake_data_missing, impute_method = "INN")
 ```
 
+    Warning: INN imputation left 1 item(s) missing for subject 2 (neighbours
+    disagree or are all missing; `random = TRUE` would fill them); scores that need
+    them will be NA.
+
 | subjectid | overall_k |  small_k | medium_k |  large_k | geomean_k |
 |----------:|----------:|---------:|---------:|---------:|----------:|
 |         1 |  0.000158 | 0.000158 | 0.000158 | 0.000251 |  0.000185 |

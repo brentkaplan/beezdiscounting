@@ -385,15 +385,16 @@
                                          verbose = 1) {
   sdr <- tryCatch(TMB::sdreport(obj), error = function(e) NULL)
   hessian_pd <- if (!is.null(sdr)) isTRUE(sdr$pdHess) else NA
-  if (isTRUE(verbose >= 1)) {
-    if (is.null(sdr)) {
-      cli::cli_warn(c("Standard errors unavailable: {.fn TMB::sdreport} failed.",
-                      "i" = "Fixed-effect SEs/CIs will be {.val NA}."))
-    } else if (!isTRUE(hessian_pd)) {
-      cli::cli_warn(c("Standard errors may be unreliable: the Hessian is not \\
-                       positive-definite.",
-                      "i" = "Fixed-effect SEs/CIs will be {.val NA}."))
-    }
+  # Announced regardless of `verbose` (audit F-BZ4-1 fold).
+  if (is.null(sdr)) {
+    cli::cli_warn(c("Standard errors unavailable: {.fn TMB::sdreport} failed.",
+                    "i" = "Fixed-effect SEs/CIs will be {.val NA}."),
+                  class = c("beezdiscounting_hessian_warning", "beezdiscounting_warning"))
+  } else if (!isTRUE(hessian_pd)) {
+    cli::cli_warn(c("Standard errors may be unreliable: the Hessian is not \\
+                     positive-definite.",
+                    "i" = "Fixed-effect SEs/CIs will be {.val NA}."),
+                  class = c("beezdiscounting_hessian_warning", "beezdiscounting_warning"))
   }
   par_full <- opt$par
   par_names <- names(par_full)
@@ -433,9 +434,10 @@
                                            random_slopes, verbose = 1) {
   sdr <- tryCatch(TMB::sdreport(obj), error = function(e) NULL)
   hessian_pd <- if (!is.null(sdr)) isTRUE(sdr$pdHess) else NA
-  if (isTRUE(verbose >= 1) && (is.null(sdr) || !isTRUE(hessian_pd))) {
+  if (is.null(sdr) || !isTRUE(hessian_pd)) {
     cli::cli_warn(c("Standard errors may be unreliable (sdreport failed or \\
-                     non-PD Hessian).", "i" = "Fixed-effect SEs/CIs will be {.val NA}."))
+                     non-PD Hessian).", "i" = "Fixed-effect SEs/CIs will be {.val NA}."),
+                  class = c("beezdiscounting_hessian_warning", "beezdiscounting_warning"))
   }
   par_full <- opt$par
   par_names <- names(par_full)
@@ -544,29 +546,28 @@
   start_sets <- list(starts, perturb(0.5, c(0.3, 0.2)), perturb(-0.5, c(0.8, 0.6)))
   if (!isTRUE(multi_start)) start_sets <- start_sets[1]
 
-  best_kept <- NULL; best_kept_nll <- Inf
-  best_any <- NULL; best_any_nll <- Inf
+  candidates <- vector("list", length(start_sets))
   opt_warnings <- character(0)
-  for (s in start_sets) {
+  for (i in seq_along(start_sets)) {
+    s <- start_sets[[i]]
     res <- tryCatch({
       o <- TMB::MakeADFun(tmb_data, s, map = map, random = random_arg,
                           DLL = "beezdiscounting", silent = verbose < 2)
       opt_res <- .dd_tmb_run_optimizer(o, o$par, tmb_control, user_specified, verbose)
       list(obj = o, opt = opt_res$opt, nll = opt_res$opt$objective,
-           warnings = opt_res$warnings)
+           warnings = opt_res$warnings, start_idx = i)
     }, error = function(e) NULL)
     if (is.null(res) || !is.finite(res$nll)) next
     if (length(res$warnings)) opt_warnings <- c(opt_warnings, res$warnings)
-    if (res$nll < best_any_nll) { best_any_nll <- res$nll; best_any <- res }
-    if (!.dd_choice_descr_blowup(res$opt) && res$nll < best_kept_nll) {
-      best_kept_nll <- res$nll; best_kept <- res
-    }
+    candidates[i] <- list(res)
   }
-  best <- best_kept %||% best_any
+  # F-BZ4-1: converged + sane first, then sane, then any (lowest NLL within).
+  best <- .dd_select_start(candidates, .dd_choice_descr_blowup)
   if (is.null(best)) stop("All starting value sets failed for the descriptive fit_dd_choice().",
                           call. = FALSE)
   obj <- best$obj; opt <- best$opt
   converged <- isTRUE(opt$convergence == 0)
+  if (!converged) .dd_warn_fit_not_converged(opt, "Descriptive choice fit")
   try(obj$fn(opt$par), silent = TRUE)
 
   expected_free <- "theta"
@@ -593,6 +594,7 @@
     Sigma = est$Sigma, subject_pars = est$slopes,
     loglik = -nll, AIC = 2 * nll + 2 * np, BIC = 2 * nll + np * log(prepared$n_obs),
     converged = converged, opt_warnings = opt_warnings,
+    multi_start_info = best$selection,
     se_available = !is.null(est$sdr) && isTRUE(est$hessian_pd),
     data = prepared$data, coercion_info = validated$coercion_info
   ), class = "beezdiscounting_choice")
@@ -647,7 +649,8 @@
 #' @param factors,factor_interaction,continuous_covariates Between-subject design
 #'   on `log k` (same semantics as [fit_dd_tmb()]). Structural only.
 #' @param start_values,tmb_control,multi_start,verbose,... As in [fit_dd_tmb()].
-#' @return An object of class `beezdiscounting_choice`.
+#' @return An object of class `beezdiscounting_choice`. Start selection and the
+#'   non-convergence warnings follow [fit_dd_tmb()] (see its `multi_start_info`).
 #' @seealso [simulate_dd_choice()] for data generation; [nlme::VarCorr()] and
 #'   [nlme::ranef()] for descriptive-mode random-effect output;
 #'   [get_dd_param_emms()] and [get_dd_comparisons()] for structural-mode
@@ -765,42 +768,35 @@ fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
   # avoid modifying the IP helper) — keep the selection logic in sync if either
   # changes.
   # R7: best_kept (passes log-k blow-up guard) AND best_any (lowest finite nll).
-  best_kept <- NULL
-  best_kept_nll <- Inf
-  best_any <- NULL
-  best_any_nll <- Inf
+  candidates <- vector("list", length(start_sets))
   opt_warnings <- character(0)
-  for (s in start_sets) {
+  for (i in seq_along(start_sets)) {
+    s <- start_sets[[i]]
     res <- tryCatch({
       o <- TMB::MakeADFun(tmb_data, s, map = map, random = "u",
                           DLL = "beezdiscounting", silent = verbose < 2)
       opt_res <- .dd_tmb_run_optimizer(o, o$par, tmb_control, user_specified, verbose)
       list(obj = o, opt = opt_res$opt, nll = opt_res$opt$objective,
-           warnings = opt_res$warnings)
+           warnings = opt_res$warnings, start_idx = i)
     }, error = function(e) NULL)
     if (is.null(res) || !is.finite(res$nll)) next
     if (length(res$warnings)) opt_warnings <- c(opt_warnings, res$warnings)
-    if (res$nll < best_any_nll) {
-      best_any_nll <- res$nll
-      best_any <- res
-    }
-    if (!.dd_logk_blowup(res$opt, tmb_data$X) && res$nll < best_kept_nll) {
-      best_kept_nll <- res$nll
-      best_kept <- res
-    }
+    candidates[i] <- list(res)
   }
-  best <- best_kept
+  # F-BZ4-1: converged + sane first, then sane, then any (lowest NLL within).
+  best <- .dd_select_start(candidates,
+                           function(o) .dd_logk_blowup(o, tmb_data$X))
   if (is.null(best)) {
-    if (is.null(best_any)) {
-      stop("All starting value sets failed for fit_dd_choice().", call. = FALSE)
-    }
-    best <- best_any
+    stop("All starting value sets failed for fit_dd_choice().", call. = FALSE)
+  }
+  if (identical(best$selection$tier, 3L)) {
     warning("All choice fits hit the log-k blow-up guard; returning the best ",
             "available fit (estimates may be unstable).", call. = FALSE)
   }
   obj <- best$obj
   opt <- best$opt
   converged <- isTRUE(opt$convergence == 0)
+  if (!converged) .dd_warn_fit_not_converged(opt, "Structural choice fit")
 
   try(obj$fn(opt$par), silent = TRUE)   # R4: refresh last.par.best so sdreport is fresh
 
@@ -835,6 +831,7 @@ fit_dd_choice <- function(data, mode = c("structural", "descriptive"),
     subject_pars = subject_pars, loglik = loglik,
     AIC = 2 * nll + 2 * np, BIC = 2 * nll + np * log(prepared$n_obs),
     converged = converged, opt_warnings = opt_warnings,
+    multi_start_info = best$selection,
     se_available = !is.null(est$sdr) && isTRUE(est$hessian_pd),
     data = prepared$data, coercion_info = validated$coercion_info
   ), class = "beezdiscounting_choice")

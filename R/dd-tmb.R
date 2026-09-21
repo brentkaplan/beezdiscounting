@@ -732,10 +732,7 @@ NULL
   # optimum).
   .is_blowup <- function(opt) .dd_logk_blowup(opt, tmb_data$X)
 
-  best_kept_nll <- Inf
-  best_kept     <- NULL
-  best_any_nll  <- Inf
-  best_any      <- NULL
+  candidates <- vector("list", length(start_sets))
 
   for (s in seq_along(start_sets)) {
     starts_i <- start_sets[[s]]
@@ -766,19 +763,12 @@ NULL
       NULL
     })
 
-    if (is.null(result) || !is.finite(result$nll)) next
-
-    if (result$nll < best_any_nll) {
-      best_any_nll <- result$nll
-      best_any     <- result
-    }
-    if (!.is_blowup(result$opt) && result$nll < best_kept_nll) {
-      best_kept_nll <- result$nll
-      best_kept     <- result
-    }
+    if (!is.null(result)) candidates[s] <- list(result)
   }
 
-  if (is.null(best_any)) {
+  # F-BZ4-1: converged + sane first, then sane, then any (lowest NLL within).
+  best_result <- .dd_select_start(candidates, .is_blowup)
+  if (is.null(best_result)) {
     stop(
       "All starting value sets failed. ",
       "Check data quality or try different start values.",
@@ -786,10 +776,7 @@ NULL
     )
   }
 
-  if (!is.null(best_kept)) {
-    best_result <- best_kept
-  } else {
-    best_result <- best_any
+  if (identical(best_result$selection$tier, 3L)) {
     warning(
       "All multi-start fits tripped the log-k sanity guard ",
       "(some fitted k -> Inf / non-finite across the design); returning the ",
@@ -874,8 +861,11 @@ NULL
         TMB::sdreport(obj, getJointPrecision = FALSE),
         error = function(e2) NULL
       )
-      if (is.null(sdr2) && verbose >= 1) {
-        warning("Standard error computation failed: ", e1$message)
+      if (is.null(sdr2)) {
+        cli::cli_warn(
+          "Standard error computation failed: {conditionMessage(e1)}",
+          class = c("beezdiscounting_hessian_warning", "beezdiscounting_warning")
+        )
       }
       sdr2
     }
@@ -884,12 +874,12 @@ NULL
   hessian_pd <- NA
   if (!is.null(sdr)) {
     hessian_pd <- isTRUE(sdr$pdHess)
-    if (!hessian_pd && verbose >= 1) {
+    if (!hessian_pd) {
       cli::cli_warn(c(
         "!" = "Hessian is not positive definite ({.code pdHess = FALSE}).",
         "i" = "Standard errors, p-values, and confidence intervals may be unreliable.",
         "i" = "Consider simplifying the model or checking data quality."
-      ))
+      ), class = c("beezdiscounting_hessian_warning", "beezdiscounting_warning"))
     }
   }
 
@@ -1153,7 +1143,9 @@ NULL
 #' @param start_values Optional named list overriding defaults.
 #' @param tmb_control Optimizer control list.
 #' @param multi_start Logical; if `TRUE` (default), run the 3-set guarded
-#'   multi-start.
+#'   multi-start. Converged starts are preferred over non-converged ones,
+#'   then the lowest negative log-likelihood wins; the Hessian is checked on
+#'   the kept fit only.
 #' @param verbose Integer verbosity (0 silent, 1 progress, 2 debug).
 #' @param covariance_structure Covariance for a 2-D random effect
 #'   (`k + phi ~ 1` or `k + s ~ 1`): `"pdSymm"` (default; correlated random
@@ -1177,7 +1169,17 @@ NULL
 #'       2-RE fit (`k + s ~ 1`, GM/Rachlin) they are `id, re_k, re_s, k, s`
 #'       where `s` is soft-clamped toward `(0.05, 20)`.}
 #'     \item{loglik, AIC, BIC}{Fit statistics.}
-#'     \item{converged, se_available}{Convergence / SE-availability flags.}
+#'     \item{converged, se_available}{Convergence / SE-availability flags. A
+#'       non-converged fit raises a `beezdiscounting_convergence_warning` at
+#'       fit time (regardless of `verbose`) and again from `tidy()`,
+#'       `confint()`, `summary()`, [get_dd_param_emms()] and
+#'       [get_dd_comparisons()].}
+#'     \item{multi_start_info}{List recording the start selection:
+#'       `n_starts`, `n_finite`, `n_converged`, `selected_start`, `tier`
+#'       (1 = converged and passing the log-k sanity guard, 2 = passing the
+#'       guard but not converged, 3 = neither), and `lower_nll_nonconverged`
+#'       (`TRUE` when a non-converged start reached a lower NLL than the kept
+#'       one).}
 #'     \item{opt_warnings}{Character vector of optimizer warnings.}
 #'     \item{data}{The single filtered model frame (id/x/y + retained design
 #'       columns), row-aligned with the design matrix.}
@@ -1373,6 +1375,7 @@ fit_dd_tmb <- function(data,
     obj <- result$obj
     opt <- result$opt
     opt_warnings <- result$opt_warnings %||% character(0)
+    multi_start_info <- result$selection
   } else {
     # Single-path fit still needs the SLT-beta phi floor (B3): apply the same
     # shared log_aux lower bound the multi-start path uses, so multi_start=FALSE
@@ -1408,6 +1411,15 @@ fit_dd_tmb <- function(data,
   }
 
   converged <- isTRUE(opt$convergence == 0)
+  if (!isTRUE(multi_start)) {
+    multi_start_info <- list(
+      n_starts = 1L, n_finite = 1L, n_converged = as.integer(converged),
+      selected_start = 1L, tier = if (converged) 1L else 2L,
+      lower_nll_nonconverged = FALSE
+    )
+  }
+  # F-BZ4-1: announce non-convergence regardless of `verbose`.
+  if (!converged) .dd_warn_fit_not_converged(opt, "TMB discounting fit")
   try(obj$fn(opt$par), silent = TRUE)
 
   # 8. Extract estimates (sdreport, pdHess gate, log_aux rename).
@@ -1503,6 +1515,10 @@ fit_dd_tmb <- function(data,
       AIC = aic,
       BIC = bic,
       converged = converged,
+      # Multi-start selection record (F-BZ4-1): n_starts, n_finite,
+      # n_converged, selected_start, tier (1 = converged + sane, 2 = sane,
+      # 3 = any), lower_nll_nonconverged.
+      multi_start_info = multi_start_info,
       # SE-availability requires BOTH a successful sdreport AND a positive-
       # definite Hessian (R1): a non-PD Hessian yields untrustworthy SEs, so
       # SE-consuming methods must not present them as reliable.

@@ -62,7 +62,8 @@ on \verb{log k} (same semantics as \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}). Str
 \item{start_values, tmb_control, multi_start, verbose, ...}{As in \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.}
 }
 \value{
-An object of class \code{beezdiscounting_choice}.
+An object of class \code{beezdiscounting_choice}. Start selection and the
+non-convergence warnings follow \code{\link[=fit_dd_tmb]{fit_dd_tmb()}} (see its \code{multi_start_info}).
 }
 \description{
 Fits a trial-level binary choice model from two complementary perspectives.

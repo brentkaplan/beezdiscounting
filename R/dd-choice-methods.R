@@ -620,6 +620,7 @@ tidy.beezdiscounting_choice <- function(
   report_space = c("natural", "log10", "internal", "log"),
   ...
 ) {
+  .dd_warn_if_not_converged(x)   # F-BZ4-1
   effects <- match.arg(effects, several.ok = TRUE)
   report_space <- match.arg(report_space)
 
@@ -811,6 +812,7 @@ confint.beezdiscounting_choice <- function(
   report_space = c("internal", "natural"),
   ...
 ) {
+  .dd_warn_if_not_converged(object)   # F-BZ4-1
   report_space <- match.arg(report_space)
 
   # Descriptive (Young 2018): theta sensitivities stay on the identity (logit)
@@ -941,6 +943,7 @@ summary.beezdiscounting_choice <- function(
   report_space = c("natural", "log10", "internal", "log"),
   ...
 ) {
+  .dd_warn_if_not_converged(object)   # F-BZ4-1
   report_space <- match.arg(report_space)
 
   # Descriptive (Young 2018): fixed sensitivities (identity/logit scale) +

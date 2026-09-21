@@ -58,7 +58,9 @@ intercept on \verb{(log k, log s)}, Green-Myerson and Rachlin only).}
 \item{tmb_control}{Optimizer control list.}
 
 \item{multi_start}{Logical; if \code{TRUE} (default), run the 3-set guarded
-multi-start.}
+multi-start. Converged starts are preferred over non-converged ones,
+then the lowest negative log-likelihood wins; the Hessian is checked on
+the kept fit only.}
 
 \item{verbose}{Integer verbosity (0 silent, 1 progress, 2 debug).}
 
@@ -87,7 +89,17 @@ spec, parsed random effects).}
 2-RE fit (\code{k + s ~ 1}, GM/Rachlin) they are \verb{id, re_k, re_s, k, s}
 where \code{s} is soft-clamped toward \verb{(0.05, 20)}.}
 \item{loglik, AIC, BIC}{Fit statistics.}
-\item{converged, se_available}{Convergence / SE-availability flags.}
+\item{converged, se_available}{Convergence / SE-availability flags. A
+non-converged fit raises a \code{beezdiscounting_convergence_warning} at
+fit time (regardless of \code{verbose}) and again from \code{tidy()},
+\code{confint()}, \code{summary()}, \code{\link[=get_dd_param_emms]{get_dd_param_emms()}} and
+\code{\link[=get_dd_comparisons]{get_dd_comparisons()}}.}
+\item{multi_start_info}{List recording the start selection:
+\code{n_starts}, \code{n_finite}, \code{n_converged}, \code{selected_start}, \code{tier}
+(1 = converged and passing the log-k sanity guard, 2 = passing the
+guard but not converged, 3 = neither), and \code{lower_nll_nonconverged}
+(\code{TRUE} when a non-converged start reached a lower NLL than the kept
+one).}
 \item{opt_warnings}{Character vector of optimizer warnings.}
 \item{data}{The single filtered model frame (id/x/y + retained design
 columns), row-aligned with the design matrix.}

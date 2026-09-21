@@ -27,6 +27,17 @@ which shipped none).
   the delayed/uncertain choice with a real k or h. Blank cells are now
   treated as unanswered and dropped, and other unrecognised values raise an
   error naming the item and value.
+* `fit_dd_tmb()` and `fit_dd_choice()` (both modes) no longer let a
+  non-converged start displace a converged one on negative log-likelihood
+  alone: the multi-start keeps the lowest-NLL converged start that passes the
+  log-k sanity guard, falling back to non-converged starts only when none
+  converged (recorded in the new `multi_start_info` element). A non-converged
+  fit now raises a classed `beezdiscounting_convergence_warning` at fit time
+  regardless of `verbose`, and `tidy()`, `confint()`, `summary()`,
+  `get_dd_param_emms()` and `get_dd_comparisons()` repeat it. Previously such
+  fits (e.g. `tmb_control = list(iter_max = 3)`) returned finite p-values and
+  intervals with no warning. Non-positive-definite Hessian and failed
+  `sdreport()` warnings are likewise no longer silenced by `verbose = 0`.
 
 ### Monte Carlo power analysis
 

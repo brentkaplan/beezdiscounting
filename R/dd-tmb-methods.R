@@ -875,6 +875,7 @@ tidy.beezdiscounting_tmb <- function(
   report_space = c("natural", "log10", "internal", "log"),
   ...
 ) {
+  .dd_warn_if_not_converged(x)   # F-BZ4-1
   effects <- match.arg(effects, several.ok = TRUE)
   report_space <- match.arg(report_space)
 
@@ -1053,6 +1054,7 @@ confint.beezdiscounting_tmb <- function(
   report_space = c("internal", "natural"),
   ...
 ) {
+  .dd_warn_if_not_converged(object)   # F-BZ4-1
   report_space <- match.arg(report_space)
   coefs <- object$model$coefficients
   se_vec <- .dd_tmb_model_se(object)
@@ -1144,6 +1146,7 @@ summary.beezdiscounting_tmb <- function(
   report_space = c("natural", "log10", "internal", "log"),
   ...
 ) {
+  .dd_warn_if_not_converged(object)   # F-BZ4-1
   report_space <- match.arg(report_space)
 
   coefs <- object$model$coefficients

@@ -258,6 +258,7 @@
 #   contrast SEs (dx^T V dx) would be wrong.
 .dd_resolve_beta_vcov <- function(fit, beta) {
   p <- length(beta)
+  .dd_warn_if_not_converged(fit)   # F-BZ4-1
   if (!isTRUE(fit$se_available)) {
     cli::cli_warn(c(
       "!" = "Standard errors are unreliable (non-PD Hessian or sdreport \\

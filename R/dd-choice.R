@@ -624,6 +624,19 @@
 #' random-effect covariance (via [nlme::VarCorr()]) and per-subject slopes
 #' (via [nlme::ranef()]), not emmeans.
 #'
+#' Interpreting the structural coefficients:
+#' * `gamma` is the choice sensitivity in log-odds per unit of relative value
+#'   (`(ll/ss) * D - 1`); its row in [tidy()] tests `log gamma = 0`, i.e.
+#'   `gamma = 1`, not `gamma = 0`.
+#' * `beta0` (with `intercept = TRUE`) is a bias toward the larger-later
+#'   reward. It is only weakly identified from the usual SS/LL designs; its
+#'   standard error is often large and its estimate trades off against `k`.
+#' * Condition and covariate coefficients on `log k` exponentiate to ratios
+#'   of `k` (e.g. 2 = discounts twice as steeply as the reference level).
+#'
+#' In the descriptive model the delay predictor is `log(delay + 1)`, so its
+#' slope depends on the delay unit (days vs weeks).
+#'
 #' @param data Trial-level data frame (see the `*_var` args).
 #' @param mode `"structural"` (default) estimates the discount rate `k`
 #'   directly from choices via a discount function (Mazur or exponential);

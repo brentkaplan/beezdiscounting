@@ -87,6 +87,21 @@ follows Young (2018): it regresses binary choice on
 slopes on these two predictors; the primary inferential targets are the
 random-effect covariance (via \code{\link[nlme:VarCorr]{nlme::VarCorr()}}) and per-subject slopes
 (via \code{\link[nlme:ranef]{nlme::ranef()}}), not emmeans.
+
+Interpreting the structural coefficients:
+\itemize{
+\item \code{gamma} is the choice sensitivity in log-odds per unit of relative value
+(\code{(ll/ss) * D - 1}); its row in \code{\link[=tidy]{tidy()}} tests \verb{log gamma = 0}, i.e.
+\code{gamma = 1}, not \code{gamma = 0}.
+\item \code{beta0} (with \code{intercept = TRUE}) is a bias toward the larger-later
+reward. It is only weakly identified from the usual SS/LL designs; its
+standard error is often large and its estimate trades off against \code{k}.
+\item Condition and covariate coefficients on \verb{log k} exponentiate to ratios
+of \code{k} (e.g. 2 = discounts twice as steeply as the reference level).
+}
+
+In the descriptive model the delay predictor is \code{log(delay + 1)}, so its
+slope depends on the delay unit (days vs weeks).
 }
 \examples{
 \donttest{

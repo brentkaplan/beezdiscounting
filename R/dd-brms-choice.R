@@ -332,7 +332,7 @@ fit_dd_choice_brms <- function(
   if (identical(init, "tmb") && !is.null(data)) {
     tmb_centers <- tryCatch(
       {
-        tmb_fit <- fit_dd_choice(
+        tmb_fit <- .dd_quiet_prefit(fit_dd_choice(
           data,
           mode = "structural",
           equation = equation,
@@ -341,7 +341,8 @@ fit_dd_choice_brms <- function(
           factor_interaction = factor_interaction,
           continuous_covariates = continuous_covariates,
           verbose = 0
-        )
+        ))
+        .dd_check_prefit(tmb_fit)
         coefs <- tmb_fit$model$coefficients
         out <- list(
           # full fixed-effect vector: factor/covariate designs get every

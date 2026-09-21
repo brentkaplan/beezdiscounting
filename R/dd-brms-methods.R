@@ -767,11 +767,28 @@ residuals.beezdiscounting_brms <- function(
 
 # --- print / summary ----------------------------------------------------------------
 
+# One-line boundary report for beta fits (F-BZ7-1); NULL when not applicable.
+.dd_brms_boundary_line <- function(param_info) {
+  bi <- param_info$boundary_info
+  if (is.null(bi)) return(NULL)
+  sprintf(
+    "Boundary: %s; %d of %d responses (%.1f%%) exactly 0/1, %.1f%% within 0.01 of 0/1%s\n",
+    param_info$boundary, as.integer(bi$n_boundary), as.integer(bi$n_obs),
+    100 * bi$prop_boundary, 100 * bi$prop_near_boundary,
+    if (is.finite(bi$squeeze_floor)) {
+      sprintf(" (squeeze floor %.2g)", bi$squeeze_floor)
+    } else {
+      ""
+    }
+  )
+}
+
 #' @export
 print.beezdiscounting_brms <- function(x, digits = 4, ...) {
   cat("Bayesian Mixed-Effects Discounting Model (brms)\n")
   cat(strrep("=", 50), "\n")
   cat("Equation:", x$param_info$equation, " Family:", x$param_info$family, "\n")
+  cat(.dd_brms_boundary_line(x$param_info))
   cat(
     "Chains:",
     x$mcmc_info$chains,
@@ -817,6 +834,7 @@ summary.beezdiscounting_brms <- function(
     list(
       equation = object$param_info$equation,
       family = object$param_info$family,
+      boundary_line = .dd_brms_boundary_line(object$param_info),
       backend = "brms",
       converged = object$converged,
       n_subjects = object$param_info$n_subjects,
@@ -836,6 +854,7 @@ print.summary.beezdiscounting_brms <- function(x, digits = 4, ...) {
   cat("\nBayesian Mixed-Effects Discounting Model Summary (brms)\n")
   cat(strrep("=", 50), "\n\n")
   cat("Equation:", x$equation, " Family:", x$family, "\n")
+  cat(x$boundary_line)
   cat("Backend:", x$backend, "\n")
   cat("Converged:", ifelse(isTRUE(x$converged), "Yes", "No"), "\n")
   cat("Subjects:", x$n_subjects, " Observations:", x$nobs, "\n")

@@ -28,7 +28,7 @@ test_that("fit_dd_brms errors on gaussian + phi random effects", {
   )
 })
 
-test_that("fit_dd_brms sltb errors with the beta-analog pointer", {
+test_that("fit_dd_brms sltb errors with a pointer to the beta family", {
   d <- dd_smoke_data()
   expect_error(fit_dd_brms(d, family = "sltb"), "beta")
 })
@@ -40,6 +40,24 @@ test_that("boundary = 'error' refuses boundary responses", {
     fit_dd_brms(d, family = "beta", boundary = "error"),
     "boundary"
   )
+})
+
+test_that("the beta default refuses exact 0/1 responses and names the opt-ins (F-BZ7-1)", {
+  d <- dd_smoke_data()
+  d$y[1:2] <- c(1, 0)
+  expect_error(fit_dd_brms(d), "2 of 48 responses .*squeeze.*zoib")
+  expect_identical(formals(fit_dd_brms)$boundary[[2]], "error")
+})
+
+test_that("the boundary report line states exact- and near-boundary fractions", {
+  pi <- list(boundary = "squeeze",
+             boundary_info = list(n_obs = 200, n_boundary = 10,
+                                  prop_boundary = 0.05, prop_near_boundary = 0.12,
+                                  squeeze_floor = 0.0025))
+  line <- beezdiscounting:::.dd_brms_boundary_line(pi)
+  expect_match(line, "squeeze; 10 of 200 responses \\(5.0%\\) exactly 0/1, 12.0% within 0.01")
+  expect_match(line, "squeeze floor 0.0025")
+  expect_null(beezdiscounting:::.dd_brms_boundary_line(list(boundary = NA)))
 })
 
 # --- sampling (opt-in) -------------------------------------------------------------
@@ -56,6 +74,7 @@ test_that("fit_dd_brms mazur/beta: object contract and recovery", {
     d,
     equation = "mazur",
     family = "beta",
+    boundary = "squeeze",
     chains = 2,
     iter = 600,
     warmup = 300,
@@ -112,6 +131,7 @@ test_that("fit_dd_brms mazur/beta k + phi ~ 1: 2-RE object contract", {
     d,
     equation = "mazur",
     family = "beta",
+    boundary = "squeeze",
     random_effects = k + phi ~ 1,
     chains = 2,
     iter = 1000,
@@ -172,6 +192,7 @@ test_that("fit_dd_brms k + phi ~ 1 pdDiag omits the correlation row", {
     d,
     equation = "mazur",
     family = "beta",
+    boundary = "squeeze",
     random_effects = k + phi ~ 1,
     covariance_structure = "pdDiag",
     chains = 2,

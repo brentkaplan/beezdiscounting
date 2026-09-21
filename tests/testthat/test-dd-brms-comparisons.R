@@ -141,3 +141,38 @@ test_that("init = 'tmb' centers the inits at a TMB pre-fit (no sampling)", {
     0.5
   )
 })
+
+test_that("init = 'tmb' falls back to prior centers when the pre-fit did not converge (F-BZ7-4)", {
+  set.seed(31)
+  delays <- c(1, 7, 30, 90, 180, 365)
+  d <- expand.grid(id = factor(1:8), x = delays)
+  k_i <- exp(log(0.02) + rnorm(8, 0, 0.4))
+  d$y <- pmin(pmax(1 / (1 + k_i[d$id] * d$x) + rnorm(48, 0, 0.05), 0.01), 0.99)
+  spec <- beezdiscounting:::.dd_brms_formula("mazur", "beta")
+  build <- function() {
+    beezdiscounting:::.dd_brms_build_inits(
+      init = "tmb", spec = spec, data = d, chains = 1, seed = 1,
+      autoscale_info = NULL, family = "beta",
+      factors = NULL, factor_interaction = FALSE,
+      continuous_covariates = NULL, equation = "mazur"
+    )
+  }
+  bad <- list(converged = FALSE,
+              model = list(coefficients = c(beta_k = 3, log_sigma_u = 0)))
+  testthat::local_mocked_bindings(fit_dd_tmb = function(...) bad,
+                                  .package = "beezdiscounting")
+  expect_warning(inits <- build(), "did not converge.*prior_center")
+  # centered at the prior center (-4.5), not the non-converged 3
+  expect_lt(abs(as.numeric(inits[[1]]$b_logk[1]) + 4.5), 0.5)
+
+  bad$converged <- TRUE
+  bad$model$coefficients[["beta_k"]] <- NaN
+  expect_warning(build(), "non-finite")
+})
+
+test_that(".dd_quiet_prefit muffles only package warnings", {
+  expect_silent(beezdiscounting:::.dd_quiet_prefit(
+    warning(structure(class = c("beezdiscounting_warning", "warning", "condition"),
+                      list(message = "x", call = NULL)))))
+  expect_warning(beezdiscounting:::.dd_quiet_prefit(warning("other")), "other")
+})

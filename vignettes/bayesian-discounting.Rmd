@@ -26,6 +26,7 @@ fit <- fit_dd_brms(
   dd_ip,
   equation = "mazur",
   family = "beta",
+  boundary = "squeeze",   # dd_ip has exact 0/1 responses; see below
   chains = 4, cores = 4, seed = 1
 )
 
@@ -103,14 +104,20 @@ The TMB tier's SLT-beta family has no brms equivalent. Two options cover
 the same ground:
 
 - `family = "beta"` (default): brms's beta likelihood with an identity
-  link; the mean function is squished into (1e-6, 1 - 1e-6), the
-  differentiable analog of the TMB clamp. Boundary responses (`y` exactly
-  0 or 1) are handled by `boundary`: the default `"squeeze"` applies the
-  Smithson-Verkuilen transform `(y(N-1) + 0.5)/N` to all responses and
-  reports the boundary count; `"zoib"` switches to a zero-one-inflated
-  beta -- statistically more explicit about boundary responding, but it
-  **changes the estimand**: k then describes the interior responses only;
-  `"error"` refuses to fit.
+  link; the mean function is squished into (1e-6, 1 - 1e-6), mirroring the
+  TMB mean clamp. The beta likelihood is **not** the SLT-beta: it cannot
+  evaluate responses at exactly 0 or 1, so its estimates are not expected
+  to match `fit_dd_tmb(family = "sltb")` when responses sit at or near the
+  boundaries. Boundary responses are handled by `boundary`, which must be
+  chosen explicitly when any are present: the default `"error"` refuses to
+  fit and reports the count; `"squeeze"` applies the Smithson-Verkuilen
+  transform `(y(N-1) + 0.5)/N` to **every** response, which floors the
+  response at `0.5/N` and can pull k downward when the fitted curve
+  approaches that floor (long delays, steep discounting); `"zoib"` switches
+  to a zero-one-inflated beta -- more explicit about boundary responding,
+  but it **changes the estimand**: k then describes the interior responses
+  only. `summary()` reports the fraction of exact- and near-boundary
+  responses.
 - `family = "gaussian"`: matches `fit_dd_tmb(family = "gaussian")`
   wherever the TMB mean clamp (into `[1e-6, 1 - 1e-6]`) does not bind --
   everywhere except extreme decay underflow. In our validation harness the
@@ -141,6 +148,7 @@ re-fitting):
 fit2 <- fit_dd_brms(
   dd_ip,
   equation = "mazur",
+  boundary = "squeeze",
   prior = brms::set_prior("normal(-3, 1)", class = "b",
                           coef = "Intercept", nlpar = "logk")
 )

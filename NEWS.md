@@ -182,12 +182,18 @@ which shipped none).
 * New `fit_dd_brms()`: Bayesian mixed-effects discounting via brms/Stan for
   all four TMB equations (`"mazur"`, `"exponential"`, `"green-myerson"`,
   `"rachlin"`). `family = "beta"` (identity link with a differentiable
-  squish) is the closest brms analog of the TMB SLT-beta;
-  `family = "gaussian"` matches the TMB gaussian likelihood wherever
-  the TMB mu clamp does not bind (everywhere except extreme decay
-  underflow). Boundary responses are
-  handled via Smithson-Verkuilen squeezing (default), zero-one-inflated
-  beta (`boundary = "zoib"`; changes the estimand), or refusal.
+  squish) is an ordinary beta likelihood, not the TMB SLT-beta, and its
+  estimates are not expected to match `fit_dd_tmb(family = "sltb")` when
+  responses sit at or near 0 or 1; `family = "gaussian"` matches the TMB
+  gaussian likelihood wherever the TMB mu clamp does not bind (everywhere
+  except extreme decay underflow). Exact 0/1 responses must be handled
+  explicitly: the default `boundary = "error"` refuses to fit and reports
+  the count; `"squeeze"` (Smithson-Verkuilen, rescales every response) and
+  `"zoib"` (zero-one-inflated beta; changes the estimand) are opt-ins.
+  `summary()` reports the exact- and near-boundary fractions.
+  `init = "tmb"` (both brms fitters) seeds the chains from the TMB pre-fit
+  only when that fit converged with finite estimates, and otherwise falls
+  back to prior-center inits with a warning.
 * New `fit_dd_choice_brms()`: the structural trial-level choice model under
   `bernoulli("logit")`, matching `fit_dd_choice(mode = "structural")`,
   including between-subject designs on `log k` via

@@ -25,8 +25,8 @@
 #' (`k ~ 1` by default, or `k + phi ~ 1` for a precision RE via `phi_re`) and
 #' `logs` population-level. For
 #' `family = "beta"` the mean is linearly squished into
-#' `(1e-6, 1 - 1e-6)` -- the differentiable analog of the TMB sltb clamp --
-#' and brms's `Beta(link = "identity")` is used (mu is naturally in (0,1)
+#' `(1e-6, 1 - 1e-6)` (mirroring the TMB template's mu clamp; the beta
+#' likelihood itself differs from the TMB SLT-beta) and brms's `Beta(link = "identity")` is used (mu is naturally in (0,1)
 #' for k > 0, so the identity link has no rejection region). For
 #' `family = "gaussian"` the raw mean function matches
 #' `fit_dd_tmb(family = "gaussian")` wherever the TMB template's mu clamp
@@ -41,11 +41,11 @@
 #'
 #' @param equation One of "mazur", "exponential", "green-myerson", "rachlin".
 #' @param family "beta" (default) or "gaussian". "sltb" errors with a
-#'   pointer: brms has no scale-location-truncated beta; beta + squeeze is
-#'   the analog.
-#' @param boundary "squeeze" (default; Smithson-Verkuilen, applied by the
-#'   fitter) or "zoib" (swaps in `zero_one_inflated_beta`, which changes
-#'   the estimand: k then describes interior responses only).
+#'   pointer: brms has no scale-location-truncated beta.
+#' @param boundary "error" (default; the fitter refuses exact 0/1 responses),
+#'   "squeeze" (Smithson-Verkuilen, applied by the fitter), or "zoib" (swaps
+#'   in `zero_one_inflated_beta`, which changes the estimand: k then
+#'   describes interior responses only). Only "zoib" changes the formula.
 #' @param factors,factor_interaction,continuous_covariates Fixed-effect
 #'   design on `logk` (as in `fit_dd_tmb()`); `logs` stays population-level.
 #' @param data Optional data frame for single-level-factor dropping.
@@ -61,7 +61,7 @@
 .dd_brms_formula <- function(
   equation = c("mazur", "exponential", "green-myerson", "rachlin"),
   family = c("beta", "gaussian"),
-  boundary = c("squeeze", "zoib", "error"),
+  boundary = c("error", "squeeze", "zoib"),
   factors = NULL,
   factor_interaction = FALSE,
   continuous_covariates = NULL,
@@ -74,8 +74,9 @@
   if (identical(family, "sltb")) {
     stop(
       "brms has no scale-location-truncated beta (sltb) family. ",
-      "Use family = \"beta\" (with the default boundary = \"squeeze\"), ",
-      "the closest analog, or family = \"gaussian\" for exact TMB parity.",
+      "Use family = \"beta\" (a different likelihood: exact 0/1 responses ",
+      "need an explicit boundary = \"squeeze\" or \"zoib\"), or ",
+      "family = \"gaussian\", which matches fit_dd_tmb(family = \"gaussian\").",
       call. = FALSE
     )
   }
@@ -107,8 +108,8 @@
   )
 
   if (family == "beta") {
-    # Linear squish into (1e-6, 1 - 1e-6): the differentiable analog of the
-    # TMB sltb mu clamp; also makes x = 0 rows (mu = 1) non-fatal.
+    # Linear squish into (1e-6, 1 - 1e-6), mirroring the TMB template's mu
+    # clamp; also makes x = 0 rows (mu = 1) non-fatal.
     # Written as 1/(10^6) NOT 1e-6: brms's Stan-code printer inserts spaces
     # around '-' inside scientific literals ("1e - 06"), a stanc syntax
     # error that make_stancode() does not catch (it never parses).

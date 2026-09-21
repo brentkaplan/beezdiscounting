@@ -22,7 +22,7 @@ if (!file.exists(path_ip)) {
   message("Fitting mazur/beta fixture...")
   fit <- fit_dd_brms(
     d,
-    equation = "mazur", family = "beta",
+    equation = "mazur", family = "beta", boundary = "squeeze",
     chains = 2, iter = 500, warmup = 250,
     cores = 2, seed = 42,
     loo = TRUE, verbose = 1
@@ -43,7 +43,7 @@ if (!file.exists(path_grp)) {
 
   fit_grp <- fit_dd_brms(
     d2,
-    equation = "mazur", family = "beta",
+    equation = "mazur", family = "beta", boundary = "squeeze",
     factors = "group",
     chains = 2, iter = 500, warmup = 250,
     cores = 2, seed = 42,

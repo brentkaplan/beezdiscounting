@@ -997,7 +997,7 @@ exponential) in v1.
 
 ``` r
 fit_b <- fit_dd_brms(dd_ip,
-  equation = "mazur", family = "beta",
+  equation = "mazur", family = "beta", boundary = "squeeze",
   chains = 4, iter = 2000, cores = 4, seed = 1
 )
 summary(fit_b)

@@ -172,14 +172,22 @@
 #' shape exponent (`logs`) population-level for the two-parameter equations.
 #'
 #' `family = "beta"` (default) uses `Beta(link = "identity")` with the mean
-#' squished into `(1e-6, 1 - 1e-6)` -- the closest brms analog of the TMB
-#' SLT-beta (`family = "sltb"` has no brms equivalent and errors with this
-#' pointer). Boundary observations (`y` exactly 0 or 1) are handled per
-#' `boundary`: `"squeeze"` (default) applies the Smithson-Verkuilen
-#' transform `y* = (y (N - 1) + 0.5) / N` to all responses (message reports
-#' the boundary count); `"zoib"` switches to `zero_one_inflated_beta`
-#' (statistically more honest but changes the estimand -- k then describes
-#' interior responses only); `"error"` refuses to fit.
+#' squished into `(1e-6, 1 - 1e-6)`. This is a different likelihood from the
+#' TMB scale-location-truncated beta (`family = "sltb"`, which has no brms
+#' equivalent and errors with this pointer): the ordinary beta density is
+#' undefined at exactly 0 and 1, so its estimates are not expected to match
+#' `fit_dd_tmb(family = "sltb")` whenever responses sit at or near the
+#' boundaries. Boundary observations (`y` exactly 0 or 1) are handled per
+#' `boundary`: `"error"` (default) refuses to fit and reports how many there
+#' are; `"squeeze"` applies the Smithson-Verkuilen transform
+#' `y* = (y (N - 1) + 0.5) / N` to **every** response (an explicit opt-in: it
+#' moves each value toward 0.5 and floors the response at `0.5 / N`, so when
+#' the fitted curve approaches that floor -- long delays, steep discounting --
+#' the squeezed values pull k downward); `"zoib"` switches to
+#' `zero_one_inflated_beta` (changes the estimand -- k then describes interior
+#' responses only). The fraction of exact-boundary and near-boundary
+#' (`y <= 0.01` or `y >= 0.99`) responses is stored in
+#' `param_info$boundary_info` and printed by `summary()`.
 #' `family = "gaussian"` matches `fit_dd_tmb(family = "gaussian")`
 #' wherever the TMB template's mu clamp into `[1e-6, 1 - 1e-6]` does not
 #' bind (everywhere except extreme decay underflow).
@@ -189,7 +197,9 @@
 #'   [fit_dd_tmb()].
 #' @param equation Discounting equation.
 #' @param family `"beta"` or `"gaussian"`; `"sltb"` errors with guidance.
-#' @param boundary Boundary handling for the beta family (see Details).
+#' @param boundary Boundary handling for the beta family: `"error"`
+#'   (default), `"squeeze"`, or `"zoib"` (see Details). Ignored for
+#'   `family = "gaussian"`.
 #' @param random_effects `k ~ 1` (single random intercept on `log k`, the
 #'   default) or `k + phi ~ 1` (adds a per-subject precision random effect;
 #'   beta family only). The latter mirrors `fit_dd_tmb(random_effects =
@@ -233,7 +243,7 @@ fit_dd_brms <- function(
   id_var = "id",
   equation = c("mazur", "exponential", "green-myerson", "rachlin"),
   family = c("beta", "gaussian"),
-  boundary = c("squeeze", "zoib", "error"),
+  boundary = c("error", "squeeze", "zoib"),
   random_effects = k ~ 1,
   covariance_structure = c("pdSymm", "pdDiag"),
   factors = NULL,
@@ -334,14 +344,31 @@ fit_dd_brms <- function(
     re_cov = re_cov
   )
 
-  # Boundary handling (beta family only; gaussian models raw y).
+  # Boundary handling (beta family only; gaussian models raw y). Fractions are
+  # computed on the responses as supplied, before any squeeze (F-BZ7-1).
   n_boundary <- sum(d$y <= 0 | d$y >= 1)
+  boundary_info <- list(
+    n_obs = nrow(d),
+    n_boundary = n_boundary,
+    prop_boundary = n_boundary / nrow(d),
+    prop_near_boundary = mean(d$y <= 0.01 | d$y >= 0.99),
+    squeeze_floor = if (family == "beta" && boundary == "squeeze") {
+      0.5 / nrow(d)
+    } else {
+      NA_real_
+    }
+  )
   if (family == "beta") {
     if (boundary == "error" && n_boundary > 0) {
       stop(
-        n_boundary,
-        " boundary response(s) (y = 0 or 1) present; ",
-        "refusing to fit with boundary = \"error\". Use \"squeeze\" or \"zoib\".",
+        n_boundary, " of ", nrow(d), " responses (",
+        sprintf("%.1f%%", 100 * n_boundary / nrow(d)),
+        ") are exactly 0 or 1, which the beta likelihood cannot evaluate. ",
+        "Choose explicitly: boundary = \"squeeze\" (Smithson-Verkuilen; ",
+        "rescales every response and can bias k when the curve approaches ",
+        "the 0.5/N floor), boundary = \"zoib\" (zero-one-inflated beta; k then ",
+        "describes interior responses only), family = \"gaussian\", or ",
+        "fit_dd_tmb(family = \"sltb\"), which handles exact 0s and 1s.",
         call. = FALSE
       )
     }
@@ -476,9 +503,32 @@ fit_dd_brms <- function(
     boundary = boundary,
     response_scale = response_scale,
     n_boundary = n_boundary,
+    boundary_info = boundary_info,
     compute_loo = isTRUE(loo),
     verbose = verbose
   )
+}
+
+# Run a TMB pre-fit for init = "tmb" with its package warnings muffled (the
+# caller validates the result with .dd_check_prefit() instead).
+.dd_quiet_prefit <- function(expr) {
+  withCallingHandlers(
+    expr,
+    beezdiscounting_warning = function(w) invokeRestart("muffleWarning")
+  )
+}
+
+# A pre-fit seeds the chains only when it converged with finite coefficients;
+# otherwise error so the caller falls back to prior-center inits (F-BZ7-4).
+.dd_check_prefit <- function(fit) {
+  coefs <- fit$model$coefficients
+  if (!isTRUE(fit$converged)) {
+    stop("the pre-fit did not converge", call. = FALSE)
+  }
+  if (!length(coefs) || any(!is.finite(coefs))) {
+    stop("the pre-fit returned non-finite estimates", call. = FALSE)
+  }
+  invisible(fit)
 }
 
 #' Per-chain inits at prior centers (or a quiet TMB pre-fit)
@@ -519,7 +569,9 @@ fit_dd_brms <- function(
   if (identical(init, "tmb")) {
     tmb_centers <- tryCatch(
       {
-        tmb_fit <- fit_dd_tmb(
+        # The pre-fit's own convergence / Hessian warnings are muffled here and
+        # replaced by the validity check below (F-BZ7-4).
+        tmb_fit <- .dd_quiet_prefit(fit_dd_tmb(
           data,
           y_var = "y",
           x_var = "x",
@@ -534,7 +586,8 @@ fit_dd_brms <- function(
           factor_interaction = factor_interaction,
           continuous_covariates = continuous_covariates,
           verbose = 0
-        )
+        ))
+        .dd_check_prefit(tmb_fit)
         coefs <- tmb_fit$model$coefficients
         out <- list(
           # full fixed-effect vector: factor/covariate designs get every
@@ -645,6 +698,7 @@ fit_dd_brms <- function(
   boundary,
   response_scale,
   n_boundary,
+  boundary_info = NULL,
   compute_loo,
   verbose
 ) {
@@ -668,6 +722,7 @@ fit_dd_brms <- function(
         family = family,
         boundary = if (family == "beta") boundary else NA_character_,
         n_boundary = n_boundary,
+        boundary_info = if (family == "beta") boundary_info else NULL,
         has_s = spec$has_s,
         has_phi = family == "beta",
         n_obs = nrow(data),

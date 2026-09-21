@@ -11,7 +11,7 @@ fit_dd_brms(
   id_var = "id",
   equation = c("mazur", "exponential", "green-myerson", "rachlin"),
   family = c("beta", "gaussian"),
-  boundary = c("squeeze", "zoib", "error"),
+  boundary = c("error", "squeeze", "zoib"),
   random_effects = k ~ 1,
   covariance_structure = c("pdSymm", "pdDiag"),
   factors = NULL,
@@ -48,7 +48,9 @@ fit_dd_brms(
 
 \item{family}{\code{"beta"} or \code{"gaussian"}; \code{"sltb"} errors with guidance.}
 
-\item{boundary}{Boundary handling for the beta family (see Details).}
+\item{boundary}{Boundary handling for the beta family: \code{"error"}
+(default), \code{"squeeze"}, or \code{"zoib"} (see Details). Ignored for
+\code{family = "gaussian"}.}
 
 \item{random_effects}{\code{k ~ 1} (single random intercept on \verb{log k}, the
 default) or \code{k + phi ~ 1} (adds a per-subject precision random effect;
@@ -104,14 +106,22 @@ shape exponent (\code{logs}) population-level for the two-parameter equations.
 }
 \details{
 \code{family = "beta"} (default) uses \code{Beta(link = "identity")} with the mean
-squished into \verb{(1e-6, 1 - 1e-6)} -- the closest brms analog of the TMB
-SLT-beta (\code{family = "sltb"} has no brms equivalent and errors with this
-pointer). Boundary observations (\code{y} exactly 0 or 1) are handled per
-\code{boundary}: \code{"squeeze"} (default) applies the Smithson-Verkuilen
-transform \verb{y* = (y (N - 1) + 0.5) / N} to all responses (message reports
-the boundary count); \code{"zoib"} switches to \code{zero_one_inflated_beta}
-(statistically more honest but changes the estimand -- k then describes
-interior responses only); \code{"error"} refuses to fit.
+squished into \verb{(1e-6, 1 - 1e-6)}. This is a different likelihood from the
+TMB scale-location-truncated beta (\code{family = "sltb"}, which has no brms
+equivalent and errors with this pointer): the ordinary beta density is
+undefined at exactly 0 and 1, so its estimates are not expected to match
+\code{fit_dd_tmb(family = "sltb")} whenever responses sit at or near the
+boundaries. Boundary observations (\code{y} exactly 0 or 1) are handled per
+\code{boundary}: \code{"error"} (default) refuses to fit and reports how many there
+are; \code{"squeeze"} applies the Smithson-Verkuilen transform
+\verb{y* = (y (N - 1) + 0.5) / N} to \strong{every} response (an explicit opt-in: it
+moves each value toward 0.5 and floors the response at \code{0.5 / N}, so when
+the fitted curve approaches that floor -- long delays, steep discounting --
+the squeezed values pull k downward); \code{"zoib"} switches to
+\code{zero_one_inflated_beta} (changes the estimand -- k then describes interior
+responses only). The fraction of exact-boundary and near-boundary
+(\code{y <= 0.01} or \code{y >= 0.99}) responses is stored in
+\code{param_info$boundary_info} and printed by \code{summary()}.
 \code{family = "gaussian"} matches \code{fit_dd_tmb(family = "gaussian")}
 wherever the TMB template's mu clamp into \verb{[1e-6, 1 - 1e-6]} does not
 bind (everywhere except extreme decay underflow).

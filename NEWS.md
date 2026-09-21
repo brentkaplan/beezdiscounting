@@ -5,6 +5,16 @@ and Bayesian discounting tiers, trial-level choice models, 21-item MCQ and PDQ
 scoring, Monte Carlo power analysis, and ten vignettes (all new since 0.3.2,
 which shipped none).
 
+### Bug fixes that can change results
+
+* `check_unsystematic()` now applies both Johnson & Bickel (2008) thresholds
+  on the `y` scale (`c1 * ll`, `c2 * ll`). Previously `ll` cancelled out, so
+  amount-scale data (e.g. `y` in dollars with `ll = 100`) were judged against
+  the bare proportions `c1`/`c2` and received wrong verdicts. Criterion 2 is
+  now strict: a decline of exactly `c2 * ll` passes. `ll`, `c1` and `c2` are
+  validated. Verdicts on proportion data with `ll = 1` change only at the
+  exact C2 threshold.
+
 ### Monte Carlo power analysis
 
 * `power_discounting()` estimates statistical power for detecting a

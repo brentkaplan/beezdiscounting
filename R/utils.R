@@ -118,7 +118,8 @@ long_to_wide_mcq_excel <- function(dat, subj_col = "subjectid",
 #'
 #' This function checks a dataset for violations of two criteria commonly used to identify unsystematic delay-discounting data:
 #' - Criterion 1: Any subsequent value of `y` exceeds the previous value by more than a specified proportion of the larger later reward (`ll`).
-#' - Criterion 2: The last value of `y` is not at least a specified proportion less than the first value of `y`.
+#' - Criterion 2: The last value of `y` is not at least a specified proportion of `ll` less than the first value of `y`
+#'   (a decline of exactly `c2 * ll` passes).
 #'
 #' The criteria are applied separately to each `id`, so a data frame containing
 #' several subjects returns one row per subject. When an `x` (delay) column is
@@ -128,7 +129,11 @@ long_to_wide_mcq_excel <- function(dat, subj_col = "subjectid",
 #'   - `id`: A unique identifier for the data set.
 #'   - `y`: The indifference points to be analyzed.
 #'   - `x` (optional): Delay values; when present, each subject's points are ordered by delay first.
-#' @param ll A numeric value representing the larger later reward. Default is 1.
+#' @param ll A numeric value representing the larger later reward, in the same
+#'   units as `y`. Default is 1 (indifference points expressed as a proportion
+#'   of the larger later reward). Both thresholds are applied on the `y` scale
+#'   (`c1 * ll` and `c2 * ll`), so amount-scale data (e.g. `y` in dollars) need
+#'   `ll` set to the larger later amount.
 #' @param c1 A numeric value for the threshold proportion for Criterion 1. Default is 0.2.
 #' @param c2 A numeric value for the threshold proportion for Criterion 2. Default is 0.1.
 #'
@@ -146,17 +151,33 @@ long_to_wide_mcq_excel <- function(dat, subj_col = "subjectid",
 #' )
 #' check_unsystematic(data, ll = 1, c1 = 0.2, c2 = 0.1)
 check_unsystematic <- function(dat, ll = 1, c1 = .2, c2 = .1) {
+  is_scalar <- function(v) is.numeric(v) && length(v) == 1L && is.finite(v)
+  if (!is_scalar(ll) || ll <= 0) {
+    stop("`ll` must be a single positive finite number.", call. = FALSE)
+  }
+  if (!is_scalar(c1) || c1 < 0) {
+    stop("`c1` must be a single non-negative finite number.", call. = FALSE)
+  }
+  if (!is_scalar(c2) || c2 < 0) {
+    stop("`c2` must be a single non-negative finite number.", call. = FALSE)
+  }
+  # Both thresholds are on the y scale (proportion of ll, in the units of y).
   c1_threshold <- c1 * ll
   c2_threshold <- c2 * ll
+  # Absorb floating-point representation error so a change of exactly
+  # c1 * ll / c2 * ll is judged as the stated threshold (e.g. y = c(1, 0.9)).
+  # Relative to ll so the verdicts are invariant to the unit of y and ll.
+  tol <- sqrt(.Machine$double.eps) * ll
 
   one_subject <- function(d, id = NULL) {
     if ("x" %in% names(d)) {
       d <- d[order(d$x), , drop = FALSE]
     }
     # C1: any subsequent y exceeds the previous y by more than c1 of ll
-    c1_check <- any(diff(d$y) > c1_threshold / ll)
-    # C2: the last y is not at least c2 less than the first y
-    c2_check <- (d$y[nrow(d)] >= (d$y[1] - c2_threshold / ll))
+    c1_check <- any(diff(d$y) > c1_threshold + tol)
+    # C2: the last y is not at least c2 of ll below the first y (a decline of
+    # exactly c2 * ll passes)
+    c2_check <- (d$y[nrow(d)] > (d$y[1] - c2_threshold + tol))
     res <- tibble::tibble(
       c1_pass = !c1_check,
       c2_pass = !c2_check

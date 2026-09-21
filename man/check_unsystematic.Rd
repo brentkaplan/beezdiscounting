@@ -14,7 +14,11 @@ check_unsystematic(dat, ll = 1, c1 = 0.2, c2 = 0.1)
 \item \code{x} (optional): Delay values; when present, each subject's points are ordered by delay first.
 }}
 
-\item{ll}{A numeric value representing the larger later reward. Default is 1.}
+\item{ll}{A numeric value representing the larger later reward, in the same
+units as \code{y}. Default is 1 (indifference points expressed as a proportion
+of the larger later reward). Both thresholds are applied on the \code{y} scale
+(\code{c1 * ll} and \code{c2 * ll}), so amount-scale data (e.g. \code{y} in dollars) need
+\code{ll} set to the larger later amount.}
 
 \item{c1}{A numeric value for the threshold proportion for Criterion 1. Default is 0.2.}
 
@@ -32,7 +36,8 @@ A tibble with the following columns:
 This function checks a dataset for violations of two criteria commonly used to identify unsystematic delay-discounting data:
 \itemize{
 \item Criterion 1: Any subsequent value of \code{y} exceeds the previous value by more than a specified proportion of the larger later reward (\code{ll}).
-\item Criterion 2: The last value of \code{y} is not at least a specified proportion less than the first value of \code{y}.
+\item Criterion 2: The last value of \code{y} is not at least a specified proportion of \code{ll} less than the first value of \code{y}
+(a decline of exactly \code{c2 * ll} passes).
 }
 }
 \details{

@@ -14,6 +14,11 @@ which shipped none).
   now strict: a decline of exactly `c2 * ll` passes. `ll`, `c1` and `c2` are
   validated. Verdicts on proportion data with `ll = 1` change only at the
   exact C2 threshold.
+* `check_unsystematic()` and `calc_aucs()` now error on missing `y`/`x`
+  values and on duplicate delays within a subject, which previously gave a
+  silent `NA`/`TRUE` verdict or a result that depended on row order.
+  `calc_aucs()` documents that `auc_log10` uses `log10(x + 1)` and therefore
+  depends on the delay unit.
 * `score_dd()`, `ans_dd()` and `calc_dd()` read numeric Qualtrics exports per
   item. The bundled 5.5-trial template codes `Attend-LL` in reverse order
   (1 = "in 25 years", 2 = "now"), so numeric exports previously flagged

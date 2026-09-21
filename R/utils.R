@@ -114,6 +114,32 @@ long_to_wide_mcq_excel <- function(dat, subj_col = "subjectid",
                               values_from = tidyr::all_of(ans_col)))
 }
 
+# Shared input guard for check_unsystematic() / calc_aucs() (audit F-BZ3-5):
+# missing y (or x) and duplicate delays within a subject would otherwise give
+# silent NA verdicts or row-order-dependent results.
+.dd_check_ip_rows <- function(dat, fn) {
+  if (!"y" %in% names(dat)) {
+    stop("`", fn, "()` needs a `y` column.", call. = FALSE)
+  }
+  if (anyNA(dat$y) || ("x" %in% names(dat) && anyNA(dat$x))) {
+    stop("`", fn, "()`: `y`/`x` contain missing values; remove or impute ",
+         "them first.", call. = FALSE)
+  }
+  if ("x" %in% names(dat)) {
+    id <- if ("id" %in% names(dat)) dat$id else rep(1L, nrow(dat))
+    dup <- duplicated(data.frame(id = id, x = dat$x))
+    if (any(dup)) {
+      bad <- unique(id[dup])
+      stop("`", fn, "()`: duplicate delay(s) within id ",
+           paste(utils::head(bad, 5), collapse = ", "),
+           if (length(bad) > 5) ", ..." else "",
+           "; each subject needs one indifference point per delay.",
+           call. = FALSE)
+    }
+  }
+  invisible(dat)
+}
+
 #' Check for Unsystematic Data Violations
 #'
 #' This function checks a dataset for violations of two criteria commonly used to identify unsystematic delay-discounting data:
@@ -129,6 +155,8 @@ long_to_wide_mcq_excel <- function(dat, subj_col = "subjectid",
 #'   - `id`: A unique identifier for the data set.
 #'   - `y`: The indifference points to be analyzed.
 #'   - `x` (optional): Delay values; when present, each subject's points are ordered by delay first.
+#'
+#'   Missing `y` or `x` values and duplicate delays within a subject are errors.
 #' @param ll A numeric value representing the larger later reward, in the same
 #'   units as `y`. Default is 1 (indifference points expressed as a proportion
 #'   of the larger later reward). Both thresholds are applied on the `y` scale
@@ -168,6 +196,8 @@ check_unsystematic <- function(dat, ll = 1, c1 = .2, c2 = .1) {
   # c1 * ll / c2 * ll is judged as the stated threshold (e.g. y = c(1, 0.9)).
   # Relative to ll so the verdicts are invariant to the unit of y and ll.
   tol <- sqrt(.Machine$double.eps) * ll
+  .dd_check_ip_rows(dat[if ("id" %in% names(dat)) !is.na(dat$id) else TRUE, , drop = FALSE],
+                    "check_unsystematic")
 
   one_subject <- function(d, id = NULL) {
     if ("x" %in% names(d)) {
@@ -280,12 +310,32 @@ calc_conf_int <- function(estimate, std_error, model, alpha = 0.05) {
 #'   It must include the following columns:
 #'   - `id`: Participant or group identifier.
 #'   - `x`: Delay values (e.g., in days).
-#'   - `y`: Indifference point values (e.g., subjective value of the delayed reward).
+#'   - `y`: Indifference points as a proportion of the larger later reward
+#'     (the area is normalized by the delay range times 1, so `y` must be on
+#'     the 0--1 scale).
+#'
+#'   Missing `y` or `x` values and duplicate delays within a subject are errors.
+#'
+#' @details
+#' Each area is the trapezoidal area under the indifference points divided by
+#' the width of the delay axis, so a subject who does not discount scores 1.
+#' `auc_log10` transforms delays as `log10(x + 1)` (the `+ 1` keeps a zero
+#' delay finite, the convention usually attributed to Borges et al., 2016) and
+#' rescales them by their maximum. Because of the `+ 1`, `auc_log10` depends
+#' on the delay unit: the same series scores differently in days and in
+#' weeks, so compare `auc_log10` only across data recorded in one delay unit.
+#' `auc_regular` and `auc_ord` are unit-free.
+#'
+#' @references
+#' Borges, A. M., Kuang, J., Milhorn, H., & Yi, R. (2016). An alternative
+#' approach to calculating area-under-the-curve (AUC) in delay discounting
+#' research. *Journal of the Experimental Analysis of Behavior, 106*, 145--155.
+#' \doi{10.1002/jeab.219}
 #'
 #' @return A tibble with the following columns:
 #'   - `id`: The participant or group identifier.
 #'   - `auc_regular`: The regular AUC, calculated using the raw delay values.
-#'   - `auc_log10`: The log10 AUC, calculated using logarithmically transformed delay values.
+#'   - `auc_log10`: The log10 AUC, calculated on `log10(x + 1)` delays scaled to their maximum.
 #'   - `auc_ord`: The ordinal AUC, calculated using ordinally scaled delay values.
 #'
 #' @export
@@ -301,6 +351,8 @@ calc_conf_int <- function(estimate, std_error, model, alpha = 0.05) {
 #' # Calculate AUC metrics for a single participant
 #' calc_aucs(data)
 calc_aucs <- function(dat) {
+  .dd_check_ip_rows(dat[if ("id" %in% names(dat)) !is.na(dat$id) else TRUE, , drop = FALSE],
+                    "calc_aucs")
   # Helper function to calculate trapezoidal AUC and normalize it
   calc_trap_auc <- function(x, y) {
     raw_auc <- sum((diff(x) * (y[-length(y)] + y[-1]) / 2))

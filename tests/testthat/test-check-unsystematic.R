@@ -59,3 +59,22 @@ test_that("check_unsystematic validates ll, c1 and c2", {
   expect_error(check_unsystematic(d, c1 = -0.1), "c1")
   expect_error(check_unsystematic(d, c2 = NA_real_), "c2")
 })
+
+# Audit F-BZ3-5: duplicate delays within a subject made the verdict / AUC depend
+# on row order, and NA y gave a silent NA / TRUE; both are now rejected.
+test_that("check_unsystematic and calc_aucs reject duplicate delays within a subject", {
+  d <- tibble::tibble(id = c(1, 1, 1, 2, 2), x = c(1, 1, 2, 1, 2),
+                      y = c(0.9, 0.5, 0.4, 0.9, 0.5))
+  expect_error(check_unsystematic(d), "duplicate delay.*id 1")
+  expect_error(calc_aucs(d), "duplicate delay.*id 1")
+})
+
+test_that("check_unsystematic and calc_aucs reject missing y or x", {
+  d <- tibble::tibble(id = 1, x = c(1, 7, 30), y = c(0.9, NA, 0.4))
+  expect_error(check_unsystematic(d), "missing")
+  expect_error(calc_aucs(d), "missing")
+  d2 <- tibble::tibble(id = 1, x = c(1, NA, 30), y = c(0.9, 0.5, 0.4))
+  expect_error(calc_aucs(d2), "missing")
+  # no id column: still validated
+  expect_error(check_unsystematic(tibble::tibble(y = c(1, NA))), "missing")
+})

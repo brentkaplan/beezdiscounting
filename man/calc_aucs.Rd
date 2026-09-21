@@ -12,15 +12,19 @@ It must include the following columns:
 \itemize{
 \item \code{id}: Participant or group identifier.
 \item \code{x}: Delay values (e.g., in days).
-\item \code{y}: Indifference point values (e.g., subjective value of the delayed reward).
-}}
+\item \code{y}: Indifference points as a proportion of the larger later reward
+(the area is normalized by the delay range times 1, so \code{y} must be on
+the 0--1 scale).
+}
+
+Missing \code{y} or \code{x} values and duplicate delays within a subject are errors.}
 }
 \value{
 A tibble with the following columns:
 \itemize{
 \item \code{id}: The participant or group identifier.
 \item \code{auc_regular}: The regular AUC, calculated using the raw delay values.
-\item \code{auc_log10}: The log10 AUC, calculated using logarithmically transformed delay values.
+\item \code{auc_log10}: The log10 AUC, calculated on \code{log10(x + 1)} delays scaled to their maximum.
 \item \code{auc_ord}: The ordinal AUC, calculated using ordinally scaled delay values.
 }
 }
@@ -30,6 +34,16 @@ regular AUC (using raw delays), log10 AUC (using logarithmically scaled delays),
 These metrics provide different perspectives on the rate of delay discounting.
 Metrics are computed separately for each \code{id}, so a data frame with several
 subjects returns one row per subject.
+}
+\details{
+Each area is the trapezoidal area under the indifference points divided by
+the width of the delay axis, so a subject who does not discount scores 1.
+\code{auc_log10} transforms delays as \code{log10(x + 1)} (the \code{+ 1} keeps a zero
+delay finite, the convention usually attributed to Borges et al., 2016) and
+rescales them by their maximum. Because of the \code{+ 1}, \code{auc_log10} depends
+on the delay unit: the same series scores differently in days and in
+weeks, so compare \code{auc_log10} only across data recorded in one delay unit.
+\code{auc_regular} and \code{auc_ord} are unit-free.
 }
 \examples{
 # Example data
@@ -41,4 +55,10 @@ data <- data.frame(
 
 # Calculate AUC metrics for a single participant
 calc_aucs(data)
+}
+\references{
+Borges, A. M., Kuang, J., Milhorn, H., & Yi, R. (2016). An alternative
+approach to calculating area-under-the-curve (AUC) in delay discounting
+research. \emph{Journal of the Experimental Analysis of Behavior, 106}, 145--155.
+\doi{10.1002/jeab.219}
 }

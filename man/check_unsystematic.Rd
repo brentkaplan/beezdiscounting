@@ -12,7 +12,9 @@ check_unsystematic(dat, ll = 1, c1 = 0.2, c2 = 0.1)
 \item \code{id}: A unique identifier for the data set.
 \item \code{y}: The indifference points to be analyzed.
 \item \code{x} (optional): Delay values; when present, each subject's points are ordered by delay first.
-}}
+}
+
+Missing \code{y} or \code{x} values and duplicate delays within a subject are errors.}
 
 \item{ll}{A numeric value representing the larger later reward, in the same
 units as \code{y}. Default is 1 (indifference points expressed as a proportion

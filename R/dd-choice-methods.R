@@ -802,7 +802,10 @@ glance.beezdiscounting_choice <- function(x, ...) {
 #'   scales).
 #' @param ... Unused.
 #' @return A tibble with columns `term`, `estimate`, `conf.low`, `conf.high`,
-#'   `level`.
+#'   `level`, and `estimate_scale` (structural mode: `"log"` or `"natural"`
+#'   for the `beta_k`/`log_gamma` rows, `"internal"` otherwise; descriptive
+#'   mode: `"logit"` for the fixed effects, `"correlation"` for `cor_slopes`,
+#'   `"internal"` for the log SDs).
 #'
 #' @exportS3Method stats::confint beezdiscounting_choice
 confint.beezdiscounting_choice <- function(
@@ -868,7 +871,9 @@ confint.beezdiscounting_choice <- function(
       estimate = est,
       conf.low = lo,
       conf.high = hi,
-      level = level
+      level = level,
+      estimate_scale = ifelse(nms_d == "theta", "logit",
+                              ifelse(nms_d == "cor_re", "correlation", "internal"))
     ))
   }
 
@@ -912,12 +917,19 @@ confint.beezdiscounting_choice <- function(
     }
   }
 
+  # F-BZ4-3: state each row's scale.
+  exp_rows <- nms %in% c("beta_k", "log_gamma")
+  scale <- ifelse(exp_rows,
+                  if (report_space == "natural") "natural" else "log",
+                  "internal")
+
   tibble::tibble(
     term = term,
     estimate = estimates,
     conf.low = conf_low,
     conf.high = conf_high,
-    level = level
+    level = level,
+    estimate_scale = scale
   )
 }
 

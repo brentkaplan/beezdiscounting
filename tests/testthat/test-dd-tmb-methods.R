@@ -629,10 +629,17 @@ describe("confint", {
     fit <- .get_fit_for_methods()
     ci <- confint(fit)
     expect_s3_class(ci, "tbl_df")
-    expect_named(ci, c("term", "estimate", "conf.low", "conf.high", "level"))
+    expect_named(ci, c("term", "estimate", "conf.low", "conf.high", "level",
+                       "estimate_scale"))
     expect_true(all(ci$conf.low <= ci$estimate))
     expect_true(all(ci$estimate <= ci$conf.high))
     expect_true(all(ci$level == 0.95))
+    # F-BZ4-3: the scale of each row is stated
+    expect_identical(ci$estimate_scale[ci$term == "k:(Intercept)"], "log")
+    ci_nat <- confint(fit, report_space = "natural")
+    expect_identical(ci_nat$estimate_scale[ci_nat$term == "k:(Intercept)"], "natural")
+    expect_true(all(ci_nat$estimate_scale[!grepl("^k:", ci_nat$term)] %in%
+                      c("internal", "natural")))
   })
 
   it("Wald interval = estimate +/- z*se on the internal scale", {

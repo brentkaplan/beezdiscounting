@@ -850,6 +850,10 @@ augment.beezdiscounting_tmb <- function(x, newdata = NULL, ...) {
 #' fixed-effect (`beta_k`) rows. `statistic` and `p.value` are always computed
 #' on the estimation (log-k) scale - Wald statistics are not recomputed after
 #' back-transforming (broom convention; see the `summary()` note for details).
+#' Each test is of the log-scale coefficient against 0: for the intercept row
+#' that is `k = 1` (rarely a meaningful null), and for a condition or
+#' covariate row it is a fold-change of 1 (no difference). The `s` row tests
+#' `s = 1`.
 #' Variance-component rows carry `NA` for `statistic` and `p.value` and are not
 #' affected by `report_space`.
 #'
@@ -1030,7 +1034,10 @@ glance.beezdiscounting_tmb <- function(x, ...) {
 #'   scale).
 #' @param ... Unused.
 #' @return A tibble with columns `term`, `estimate`, `conf.low`, `conf.high`,
-#'   `level`.
+#'   `level`, and `estimate_scale` (`"log"` or `"natural"` for the `beta_k`
+#'   and `log_s` rows, `"internal"` for the variance/auxiliary rows). Note that
+#'   `confint()` defaults to the internal scale while [tidy()] defaults to the
+#'   natural scale.
 #'
 #' @note For a 2-RE fit the `cor_re` and `log_sd_re` rows are reported on their
 #'   internal (atanh / log) scales and are NOT back-transformed by
@@ -1104,12 +1111,20 @@ confint.beezdiscounting_tmb <- function(
     }
   }
 
+  # F-BZ4-3: say which scale each row is on (tidy() defaults to natural,
+  # confint() to internal, under the same term labels).
+  exp_rows <- nms %in% c("beta_k", "log_s")
+  scale <- ifelse(exp_rows,
+                  if (report_space == "natural") "natural" else "log",
+                  "internal")
+
   tibble::tibble(
     term = term,
     estimate = estimates,
     conf.low = conf_low,
     conf.high = conf_high,
-    level = level
+    level = level,
+    estimate_scale = scale
   )
 }
 

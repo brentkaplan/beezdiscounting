@@ -82,6 +82,10 @@ Bayesian fits (\code{beezdiscounting_brms},
 same reference grid: posterior medians with quantile credible intervals
 and \code{post.prob} in place of adjusted p-values (no multiplicity
 adjustment; the joint posterior already encodes contrast dependence).
+\code{post.prob} is the posterior probability of the \emph{more probable}
+direction, \code{max(P(d > 0), P(d < 0))}, so it is at least 0.5 and a
+negative contrast can show 0.99; it is not \code{P(left > right)}. Read the
+direction from the sign of the estimate.
 }
 \examples{
 \donttest{

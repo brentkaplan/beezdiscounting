@@ -585,3 +585,12 @@ describe("emmeans / comparisons ignore the shape parameter s", {
     expect_true(nrow(as.data.frame(emm)) >= 2L)
   })
 })
+
+test_that("get_dd_param_emms rejects a formula factors_in_emm with guidance (F-BZ4-7)", {
+  sim <- simulate_dd_ip(n_subjects = 20, n_conditions = 2,
+                        delta_k = c(0, log(2)), seed = 4)
+  fit <- fit_dd_tmb(sim, equation = "mazur", factors = "condition", verbose = 0)
+  expect_error(get_dd_param_emms(fit, factors_in_emm = ~condition),
+               "character vector.*compare_specs")
+  expect_no_error(get_dd_param_emms(fit, factors_in_emm = "condition"))
+})

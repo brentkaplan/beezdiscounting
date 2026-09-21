@@ -26,7 +26,8 @@ and CIs are on the log10 scale (or ratios when \code{exponentiate = TRUE}).
 brms backend, \code{statistic}/\code{df}/\code{p.value} are \code{NA}
 (posterior summaries), the intervals are quantile credible intervals,
 and an additional \code{post.prob} column reports the posterior
-probability of direction.
+probability of the more probable direction (at least 0.5; see
+\code{\link[=get_dd_comparisons]{get_dd_comparisons()}}).
 }
 \description{
 \code{\link[generics:tidy]{generics::tidy()}} method for \code{beezdiscounting_comparison} objects

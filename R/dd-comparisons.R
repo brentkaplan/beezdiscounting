@@ -338,6 +338,17 @@ get_dd_param_emms <- function(
   ci_level = 0.95,
   ...
 ) {
+  # Audit F-BZ4-7: a formula here (e.g. ~ condition) used to fail deep inside
+  # the grid builder with an opaque unique() error.
+  if (!is.null(factors_in_emm) && !is.character(factors_in_emm)) {
+    cli::cli_abort(c(
+      "{.arg factors_in_emm} must be a character vector of factor names, \\
+       not {.cls {class(factors_in_emm)[1]}}.",
+      "i" = "e.g. {.code factors_in_emm = \"condition\"}; formulas such as \\
+             {.code ~ condition} belong in {.fn get_dd_comparisons}'s \\
+             {.arg compare_specs}."
+    ))
+  }
   # Bayesian fits: draws-based EMMs over the same reference grid
   # (TICKET-041; choice fits routed here since TICKET-048 -- the draws
   # machinery is design-agnostic over b_logk_*)
@@ -440,6 +451,10 @@ get_dd_param_emms <- function(
 #' same reference grid: posterior medians with quantile credible intervals
 #' and \code{post.prob} in place of adjusted p-values (no multiplicity
 #' adjustment; the joint posterior already encodes contrast dependence).
+#' \code{post.prob} is the posterior probability of the \emph{more probable}
+#' direction, \code{max(P(d > 0), P(d < 0))}, so it is at least 0.5 and a
+#' negative contrast can show 0.99; it is not \code{P(left > right)}. Read the
+#' direction from the sign of the estimate.
 #'
 #' @param fit A \code{beezdiscounting_tmb}, structural
 #'   \code{beezdiscounting_choice}, \code{beezdiscounting_brms}, or
@@ -850,7 +865,8 @@ get_dd_comparisons <- function(
 #'   brms backend, \code{statistic}/\code{df}/\code{p.value} are \code{NA}
 #'   (posterior summaries), the intervals are quantile credible intervals,
 #'   and an additional \code{post.prob} column reports the posterior
-#'   probability of direction.
+#'   probability of the more probable direction (at least 0.5; see
+#'   [get_dd_comparisons()]).
 #'
 #' @importFrom generics tidy
 #' @export

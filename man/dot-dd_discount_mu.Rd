@@ -4,7 +4,7 @@
 \alias{.dd_discount_mu}
 \title{Discounting function value (mean indifference proportion) for k and x}
 \usage{
-.dd_discount_mu(k, x, equation, s = 1)
+.dd_discount_mu(k, x, equation, s = 1, clamp = TRUE)
 }
 \arguments{
 \item{k}{Numeric vector of discount rates.}
@@ -16,9 +16,13 @@ or \code{"rachlin"}.}
 
 \item{s}{Numeric nonlinearity exponent (Green-Myerson / Rachlin). Default
 \code{1} so 1-parameter callers are unchanged.}
+
+\item{clamp}{Apply the \verb{[1e-6, 1 - 1e-6]} guard (default \code{TRUE}); \code{FALSE}
+returns the raw mean, used to count guard activity.}
 }
 \value{
-Numeric vector of mu values clamped to \verb{[1e-6, 1-1e-6]}.
+Numeric vector of mu values clamped to \verb{[1e-6, 1-1e-6]} (raw when
+\code{clamp = FALSE}).
 }
 \description{
 Mazur: \code{mu = 1 / (1 + k * x)}; exponential: \code{mu = exp(-k * x)};

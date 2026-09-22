@@ -1161,7 +1161,7 @@ describe("fit_dd_tmb k + s ~ 1 (subject-random s)", {
     fit <- fit_dd_tmb(sim, equation = "green-myerson",
                       random_effects = k + s ~ 1, verbose = 0)
     sp <- fit$subject_pars
-    expect_named(sp, c("id", "re_k", "re_s", "k", "s"))
+    expect_named(sp, c("id", "re_k", "re_s", "k", "s", "s_latent"))
     expect_true(all(sp$s >= 0.05 - 1e-9 & sp$s <= 20 + 1e-9))
     expect_true(all(is.finite(sp$k)))
     expect_equal(dimnames(fit$Sigma)[[1]], c("k", "s"))

@@ -51,8 +51,8 @@ required for \code{n_re == 2}.}
 s-target fit. Ignored when \code{n_re == 1L}. Defaults to \code{0L}.}
 }
 \value{
-data.frame: \verb{id, u_i, k} (1-RE), \verb{id, re_k, re_phi, k, phi}
-(phi-target 2-RE), or \verb{id, re_k, re_s, k, s} (s-target 2-RE).
+data.frame: \verb{id, u_i, k} (1-RE), \verb{id, re_k, re_phi, k, phi, phi_latent} (phi-target 2-RE), or \verb{id, re_k, re_s, k, s, s_latent}
+(s-target 2-RE).
 }
 \description{
 Reconstructs each subject's \code{k_i = exp(eta_i)} where

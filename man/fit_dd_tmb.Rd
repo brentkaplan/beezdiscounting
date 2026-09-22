@@ -89,9 +89,16 @@ spec, parsed random effects).}
 \item{formula_details}{Fixed-effect design (\code{X}, \code{rhs}, \code{contrasts}).}
 \item{subject_pars}{Data frame of subject-level parameters. For a 1-RE fit
 (\code{k ~ 1}) the columns are \verb{id, u_i, k}; for a phi-target 2-RE fit
-(\code{k + phi ~ 1}) they are \verb{id, re_k, re_phi, k, phi}; for an s-target
-2-RE fit (\code{k + s ~ 1}, GM/Rachlin) they are \verb{id, re_k, re_s, k, s}
-where \code{s} is soft-clamped toward \verb{(0.05, 20)}.}
+(\code{k + phi ~ 1}) they are \verb{id, re_k, re_phi, k, phi, phi_latent}
+(\code{phi} floored at 0.1, \code{phi_latent} unfloored); for an s-target
+2-RE fit (\code{k + s ~ 1}, GM/Rachlin) they are
+\verb{id, re_k, re_s, k, s, s_latent} where \code{s} is soft-clamped toward
+\verb{(0.05, 20)} and \code{s_latent = exp(log_s + re_s)}.}
+\item{guard_info}{Guard / clamp / floor activity at the fitted values
+(see "Scales, guards and floors"): \code{n_rows}, \code{mu_guard_lower},
+\code{mu_guard_upper}, plus \code{n_s_clamped_lower}/\code{n_s_clamped_upper}
+(\code{k + s ~ 1}) or \code{n_phi_floor} (\code{k + phi ~ 1}). \code{NULL} if the
+computation failed.}
 \item{loglik, AIC, BIC}{Fit statistics.}
 \item{converged, se_available}{Convergence / SE-availability flags. A
 non-converged fit raises a \code{beezdiscounting_convergence_warning} at
@@ -134,15 +141,28 @@ observations carry no information about \code{k}, so very steep discounters
 measured at long delays lose curvature. Mazur needs \code{k * delay} near
 \code{1e6} to reach the guard; Green-Myerson and Rachlin can reach it with a
 large \code{s} (e.g. Green-Myerson with \code{k = 0.1}, \code{s = 3} at 1,460 days).
+\code{fit$guard_info$mu_guard_lower} / \verb{$mu_guard_upper} count the
+positive-delay observations whose subject-level fitted mean falls outside
+the guard, and \code{\link[=summary]{summary()}} adds a note when either is non-zero.
 \item \strong{Shape \code{s}.} The reported \code{s} is the unclamped population value
 \code{exp(log_s)}. With \code{k + s ~ 1} each subject's effective \code{s} is
 soft-clamped into \verb{(0.05, 20)}, and the \code{VarCorr()} SD of \code{s} is on the
-latent (pre-clamp) log scale.
+latent (pre-clamp) log scale. \code{subject_pars} holds both the effective
+\code{s} and the latent \code{s_latent = exp(log_s + re_s)};
+\code{fit$guard_info$n_s_clamped_lower} / \verb{$n_s_clamped_upper} count the
+subjects whose two values differ by more than 1\% on the log scale
+(noted by \code{\link[=summary]{summary()}}).
 \item \strong{Precision floor.} SLT-beta precision is bounded below at
 \code{phi = 0.1}. For \code{k ~ 1} this is an optimizer bound that
 \code{tmb_control$lower} can relax; with \code{k + phi ~ 1} each subject's \code{phi}
 is floored at 0.1 inside the likelihood and cannot be relaxed.
+\code{subject_pars$phi_latent} is the unfloored value and
+\code{fit$guard_info$n_phi_floor} counts the subjects below the floor
+(noted by \code{\link[=summary]{summary()}}).
 }
+
+These counts are computed at the fitted values and are reporting only:
+they do not change any estimate.
 }
 
 \section{Two-parameter equations (Green-Myerson, Rachlin)}{

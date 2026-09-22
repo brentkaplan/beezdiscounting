@@ -276,9 +276,12 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
 #'   or `"rachlin"`.
 #' @param s Numeric nonlinearity exponent (Green-Myerson / Rachlin). Default
 #'   `1` so 1-parameter callers are unchanged.
-#' @return Numeric vector of mu values clamped to `[1e-6, 1-1e-6]`.
+#' @param clamp Apply the `[1e-6, 1 - 1e-6]` guard (default `TRUE`); `FALSE`
+#'   returns the raw mean, used to count guard activity.
+#' @return Numeric vector of mu values clamped to `[1e-6, 1-1e-6]` (raw when
+#'   `clamp = FALSE`).
 #' @keywords internal
-.dd_discount_mu <- function(k, x, equation, s = 1) {
+.dd_discount_mu <- function(k, x, equation, s = 1, clamp = TRUE) {
   mu <- switch(
     equation,
     mazur = 1 / (1 + k * x),
@@ -287,7 +290,61 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
     rachlin = ifelse(x > 0, 1 / (1 + k * x^s), 1),
     stop("unknown equation '", equation, "'", call. = FALSE)
   )
+  if (!isTRUE(clamp)) {
+    return(mu)
+  }
   pmin(pmax(mu, 1e-6), 1 - 1e-6)
+}
+
+
+#' Guard, clamp and floor activity at the fitted values
+#'
+#' Counts, at the subject-level fitted values, the rows with a positive delay
+#' whose raw mean lies outside the `[1e-6, 1 - 1e-6]` guard (`x = 0` rows have
+#' mean 1 by definition and are excluded); for `k + s ~ 1`, the subjects whose
+#' soft-clamped `s` differs materially from the latent value
+#' ([.dd_s_clamp_active()]); for `k + phi ~ 1`, the subjects whose latent
+#' `phi` is below the 0.1 floor. Reporting only (audit F-BZ4-2, F-BZ4-5).
+#'
+#' @param object A `beezdiscounting_tmb` fit (with `subject_pars`).
+#' @return list(n_rows, mu_guard_lower, mu_guard_upper, and either
+#'   n_s_clamped_lower / n_s_clamped_upper or n_phi_floor when applicable).
+#' @keywords internal
+.dd_tmb_guard_info <- function(object) {
+  pinfo <- object$param_info
+  d <- object$data
+  x <- d[[pinfo$x_var]]
+  sp <- object$subject_pars
+  is_s_re <- isTRUE(pinfo$n_random_effects == 2L) &&
+    identical(as.integer(pinfo$re2_target %||% 0L), 1L)
+  is_phi_re <- isTRUE(pinfo$n_random_effects == 2L) && !is_s_re
+
+  s_row <- if (is_s_re) {
+    unname(stats::setNames(sp$s, as.character(sp$id))[
+      as.character(d[[pinfo$id_var]])
+    ])
+  } else if (isTRUE(pinfo$has_s)) {
+    exp(unname(object$model$coefficients[["log_s"]]))
+  } else {
+    1
+  }
+  k_row <- .dd_tmb_predict_k(object, d, level = "subject")
+  mu <- .dd_discount_mu(k_row, x, pinfo$equation, s = s_row, clamp = FALSE)
+  pos <- x > 0
+  out <- list(
+    n_rows = sum(pos),
+    mu_guard_lower = sum(mu[pos] < 1e-6),
+    mu_guard_upper = sum(mu[pos] > 1 - 1e-6)
+  )
+  if (is_s_re) {
+    act <- .dd_s_clamp_active(sp$s, sp$s_latent)
+    out$n_s_clamped_lower <- sum(act & sp$s < sp$s_latent)
+    out$n_s_clamped_upper <- sum(act & sp$s > sp$s_latent)
+  }
+  if (is_phi_re) {
+    out$n_phi_floor <- sum(sp$phi_latent < 0.1)
+  }
+  out
 }
 
 
@@ -1247,6 +1304,7 @@ summary.beezdiscounting_tmb <- function(
       "s is the population hyperboloid shape parameter (the equation reduces to Mazur at s = 1)."
     )
   }
+  notes <- c(notes, .dd_tmb_guard_notes(object$guard_info))
 
   structure(
     list(
@@ -1269,6 +1327,47 @@ summary.beezdiscounting_tmb <- function(
     ),
     class = "summary.beezdiscounting_tmb"
   )
+}
+
+
+# summary() notes for guard / clamp / floor activity (F-BZ4-2, F-BZ4-5); empty
+# when nothing binds or when guard_info is absent (older objects).
+.dd_tmb_guard_notes <- function(gi) {
+  if (is.null(gi)) {
+    return(character(0))
+  }
+  notes <- character(0)
+  n_mu <- gi$mu_guard_lower + gi$mu_guard_upper
+  if (n_mu > 0L) {
+    notes <- c(notes, sprintf(
+      paste0(
+        "The mean guard [1e-6, 1 - 1e-6] binds at %d of %d positive-delay ",
+        "observations (%d low, %d high); these carry little information ",
+        "about k. See fit$guard_info."
+      ),
+      n_mu, gi$n_rows, gi$mu_guard_lower, gi$mu_guard_upper
+    ))
+  }
+  n_s <- (gi$n_s_clamped_lower %||% 0L) + (gi$n_s_clamped_upper %||% 0L)
+  if (n_s > 0L) {
+    notes <- c(notes, sprintf(
+      paste0(
+        "The (0.05, 20) soft clamp on s is active for %d subject(s) ",
+        "(%d low, %d high); compare subject_pars$s with $s_latent."
+      ),
+      n_s, gi$n_s_clamped_lower, gi$n_s_clamped_upper
+    ))
+  }
+  if ((gi$n_phi_floor %||% 0L) > 0L) {
+    notes <- c(notes, sprintf(
+      paste0(
+        "%d subject(s) sit at the phi = 0.1 precision floor ",
+        "(subject_pars$phi_latent < 0.1)."
+      ),
+      gi$n_phi_floor
+    ))
+  }
+  notes
 }
 
 

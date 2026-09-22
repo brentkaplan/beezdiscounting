@@ -485,6 +485,13 @@ NULL
 # Equivalent to TMB's logspace_add(0, z) used kernel-side.
 .dd_softplus <- function(z) pmax(z, 0) + log1p(exp(-abs(z)))
 
+# TRUE where the soft clamp materially moves a subject's s: effective and latent
+# s differ by more than 1% on the log scale. A latent s exactly at a bound maps
+# to ~0.0518 / ~19.3, so an "equals the bound" test would miss it (F-BZ4-5).
+.dd_s_clamp_active <- function(s_eff, s_latent, tol = 0.01) {
+  abs(log(s_eff) - log(s_latent)) > tol
+}
+
 # Two-sided C-infinity soft clamp of s = exp(u) toward the open interval
 # (exp(a), exp(b)), worked in log space (the bounds are multiplicatively symmetric:
 # log(0.05) = -log(20)). g(u) ~= u in the interior, saturates with a small but
@@ -1007,8 +1014,9 @@ NULL
 #'   required for `n_re == 2`.
 #' @param re2_target Integer flag: `0L` for a phi-target 2-RE fit, `1L` for an
 #'   s-target fit. Ignored when `n_re == 1L`. Defaults to `0L`.
-#' @return data.frame: `id, u_i, k` (1-RE), `id, re_k, re_phi, k, phi`
-#'   (phi-target 2-RE), or `id, re_k, re_s, k, s` (s-target 2-RE).
+#' @return data.frame: `id, u_i, k` (1-RE), `id, re_k, re_phi, k, phi,
+#'   phi_latent` (phi-target 2-RE), or `id, re_k, re_s, k, s, s_latent`
+#'   (s-target 2-RE).
 #' @note Subject-level `k` assumes between-subject predictors: the first design
 #'   row per subject defines that subject's fixed-effect contribution. A
 #'   within-subject-varying covariate would make a single per-subject `k`
@@ -1046,14 +1054,19 @@ NULL
       re_s  <- as.numeric(re[, 2L])
       log_s <- unname(coefficients[["log_s"]])
       s_i   <- .dd_soft_clamp_s_log(log_s + re_s)        # soft clamp; matches the kernel
+      # s_latent: the pre-clamp value exp(log_s + re_s) (F-BZ4-5 reporting).
       data.frame(id = subject_levels, re_k = re_k, re_s = re_s,
-                 k = exp(log_k_i), s = s_i, stringsAsFactors = FALSE)
+                 k = exp(log_k_i), s = s_i, s_latent = exp(log_s + re_s),
+                 stringsAsFactors = FALSE)
     } else {
       re_phi  <- as.numeric(re[, 2L])
       log_aux <- unname(coefficients[[log_aux_name]])
-      phi_i   <- pmax(exp(log_aux + re_phi), 0.1)        # per-subject phi floor
+      phi_latent <- exp(log_aux + re_phi)
+      phi_i   <- pmax(phi_latent, 0.1)                   # per-subject phi floor
+      # phi_latent: the unfloored value (F-BZ4-5 reporting).
       data.frame(id = subject_levels, re_k = re_k, re_phi = re_phi,
-                 k = exp(log_k_i), phi = phi_i, stringsAsFactors = FALSE)
+                 k = exp(log_k_i), phi = phi_i, phi_latent = phi_latent,
+                 stringsAsFactors = FALSE)
     }
   } else {
     sigma_u <- exp(unname(coefficients[["log_sigma_u"]]))
@@ -1138,14 +1151,27 @@ NULL
 #'   measured at long delays lose curvature. Mazur needs `k * delay` near
 #'   `1e6` to reach the guard; Green-Myerson and Rachlin can reach it with a
 #'   large `s` (e.g. Green-Myerson with `k = 0.1`, `s = 3` at 1,460 days).
+#'   `fit$guard_info$mu_guard_lower` / `$mu_guard_upper` count the
+#'   positive-delay observations whose subject-level fitted mean falls outside
+#'   the guard, and [summary()] adds a note when either is non-zero.
 #' * **Shape `s`.** The reported `s` is the unclamped population value
 #'   `exp(log_s)`. With `k + s ~ 1` each subject's effective `s` is
 #'   soft-clamped into `(0.05, 20)`, and the `VarCorr()` SD of `s` is on the
-#'   latent (pre-clamp) log scale.
+#'   latent (pre-clamp) log scale. `subject_pars` holds both the effective
+#'   `s` and the latent `s_latent = exp(log_s + re_s)`;
+#'   `fit$guard_info$n_s_clamped_lower` / `$n_s_clamped_upper` count the
+#'   subjects whose two values differ by more than 1% on the log scale
+#'   (noted by [summary()]).
 #' * **Precision floor.** SLT-beta precision is bounded below at
 #'   `phi = 0.1`. For `k ~ 1` this is an optimizer bound that
 #'   `tmb_control$lower` can relax; with `k + phi ~ 1` each subject's `phi`
 #'   is floored at 0.1 inside the likelihood and cannot be relaxed.
+#'   `subject_pars$phi_latent` is the unfloored value and
+#'   `fit$guard_info$n_phi_floor` counts the subjects below the floor
+#'   (noted by [summary()]).
+#'
+#' These counts are computed at the fitted values and are reporting only:
+#' they do not change any estimate.
 #'
 #' @section Two-parameter equations (Green-Myerson, Rachlin):
 #' `k` and `s` trade off along a ridge, and with the few delays of a typical
@@ -1211,9 +1237,16 @@ NULL
 #'     \item{formula_details}{Fixed-effect design (`X`, `rhs`, `contrasts`).}
 #'     \item{subject_pars}{Data frame of subject-level parameters. For a 1-RE fit
 #'       (`k ~ 1`) the columns are `id, u_i, k`; for a phi-target 2-RE fit
-#'       (`k + phi ~ 1`) they are `id, re_k, re_phi, k, phi`; for an s-target
-#'       2-RE fit (`k + s ~ 1`, GM/Rachlin) they are `id, re_k, re_s, k, s`
-#'       where `s` is soft-clamped toward `(0.05, 20)`.}
+#'       (`k + phi ~ 1`) they are `id, re_k, re_phi, k, phi, phi_latent`
+#'       (`phi` floored at 0.1, `phi_latent` unfloored); for an s-target
+#'       2-RE fit (`k + s ~ 1`, GM/Rachlin) they are
+#'       `id, re_k, re_s, k, s, s_latent` where `s` is soft-clamped toward
+#'       `(0.05, 20)` and `s_latent = exp(log_s + re_s)`.}
+#'     \item{guard_info}{Guard / clamp / floor activity at the fitted values
+#'       (see "Scales, guards and floors"): `n_rows`, `mu_guard_lower`,
+#'       `mu_guard_upper`, plus `n_s_clamped_lower`/`n_s_clamped_upper`
+#'       (`k + s ~ 1`) or `n_phi_floor` (`k + phi ~ 1`). `NULL` if the
+#'       computation failed.}
 #'     \item{loglik, AIC, BIC}{Fit statistics.}
 #'     \item{converged, se_available}{Convergence / SE-availability flags. A
 #'       non-converged fit raises a `beezdiscounting_convergence_warning` at
@@ -1582,6 +1615,11 @@ fit_dd_tmb <- function(data,
     ),
     class = "beezdiscounting_tmb"
   )
+
+  # Guard / clamp / floor activity at the fitted values (F-BZ4-2, F-BZ4-5).
+  # Reporting only; a failure here never fails the fit.
+  result_obj$guard_info <- tryCatch(.dd_tmb_guard_info(result_obj),
+                                    error = function(e) NULL)
 
   if (verbose >= 1) {
     if (converged) {

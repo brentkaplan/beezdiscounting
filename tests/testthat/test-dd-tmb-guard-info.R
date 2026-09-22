@@ -95,22 +95,31 @@ describe("fit_dd_tmb guard_info", {
     gi <- fit$guard_info
     sp <- fit$subject_pars
     act <- .dd_s_clamp_active(sp$s, sp$s_latent)
-    expect_identical(gi$n_s_clamped_lower, sum(act & sp$s < sp$s_latent))
-    expect_identical(gi$n_s_clamped_upper, sum(act & sp$s > sp$s_latent))
+    expect_identical(gi$n_s_clamped_lower, sum(act & sp$s_latent < 0.05))
+    expect_identical(gi$n_s_clamped_upper, sum(act & sp$s_latent > 20))
     # The flat subject sits NEAR the lower bound (latent s ~ 0.06) but the soft
     # clamp moves it by < 1%, so it is not counted.
     expect_lt(sp$s[sp$id == "flat"], 0.1)
     expect_identical(gi$n_s_clamped_lower, 0L)
     expect_false(any(grepl("soft clamp", summary(fit)$notes)))
 
-    # Push one subject's latent s beyond each bound: counted and noted.
-    fit2 <- fit
-    fit2$subject_pars$s_latent[1:2] <- c(0.03, 30)
-    fit2$subject_pars$s[1:2] <- .dd_soft_clamp_s_log(log(c(0.03, 30)))
-    gi2 <- .dd_tmb_guard_info(fit2)
-    expect_identical(c(gi2$n_s_clamped_lower, gi2$n_s_clamped_upper), c(1L, 1L))
-    fit2$guard_info <- gi2
-    expect_true(any(grepl("soft clamp on s is active for 2", summary(fit2)$notes)))
+    # Push latent s beyond one bound at a time: counted on the right side.
+    push <- function(lat) {
+      f <- fit
+      f$subject_pars$s_latent[seq_along(lat)] <- lat
+      f$subject_pars$s[seq_along(lat)] <- .dd_soft_clamp_s_log(log(lat))
+      f$guard_info <- .dd_tmb_guard_info(f)
+      f
+    }
+    lo <- push(0.03)
+    expect_identical(c(lo$guard_info$n_s_clamped_lower, lo$guard_info$n_s_clamped_upper),
+                     c(1L, 0L))
+    expect_true(any(grepl("active for 1 subject\\(s\\) \\(1 low, 0 high\\)",
+                          summary(lo)$notes)))
+    hi <- push(c(30, 40))
+    expect_identical(c(hi$guard_info$n_s_clamped_lower, hi$guard_info$n_s_clamped_upper),
+                     c(0L, 2L))
+    expect_true(any(grepl("\\(0 low, 2 high\\)", summary(hi)$notes)))
   })
 
   it("stores n_phi_floor for k + phi ~ 1", {

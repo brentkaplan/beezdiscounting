@@ -337,9 +337,10 @@ VarCorr.beezdiscounting_tmb <- function(x, sigma = 1, ...) {
     mu_guard_upper = sum(mu[pos] > 1 - 1e-6)
   )
   if (is_s_re) {
+    # The lower clamp raises s above its latent value; the upper clamp lowers it.
     act <- .dd_s_clamp_active(sp$s, sp$s_latent)
-    out$n_s_clamped_lower <- sum(act & sp$s < sp$s_latent)
-    out$n_s_clamped_upper <- sum(act & sp$s > sp$s_latent)
+    out$n_s_clamped_lower <- sum(act & sp$s > sp$s_latent)
+    out$n_s_clamped_upper <- sum(act & sp$s < sp$s_latent)
   }
   if (is_phi_re) {
     out$n_phi_floor <- sum(sp$phi_latent < 0.1)

@@ -38,3 +38,4 @@ hex-beezdiscounting.png
 ^\.playwright-mcp$
 ^CLAUDE.*\.md$
 ^_win-builder$
+^\.git$

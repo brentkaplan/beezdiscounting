@@ -31,6 +31,7 @@ beezdemand::plot_qq
 
 utils::globalVariables(c(
     ".",
+    "index",
     "ResponseId",
     "response",
     "attentionflag",

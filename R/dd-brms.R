@@ -96,9 +96,7 @@
     arr[, , c("b_logk_Intercept", "b_logs_Intercept")], m
   )
   extra <- posterior::subset_draws(extra, variable = "b_logk_Intercept")
-  extra <- posterior::rename_variables(
-    extra, b_logk_Intercept_data_units = b_logk_Intercept
-  )
+  posterior::variables(extra) <- "b_logk_Intercept_data_units"
   posterior::bind_draws(arr, extra, along = "variable")
 }
 

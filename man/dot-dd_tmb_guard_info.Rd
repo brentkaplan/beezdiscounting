@@ -18,7 +18,7 @@ Counts, at the subject-level fitted values, the rows with a positive delay
 whose raw mean lies outside the \verb{[1e-6, 1 - 1e-6]} guard (\code{x = 0} rows have
 mean 1 by definition and are excluded); for \code{k + s ~ 1}, the subjects whose
 soft-clamped \code{s} differs materially from the latent value
-(\code{\link[=.dd_s_clamp_active]{.dd_s_clamp_active()}}); for \code{k + phi ~ 1}, the subjects whose latent
+(\code{.dd_s_clamp_active()}); for \code{k + phi ~ 1}, the subjects whose latent
 \code{phi} is below the 0.1 floor. Reporting only (audit F-BZ4-2, F-BZ4-5).
 }
 \keyword{internal}

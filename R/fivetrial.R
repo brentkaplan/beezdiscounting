@@ -209,7 +209,8 @@ calc_dd <- function(df) {
            dplyr::arrange(ResponseId, q))
 }
 
-# Numeric codes follow 55_Trial_Discounting_Probability_Template_100.qsf (see
+# Numeric codes follow
+# inst/5.5_Trial_Discounting_Probability_Template_100.qsf (build-ignored; see
 # data-raw/fivetrial_pd_template_choices.R): every I-item and Attend-SS export
 # 1 = the certain option ("... for sure") and 2 = the uncertain option
 # ("... chance"), but Attend-LL lists the 1%-chance option first

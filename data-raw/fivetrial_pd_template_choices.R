@@ -3,17 +3,14 @@
 ## (HTML tags stripped, as Qualtrics does). Ground truth for the
 ## normalize_pd_response() tests (audit F-BZ2-3 / F-BZ2-2, PD follow-up).
 ##
-## Source (not bundled): 55_Trial_Discounting_Probability_Template_100.qsf.
-## Two copies were checked on 2026-09-22 and give identical choice tables:
-##   ~/Dropbox/Work/VT/VTCRI/Qualtrics/reference-surveys/
-##   ~/Dropbox/Work/UK/ (..._Template_100_-_Share.qsf)
+## Source: inst/5.5_Trial_Discounting_Probability_Template_100.qsf (the UK
+## "..._Template_100_-_Share.qsf" copy; kept in the repo but build-ignored
+## until it ships). The VT reference-surveys copy gives an identical choice
+## table (checked 2026-09-22).
 ## Every I-item and Attend-SS codes 1 = "... for sure" (sc), 2 = "... chance"
 ## (lu); Attend-LL lists the 1%-chance option first (1 = lu, 2 = sc).
 `%||%` <- function(a, b) if (is.null(a)) b else a
-qsf_path <- path.expand(file.path(
-  "~/Dropbox/Work/VT/VTCRI/Qualtrics/reference-surveys",
-  "55_Trial_Discounting_Probability_Template_100.qsf"
-))
+qsf_path <- "inst/5.5_Trial_Discounting_Probability_Template_100.qsf"
 qsf <- jsonlite::fromJSON(qsf_path, simplifyVector = FALSE)
 rows <- list()
 for (el in qsf$SurveyElements) {

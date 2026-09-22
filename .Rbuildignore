@@ -39,3 +39,4 @@ hex-beezdiscounting.png
 ^CLAUDE.*\.md$
 ^_win-builder$
 ^\.git$
+^inst/5\.5_Trial_Discounting_Probability_Template_100\.qsf$

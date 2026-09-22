@@ -61,6 +61,19 @@ jobs:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
+      - name: Block mac.cran.dev (zstd binaries pak cannot extract)
+        # Since 2026-09-20 CRAN's macOS R 4.6 binaries are Zstandard-compressed under
+        # the .tgz name, and pkgdepends only knows gzip/zip/bzip2/xz
+        # (r-lib/pkgdepends#485). pkgcache races mac.cran.dev against the configured
+        # repo for every macOS binary, so a won race installs a zstd file and pak
+        # aborts with "Cannot extract ..., unknown archive type". Posit Package
+        # Manager (use-public-rspm above) still serves gzip, so point the racing host
+        # at a dead address and let PPM win. Remove once pak understands zstd.
+        if: runner.os == 'macOS'
+        run: |
+          set -euxo pipefail
+          printf '0.0.0.0 mac.cran.dev\n::1 mac.cran.dev\n' | sudo tee -a /etc/hosts
+
       - name: Work around ubuntu apt azure-cli repo 403
         if: runner.os == 'Linux'
         run: |

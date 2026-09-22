@@ -1,129 +1,94 @@
+.skip_unless_full_tests()
 # tests/testthat/test-dd-tmb-s-re-recovery.R
 # 2-RE (log k, log s) parameter recovery for GM/Rachlin equations.
 #
-# Seeds chosen by a documented controller-run sweep over seeds 1-12 at
-# n_subjects = 80, using the SAME multi_start = TRUE default as these tests.
-# "Centered" = minimum sum of absolute deviations from the true generating
-# parameters among converged seeds with NO clamped s_i; no seed was cherry-picked
-# to pass. Full per-seed table for all three conditions:
-#   dev/notes/s-re-sweep.R (script) and dev/notes/s-re-sweep.txt (results).
-# Centered seeds:
-#   SEED_SYMM  =  5 (A: GM/sltb/pdSymm)      -> sd_u 0.618, sd_s 0.395, rho 0.174 (dev .018/.005/.126)
-#   SEED_DIAG  = 10 (B: rachlin/sltb/pdDiag) -> sd_u 0.598, sd_s 0.386           (dev .002/.014)
-#   SEED_GAUSS = 10 (C: GM/gaussian/pdSymm)  -> sd_u 0.576, sd_s 0.317, rho 0.389 (dev .024/.083/.089)
+# Protocol (audit F-BZ4-6, 2026-09-22). Each condition is fit on the SAME
+# prespecified seeds, 101:108, frozen before any of them was run (seeds 1-17 had
+# been examined by earlier sweeps and are not used). Per seed the fit must be
+# converged with a positive-definite Hessian and at most one subject may have an
+# active s soft clamp (.dd_s_clamp_active(): effective vs latent s differ by
+# > 1% on the log scale). Recovery is judged on the MEAN over seeds against the
+# tolerances below, which were fixed before the run. A failing seed or condition
+# is reported by seed number, never re-selected; a failure is a finding to
+# investigate, not a reason to change seeds or tolerances.
 #
 # Tolerances are looser than the (k, phi) recovery tests because log s enters the
 # GM/Rachlin model as a curvature exponent, so the log-s RE is weakly identified.
-# The rho tolerance (0.40) is deliberately generous: across the 12 swept seeds the
-# rho estimate ranges widely (deviations up to ~0.45), reflecting genuine weak
-# identifiability of the (k, s) correlation; the chosen centered seeds clear it
-# with margin (dev <= 0.126). (Policy: never cherry-pick a barely-passing seed.)
+# Heavy (8 fits per condition): runs only under BEEZ_FULL_TESTS=true.
 
-describe("2-RE (k, s) parameter recovery", {
+recovery_seeds <- 101:108
+
+run_s_recovery <- function(sim_args, fit_args) {
+  res <- lapply(recovery_seeds, function(sd) {
+    sim <- do.call(simulate_dd_ip, c(sim_args, list(seed = sd)))
+    fit <- do.call(fit_dd_tmb, c(list(sim), fit_args, list(verbose = 0)))
+    sp <- fit$subject_pars
+    vc <- VarCorr(fit)
+    data.frame(
+      seed = sd,
+      converged = isTRUE(fit$converged),
+      hessian_pd = isTRUE(fit$hessian_pd),
+      n_clamped = sum(.dd_s_clamp_active(sp$s, sp$s_latent)),
+      sd_u = vc$StdDev[1], sd_s = vc$StdDev[2], rho = vc$Corr[2]
+    )
+  })
+  do.call(rbind, res)
+}
+
+expect_recovery_protocol <- function(tab) {
+  bad_conv <- tab$seed[!(tab$converged & tab$hessian_pd)]
+  expect_true(length(bad_conv) == 0L,
+              info = paste("not converged / non-PD Hessian at seeds:",
+                           paste(bad_conv, collapse = ", ")))
+  bad_clamp <- tab$seed[tab$n_clamped > 1L]
+  expect_true(length(bad_clamp) == 0L,
+              info = paste("more than one clamp-active subject at seeds:",
+                           paste(bad_clamp, collapse = ", ")))
+}
+
+describe("2-RE (k, s) parameter recovery (prespecified seeds 101:108)", {
   skip_on_cran()
   skip_if_not_installed("TMB")
 
   delays <- c(1, 7, 14, 30, 90, 180, 365, 730, 1460, 2920)
 
   it("recovers sigma_u, sigma_s, and rho under green-myerson/sltb (pdSymm)", {
-    sim <- simulate_dd_ip(
-      n_subjects = 80, delays = delays,
-      equation = "green-myerson",
-      s = 1.4, sigma_u = 0.6, sigma_s = 0.4, rho_ks = 0.3, phi = 14,
-      seed = 5)   # SEED_SYMM: most-centered clamped==0 seed (see header/sweep)
-    fit <- fit_dd_tmb(sim, equation = "green-myerson",
-                      random_effects = k + s ~ 1,
-                      covariance_structure = "pdSymm", verbose = 0)
-    expect_true(fit$converged)
-    vc <- VarCorr(fit)
-    expect_equal(vc$StdDev[1], 0.6, tolerance = 0.20)   # sigma_u
-    expect_equal(vc$StdDev[2], 0.4, tolerance = 0.35)   # sigma_s
-    expect_equal(vc$Corr[2],   0.3, tolerance = 0.40)   # rho
-    expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
-                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from the soft-clamp bounds
+    tab <- run_s_recovery(
+      list(n_subjects = 80, delays = delays, equation = "green-myerson",
+           s = 1.4, sigma_u = 0.6, sigma_s = 0.4, rho_ks = 0.3, phi = 14),
+      list(equation = "green-myerson", random_effects = k + s ~ 1,
+           covariance_structure = "pdSymm"))
+    expect_recovery_protocol(tab)
+    info <- paste(utils::capture.output(print(tab)), collapse = "\n")
+    expect_equal(mean(tab$sd_u), 0.6, tolerance = 0.20, info = info)
+    expect_equal(mean(tab$sd_s), 0.4, tolerance = 0.35, info = info)
+    expect_equal(mean(tab$rho),  0.3, tolerance = 0.40, info = info)
   })
 
   it("recovers sigma_u and sigma_s with rho fixed at 0 under rachlin/sltb (pdDiag)", {
-    sim <- simulate_dd_ip(
-      n_subjects = 80, delays = delays,
-      equation = "rachlin",
-      s = 1.3, sigma_u = 0.6, sigma_s = 0.4, rho_ks = 0, phi = 14,
-      seed = 10)
-    fit <- fit_dd_tmb(sim, equation = "rachlin",
-                      random_effects = k + s ~ 1,
-                      covariance_structure = "pdDiag", verbose = 0)
-    expect_true(fit$converged)
-    vc <- VarCorr(fit)
-    expect_equal(vc$StdDev[1], 0.6, tolerance = 0.20)   # sigma_u
-    expect_equal(vc$StdDev[2], 0.4, tolerance = 0.35)   # sigma_s
-    expect_true(is.na(vc$Corr[1]) && vc$Corr[2] == 0)   # pdDiag: structural 0
-    expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
-                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from the soft-clamp bounds
+    tab <- run_s_recovery(
+      list(n_subjects = 80, delays = delays, equation = "rachlin",
+           s = 1.3, sigma_u = 0.6, sigma_s = 0.4, rho_ks = 0, phi = 14),
+      list(equation = "rachlin", random_effects = k + s ~ 1,
+           covariance_structure = "pdDiag"))
+    expect_recovery_protocol(tab)
+    info <- paste(utils::capture.output(print(tab)), collapse = "\n")
+    expect_equal(mean(tab$sd_u), 0.6, tolerance = 0.20, info = info)
+    expect_equal(mean(tab$sd_s), 0.4, tolerance = 0.35, info = info)
+    expect_true(all(tab$rho == 0))   # pdDiag: structural 0
   })
 
   it("recovers sigma_u, sigma_s, and rho under green-myerson/gaussian (pdSymm)", {
-    # Averaged over four prespecified seeds rather than one: since the gaussian
-    # simulator stopped clamping to [0, 1] (audit F-BZ8-1) single-seed sigma_u
-    # ranges ~0.47-0.72 around the 0.6 truth (seeds 10-17), and a single
-    # hand-chosen seed is the fragility flagged in audit F-BZ4-6.
-    est <- vapply(10:13, function(sd) {
-      sim <- simulate_dd_ip(
-        n_subjects = 80, delays = delays,
-        equation = "green-myerson", family = "gaussian",
-        s = 1.4, sigma_u = 0.6, sigma_s = 0.4, rho_ks = 0.3, sigma_e = 0.06,
-        seed = sd)
-      fit <- fit_dd_tmb(sim, equation = "green-myerson", family = "gaussian",
-                        random_effects = k + s ~ 1,
-                        covariance_structure = "pdSymm", verbose = 0)
-      expect_true(fit$converged)
-      expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
-                     fit$subject_pars$s >= 20 - 1e-6), 1L)  # away from the soft-clamp bounds
-      vc <- VarCorr(fit)
-      c(vc$StdDev[1], vc$StdDev[2], vc$Corr[2])
-    }, numeric(3))
-    m <- rowMeans(est)
-    expect_equal(m[1], 0.6, tolerance = 0.20)   # sigma_u
-    expect_equal(m[2], 0.4, tolerance = 0.35)   # sigma_s
-    expect_equal(m[3], 0.3, tolerance = 0.40)   # rho
-  })
-
-  it("fits finitely (no hang) on a clamp-binding degenerate subject", {
-    # Regression for the singular-Hessian HANG. A "no discounting" subject (flat y
-    # across every delay, including 2920) drives its optimal s_i to the LOWER bound
-    # (s -> 0). Under the old HARD clamp that lands in the zero-gradient/kinked zone
-    # -> singular inner-Laplace Hessian -> the fit grinds to iter_max (a HANG).
-    # VERIFIED: this exact data hangs under the develop hard-clamp kernel (>150s /
-    # iter_max in a worktree at develop) but converges in ~80s here. The SOFT clamp
-    # (.dd_soft_clamp_s_log / kernel logspace_add) removes the kink. The UPPER bound
-    # is symmetric (same softplus map) and its parity is covered by the compile
-    # gate's UPPER-soft-clamp-active case; the "step" subject below adds a sharply
-    # discounting subject to stress the joint fit. We assert convergence + finiteness
-    # + bounds ONLY: a boundary subject is uninformative about sigma_s/rho, so we do
-    # NOT require a clean pdHess/sdreport here.
-    delays_d <- c(1, 7, 14, 30, 90, 180, 365, 730, 1460, 2920)
-    base <- simulate_dd_ip(n_subjects = 18, delays = delays_d,
-                           equation = "green-myerson",
-                           s = 1.4, sigma_u = 0.5, sigma_s = 0.3,
-                           rho_ks = 0.2, phi = 12, seed = 707)
-    flat <- data.frame(id = "flat", x = delays_d, y = rep(0.98, length(delays_d)))
-    step <- data.frame(id = "step", x = delays_d,
-                       y = c(0.99, 0.99, 0.99, 0.99, 0.5, 0.02, 0.02, 0.02, 0.02, 0.02))
-    sim <- rbind(data.frame(id = as.character(base$id), x = base$x, y = base$y),
-                 flat, step)
-    fit <- fit_dd_tmb(sim, equation = "green-myerson",
-                      random_effects = k + s ~ 1, verbose = 0)
-    expect_true(fit$converged)                       # optimizer code 0 (not pdHess)
-    expect_true(is.finite(fit$loglik))
-    expect_true(all(is.finite(fit$subject_pars$s)))
-    # Bounded to [0.05, 20] (closed; the soft clamp can round to the bound by ~1 ULP
-    # for a strongly-binding subject, so allow a tiny tolerance).
-    expect_true(all(fit$subject_pars$s >= 0.05 - 1e-9 &
-                    fit$subject_pars$s <= 20   + 1e-9))
-
-    # PROVE the bug is actually exercised: at least one subject's s_i is pinned near
-    # the LOWER clamp (the flat no-discounting subject). Without an active clamp a
-    # converged fit would not demonstrate the de-hang. Proximity (not equality): the
-    # soft clamp asymptotes toward 0.05 without reaching it.
-    expect_lt(min(fit$subject_pars$s), 0.1)          # lower soft clamp ACTIVE (binding)
+    tab <- run_s_recovery(
+      list(n_subjects = 80, delays = delays, equation = "green-myerson",
+           family = "gaussian", s = 1.4, sigma_u = 0.6, sigma_s = 0.4,
+           rho_ks = 0.3, sigma_e = 0.06),
+      list(equation = "green-myerson", family = "gaussian",
+           random_effects = k + s ~ 1, covariance_structure = "pdSymm"))
+    expect_recovery_protocol(tab)
+    info <- paste(utils::capture.output(print(tab)), collapse = "\n")
+    expect_equal(mean(tab$sd_u), 0.6, tolerance = 0.20, info = info)
+    expect_equal(mean(tab$sd_s), 0.4, tolerance = 0.35, info = info)
+    expect_equal(mean(tab$rho),  0.3, tolerance = 0.40, info = info)
   })
 })

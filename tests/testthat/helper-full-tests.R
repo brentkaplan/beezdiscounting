@@ -15,8 +15,11 @@
 # Every file listed here calls .skip_unless_full_tests() at its top; the
 # registry test in test-full-tests-registry.R keeps the two in sync.
 .beez_full_test_files <- c(
-  "dd-power"   # Monte Carlo power / find_n: n_sim = 1200/400/400/200/100/60/40/30 TMB refits
+  "dd-power",  # Monte Carlo power / find_n: n_sim = 1200/400/400/200/100/60/40/30 TMB refits
   # no-model-fit tests for the same functions live in test-dd-power-fast.R
+  "dd-tmb-s-re-recovery",   # 3 conditions x 8 prespecified seeds of 2-RE (k, s) fits
+  "dd-tmb-phi-re-recovery"  # 2 conditions x 8 prespecified seeds of 2-RE (k, phi) fits
+  # the 2-RE boundary-subject regressions live in test-dd-tmb-2re-boundary.R
 )
 
 .skip_unless_full_tests <- function() {

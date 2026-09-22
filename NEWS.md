@@ -125,8 +125,10 @@ which had none).
 * `get_lookup_table()` gains an `instrument` argument
   (`"mcq27"`, `"mcq21"`, `"pdq"`); `items` remains as a back-compatible
   alias. Internally the MCQ registry is now instrument-keyed and the
-  ladder-scoring core is shared across instruments; 27- and 21-item MCQ
-  results are unchanged (pinned by golden-fixture regression tests).
+  ladder-scoring core is shared across instruments; the refactor leaves 27-
+  and 21-item MCQ results unchanged (pinned by golden-fixture regression
+  tests). The separate 21-item all-smaller-sooner change is listed under
+  "Bug fixes that can change results".
 
 ### 21-item MCQ support
 
@@ -189,7 +191,8 @@ which had none).
   they computed a single result over the whole data frame and recycled it across
   `unique(id)`, so multi-subject input returned the same verdict / AUC for every
   subject. Each now returns one correct row per subject (single-subject output is
-  unchanged). `check_unsystematic()` orders points by `x` when that column is present,
+  unchanged by this, apart from the threshold and input-validation changes under
+  "Bug fixes that can change results"). `check_unsystematic()` orders points by `x` when that column is present,
   and `calc_aucs()` orders by `x` within each subject. Rows with a missing `id` are
   dropped so they cannot contaminate other subjects' results.
 * `prop_ss()` now pools correctly across respondents. It previously dropped all but
@@ -240,7 +243,7 @@ which had none).
   population-level).
 * New `default_dd_priors()` / `default_dd_choice_priors()`: inspectable
   defaults with delay-unit-aware `logk` anchoring (centers
-  `k * median(delay) = 1`).
+  `k * median(delay) = 1`; for Rachlin, `k * median(delay)^s = 1`).
 * `fit_dd_brms(random_effects = k + phi ~ 1, family = "beta")` adds a
   per-subject precision random effect, correlated with the `log k` intercept
   (`covariance_structure = "pdSymm"`, the default) or independent

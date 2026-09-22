@@ -72,6 +72,12 @@ Gray et al.'s recommended composite. \code{overall_h} and
 pooled into a single ascending ladder (exact-rational h order, ties
 broken by question id; four item pairs tie exactly) and scored by the
 same consistency-maximization algorithm with the repeat-last edge.
+The tied pairs are questions 1 and 21 (h = 1/3), 4 and 24 (h = 0.75),
+5 and 15 (h = 1), and 16 and 26 (h = 1.5). When a subject answers the two
+items of a tied pair differently, the question-id tie-break decides which
+response sits lower on the pooled ladder, so \code{overall_consistency} (and
+possibly \code{overall_h}) can depend on that order. The per-block scores have
+no ties and are unaffected.
 
 INN imputation groups items sharing an h rank (one item per block).
 Ladders with remaining \code{NA} responses score \code{NA}; Gray et al. recommend

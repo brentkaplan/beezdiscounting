@@ -62,21 +62,29 @@ describe("2-RE (k, s) parameter recovery", {
   })
 
   it("recovers sigma_u, sigma_s, and rho under green-myerson/gaussian (pdSymm)", {
-    sim <- simulate_dd_ip(
-      n_subjects = 80, delays = delays,
-      equation = "green-myerson", family = "gaussian",
-      s = 1.4, sigma_u = 0.6, sigma_s = 0.4, rho_ks = 0.3, sigma_e = 0.06,
-      seed = 10)
-    fit <- fit_dd_tmb(sim, equation = "green-myerson", family = "gaussian",
-                      random_effects = k + s ~ 1,
-                      covariance_structure = "pdSymm", verbose = 0)
-    expect_true(fit$converged)
-    vc <- VarCorr(fit)
-    expect_equal(vc$StdDev[1], 0.6, tolerance = 0.20)   # sigma_u
-    expect_equal(vc$StdDev[2], 0.4, tolerance = 0.35)   # sigma_s
-    expect_equal(vc$Corr[2],   0.3, tolerance = 0.40)   # rho
-    expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
-                   fit$subject_pars$s >= 20 - 1e-6), 1L)  # recovery away from the soft-clamp bounds
+    # Averaged over four prespecified seeds rather than one: since the gaussian
+    # simulator stopped clamping to [0, 1] (audit F-BZ8-1) single-seed sigma_u
+    # ranges ~0.47-0.72 around the 0.6 truth (seeds 10-17), and a single
+    # hand-chosen seed is the fragility flagged in audit F-BZ4-6.
+    est <- vapply(10:13, function(sd) {
+      sim <- simulate_dd_ip(
+        n_subjects = 80, delays = delays,
+        equation = "green-myerson", family = "gaussian",
+        s = 1.4, sigma_u = 0.6, sigma_s = 0.4, rho_ks = 0.3, sigma_e = 0.06,
+        seed = sd)
+      fit <- fit_dd_tmb(sim, equation = "green-myerson", family = "gaussian",
+                        random_effects = k + s ~ 1,
+                        covariance_structure = "pdSymm", verbose = 0)
+      expect_true(fit$converged)
+      expect_lte(sum(fit$subject_pars$s <= 0.05 + 1e-6 |
+                     fit$subject_pars$s >= 20 - 1e-6), 1L)  # away from the soft-clamp bounds
+      vc <- VarCorr(fit)
+      c(vc$StdDev[1], vc$StdDev[2], vc$Corr[2])
+    }, numeric(3))
+    m <- rowMeans(est)
+    expect_equal(m[1], 0.6, tolerance = 0.20)   # sigma_u
+    expect_equal(m[2], 0.4, tolerance = 0.35)   # sigma_s
+    expect_equal(m[3], 0.3, tolerance = 0.40)   # rho
   })
 
   it("fits finitely (no hang) on a clamp-binding degenerate subject", {

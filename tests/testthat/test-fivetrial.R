@@ -235,3 +235,67 @@ test_that("normalize_pd_response errors on unrecognised values and keeps NA", {
   res <- score_pd(dd_one_row(I1 = "", I17 = "1"))
   expect_identical(res$index, "I17")
 })
+
+# ── PD template codes (55_Trial_Discounting_Probability_Template_100.qsf) ──
+# Fixture built by data-raw/fivetrial_pd_template_choices.R from the Qualtrics
+# template: every I-item and Attend-SS code 1 = "for sure" (sc), 2 = "chance"
+# (lu); Attend-LL lists the 1%-chance option first (1 = lu, 2 = sc).
+
+pd_template_choices <- function() {
+  utils::read.csv(test_path("fixtures", "fivetrial", "pd_template_choices.csv"),
+                  stringsAsFactors = FALSE)
+}
+
+test_that("normalize_pd_response maps every template option (text and code) by item", {
+  ch <- pd_template_choices()
+  expect_equal(nrow(ch), 66L)
+  expect_identical(
+    beezdiscounting:::normalize_pd_response(ch$text, ch$item), ch$choice
+  )
+  expect_identical(
+    beezdiscounting:::normalize_pd_response(as.character(ch$code), ch$item),
+    ch$choice
+  )
+  # score_pd() renames the attention columns to AttendSS / AttendLL
+  att <- ch[ch$item %in% c("Attend-SS", "Attend-LL"), ]
+  expect_identical(
+    beezdiscounting:::normalize_pd_response(
+      as.character(att$code), gsub("-", "", att$item)
+    ),
+    att$choice
+  )
+})
+
+test_that("PD Attend-LL numeric codes are reversed relative to every other item", {
+  expect_identical(
+    beezdiscounting:::normalize_pd_response(c("1", "2"), c("Attend-LL", "Attend-LL")),
+    c("lu", "sc")
+  )
+  # choosing the 1%-chance option (numeric 1) fails the attention check
+  res <- score_pd(dd_one_row(I17 = "1", `Attend-LL` = "1"))
+  expect_identical(unique(res$attentionflag), "Yes")
+  # choosing the certain amount (numeric 2) passes it
+  res <- score_pd(dd_one_row(I17 = "1", `Attend-LL` = "2"))
+  expect_identical(unique(res$attentionflag), "No")
+})
+
+test_that("score_pd gives identical results on the numeric export of the bundled data", {
+  ch <- pd_template_choices()
+  txt <- five.fivetrial_pd
+  num <- txt
+  items <- c(paste0("I", 1:31), "Attend-SS", "Attend-LL")
+  n_mapped <- 0L
+  for (it in intersect(items, names(num))) {
+    v <- num[[it]]
+    hit <- !is.na(v) & nzchar(trimws(v))
+    if (!any(hit)) next
+    key <- match(paste(it, v[hit]), paste(ch$item, ch$text))
+    expect_false(anyNA(key), info = it)
+    v[hit] <- as.character(ch$code[key])
+    num[[it]] <- v
+    n_mapped <- n_mapped + sum(hit)
+  }
+  expect_gt(n_mapped, 0L)
+  expect_identical(score_pd(num), score_pd(txt))
+  expect_identical(ans_pd(num), ans_pd(txt))
+})

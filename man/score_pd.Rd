@@ -19,9 +19,12 @@ Score 5.5 trial probability discounting from Qualtrics template
 Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
 
 Responses may be exported from Qualtrics either as choice text (the certain
-option contains "for sure", the uncertain option "chance") or as numeric
-codes (1 = certain, 2 = uncertain). Blank cells are treated as unanswered
-and dropped; any other unrecognised value is an error.
+option contains "for sure", the uncertain option "chance") or as the
+template's numeric codes. Numeric codes are read per item: every \code{I} item
+and \code{Attend-SS} code 1 = the certain option and 2 = the uncertain option,
+while \code{Attend-LL} lists the uncertain option first (1 = "with a 1\% chance",
+2 = "for sure"). Blank cells are treated as unanswered and dropped; any
+other unrecognised value is an error.
 }
 \examples{
 score_pd(five.fivetrial_pd)

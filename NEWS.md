@@ -30,6 +30,11 @@ which shipped none).
   respondents who chose "now" and passed those who chose the 25-year option,
   and applied the attention-item k to the wrong respondents. Text exports were
   unaffected.
+* `score_pd()`, `ans_pd()` and `calc_pd()` have the same fix: the 5.5-trial
+  probability template codes `Attend-LL` in reverse order (1 = "with a 1%
+  chance", 2 = "for sure"), so numeric exports previously flagged respondents
+  who chose the certain amount and passed those who chose the 1% chance.
+  Text exports were unaffected.
 * The 5.5-trial delay and probability scorers (`score_dd()`, `ans_dd()`,
   `calc_dd()`, `score_pd()`, `ans_pd()`, `calc_pd()`) now recognise only the
   template's numeric codes and option texts. Previously any other value

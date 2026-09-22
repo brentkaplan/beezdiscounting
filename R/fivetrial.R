@@ -212,13 +212,18 @@ calc_dd <- function(df) {
 # Numeric codes: 1 = the certain ("for sure") option, 2 = the uncertain option,
 # for every item. (No probability template ships with the package; the
 # attention items are assumed to follow the same order.)
+# Numeric codes follow 55_Trial_Discounting_Probability_Template_100.qsf (see
+# data-raw/fivetrial_pd_template_choices.R): every I-item and Attend-SS export
+# 1 = the certain option ("... for sure") and 2 = the uncertain option
+# ("... chance"), but Attend-LL lists the 1%-chance option first
+# (1 = "... with a 1% chance", 2 = "... for sure").
 normalize_pd_response <- function(x, index = NULL) {
   .normalize_fivetrial_response(
     x, index,
     first = "sc", second = "lu",
     first_text = "\\bfor sure\\b",
     second_text = "\\bchance\\b",
-    reversed_items = character(0),
+    reversed_items = c("Attend-LL", "AttendLL"),
     instrument = "probability-discounting"
   )
 }
@@ -232,9 +237,12 @@ normalize_pd_response <- function(x, index = NULL) {
 #' Currently assumes the attending questions are present and labeled "Attend-LL" and "Attend-SS"
 #'
 #' Responses may be exported from Qualtrics either as choice text (the certain
-#' option contains "for sure", the uncertain option "chance") or as numeric
-#' codes (1 = certain, 2 = uncertain). Blank cells are treated as unanswered
-#' and dropped; any other unrecognised value is an error.
+#' option contains "for sure", the uncertain option "chance") or as the
+#' template's numeric codes. Numeric codes are read per item: every `I` item
+#' and `Attend-SS` code 1 = the certain option and 2 = the uncertain option,
+#' while `Attend-LL` lists the uncertain option first (1 = "with a 1% chance",
+#' 2 = "for sure"). Blank cells are treated as unanswered and dropped; any
+#' other unrecognised value is an error.
 #' @importFrom stats complete.cases
 #' @export
 #'

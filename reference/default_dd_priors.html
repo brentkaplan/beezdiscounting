@@ -3,16 +3,16 @@
 can be inspected, modified row-wise, and passed back via the fitter's
 prior argument. The logk location is the principled fix for k's
 delay-unit dependence: with autoscale = TRUE (the default whenever
-data is supplied) it centers k * median(delay) = 1 – the delay at
-which the Mazur curve crosses 0.5 – via normal(-log(median(x)), 2.5);
+data is supplied) it centers k * median(delay) = 1 (the delay at
+which the Mazur curve crosses 0.5) via normal(-log(median(x)), 2.5);
 the static fallback is normal(-4.5, 2.5). The anchors used are
 attached as attr(, &quot;autoscale_info&quot;); numeric values are formatted
 with format(x, digits = 6, scientific = FALSE)."><meta property="og:description" content="Returns the default prior table used by fit_dd_brms(), so the defaults
 can be inspected, modified row-wise, and passed back via the fitter's
 prior argument. The logk location is the principled fix for k's
 delay-unit dependence: with autoscale = TRUE (the default whenever
-data is supplied) it centers k * median(delay) = 1 – the delay at
-which the Mazur curve crosses 0.5 – via normal(-log(median(x)), 2.5);
+data is supplied) it centers k * median(delay) = 1 (the delay at
+which the Mazur curve crosses 0.5) via normal(-log(median(x)), 2.5);
 the static fallback is normal(-4.5, 2.5). The anchors used are
 attached as attr(, &quot;autoscale_info&quot;); numeric values are formatted
 with format(x, digits = 6, scientific = FALSE)."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
@@ -77,8 +77,8 @@ with format(x, digits = 6, scientific = FALSE)."><meta property="og:image" conte
 can be inspected, modified row-wise, and passed back via the fitter's
 <code>prior</code> argument. The <code>logk</code> location is the principled fix for k's
 delay-unit dependence: with <code>autoscale = TRUE</code> (the default whenever
-<code>data</code> is supplied) it centers <code>k * median(delay) = 1</code> – the delay at
-which the Mazur curve crosses 0.5 – via <code>normal(-log(median(x)), 2.5)</code>;
+<code>data</code> is supplied) it centers <code>k * median(delay) = 1</code> (the delay at
+which the Mazur curve crosses 0.5) via <code>normal(-log(median(x)), 2.5)</code>;
 the static fallback is <code>normal(-4.5, 2.5)</code>. The anchors used are
 attached as <code>attr(, "autoscale_info")</code>; numeric values are formatted
 with <code>format(x, digits = 6, scientific = FALSE)</code>.</p>
@@ -155,7 +155,17 @@ autoscaling was used.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Other defaults: <code>logs ~ normal(0, 0.5)</code> (two-parameter equations; s is
+    <p>For Rachlin (<code>mu = 1 / (1 + k * x^s)</code>) a change of delay unit by a factor
+<code>c</code> rescales k by <code>c^s</code>, so a data-unit anchor would describe a different
+curve prior in days than in weeks whenever <code>s != 1</code>. With autoscaling,
+<code><a href="fit_dd_brms.html">fit_dd_brms()</a></code> therefore fits Rachlin on the normalised delay
+<code>x / median(x)</code> (recorded as <code>autoscale_info$delay_scale</code>), and the logk
+intercept prior is <code>normal(0, 2.5)</code> on that scale (<code>k * median(x)^s = 1</code>
+at the prior centre). A user-supplied Rachlin logk intercept prior is read
+on the normalised scale too. Reported k (coefficients, <code>subject_pars</code>,
+EMMs) is back-transformed to data units. The other equations are
+unit-invariant under the data-unit anchor and are unchanged.</p>
+<p>Other defaults: <code>logs ~ normal(0, 0.5)</code> (two-parameter equations; s is
 near 1 a priori), <code>sd(logk) ~ student_t(3, 0, 1)</code>,
 <code>phi ~ gamma(2, 0.1)</code> (Beta precision; mean 20, far from brms's
 near-improper <code>gamma(0.01, 0.01)</code>), and

@@ -6,9 +6,9 @@ by
 [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md),
 joining each `questionid` to the canonical item design (immediate
 amount, delayed amount, delay) bundled in the lookup table (see
-[`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md))
-– Kirby, Petry, & Bickel (1999) for the 27-item MCQ, or Kirby &
-Maraković (1996, Table 1) for the 21-item MCQ.
+[`get_lookup_table()`](https://brentkaplan.github.io/beezdiscounting/reference/get_lookup_table.md);
+Kirby, Petry, & Bickel (1999) for the 27-item MCQ, or Kirby & Maraković
+(1996, Table 1) for the 21-item MCQ).
 
 ## Usage
 
@@ -29,7 +29,7 @@ mcq_to_choice(
   Long-form data frame with one row per MCQ item per subject, holding
   the columns named by `id_var`, `question_var`, and `response_var`.
   `response` is `0` for the smaller-immediate reward (SIR/SS) and `1`
-  for the larger-delayed reward (LDR/LL) – the same coding
+  for the larger-delayed reward (LDR/LL), the same coding
   [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md)
   expects, so no recoding is applied.
 
@@ -56,10 +56,10 @@ pass to
 
 Unknown or non-coercible question ids raise an error rather than
 silently producing unmatched rows. Question ids 1-21 are valid in both
-the 21- and 27-item designs, so passing the wrong `items` does not error
-– it silently returns the wrong amounts/delays for those ids; make sure
-`items` matches the instrument actually administered. Ragged input is
-allowed – subjects need not have all items – and `NA` responses are
+the 21- and 27-item designs, so passing the wrong `items` does not
+error; it silently returns the wrong amounts/delays for those ids. Make
+sure `items` matches the instrument actually administered. Ragged input
+is allowed (subjects need not have all items) and `NA` responses are
 preserved (they are complete-cased by
 [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md)).
 For the strict scorer see

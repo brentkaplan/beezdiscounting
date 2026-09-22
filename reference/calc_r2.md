@@ -1,7 +1,7 @@
 # Calculate R-Squared for a Model
 
-This function calculates the coefficient of determination (\\R^2\\) for
-a given model by comparing the sum of squared errors (SSE) to the total
+Calculates the coefficient of determination (\\R^2\\) for a fitted model
+as one minus the ratio of the sum of squared errors (SSE) to the total
 sum of squares (SST).
 
 ## Usage

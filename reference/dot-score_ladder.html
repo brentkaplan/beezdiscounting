@@ -71,7 +71,7 @@ published PDQ lookup tables for all 1024 response patterns per block.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.score_ladder</span><span class="op">(</span><span class="va">resp</span>, <span class="va">vals</span>, <span class="va">edge</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.score_ladder</span><span class="op">(</span><span class="va">resp</span>, <span class="va">vals</span>, <span class="va">edge</span>, top <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"geomean"</span>, <span class="st">"edge"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -92,6 +92,12 @@ the same length as <code>resp</code>.</p></dd>
 <dt id="arg-edge">edge<a class="anchor" aria-label="anchor" href="#arg-edge"></a></dt>
 <dd><p>Value appended past the steepest item (the overall-ladder
 edge constant, or <code>vals[length(vals)]</code> for the repeat-last convention).</p></dd>
+
+
+<dt id="arg-top">top<a class="anchor" aria-label="anchor" href="#arg-top"></a></dt>
+<dd><p>Value for the top switch point (smaller/guaranteed option on
+every item): <code>"geomean"</code> (default) = geometric mean of the last item and
+<code>edge</code>; <code>"edge"</code> = <code>edge</code> itself. Identical under the repeat-last edge.</p></dd>
 
 </dl></div>
     <div class="section level2">

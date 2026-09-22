@@ -84,7 +84,7 @@ shape exponent (<code>logs</code>) population-level for the two-parameter equati
 <span>  id_var <span class="op">=</span> <span class="st">"id"</span>,</span>
 <span>  equation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mazur"</span>, <span class="st">"exponential"</span>, <span class="st">"green-myerson"</span>, <span class="st">"rachlin"</span><span class="op">)</span>,</span>
 <span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"beta"</span>, <span class="st">"gaussian"</span><span class="op">)</span>,</span>
-<span>  boundary <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"squeeze"</span>, <span class="st">"zoib"</span>, <span class="st">"error"</span><span class="op">)</span>,</span>
+<span>  boundary <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"error"</span>, <span class="st">"squeeze"</span>, <span class="st">"zoib"</span><span class="op">)</span>,</span>
 <span>  random_effects <span class="op">=</span> <span class="va">k</span> <span class="op">~</span> <span class="fl">1</span>,</span>
 <span>  covariance_structure <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pdSymm"</span>, <span class="st">"pdDiag"</span><span class="op">)</span>,</span>
 <span>  factors <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -134,7 +134,9 @@ shape exponent (<code>logs</code>) population-level for the two-parameter equati
 
 
 <dt id="arg-boundary">boundary<a class="anchor" aria-label="anchor" href="#arg-boundary"></a></dt>
-<dd><p>Boundary handling for the beta family (see Details).</p></dd>
+<dd><p>Boundary handling for the beta family: <code>"error"</code>
+(default), <code>"squeeze"</code>, or <code>"zoib"</code> (see Details). Ignored for
+<code>family = "gaussian"</code>.</p></dd>
 
 
 <dt id="arg-random-effects">random_effects<a class="anchor" aria-label="anchor" href="#arg-random-effects"></a></dt>
@@ -165,7 +167,11 @@ design on <code>logk</code>, as in <code><a href="fit_dd_tmb.html">fit_dd_tmb()<
 
 <dt id="arg-autoscale-priors">autoscale_priors<a class="anchor" aria-label="anchor" href="#arg-autoscale-priors"></a></dt>
 <dd><p>Anchor the <code>logk</code> prior to the median delay (see
-<code><a href="default_dd_priors.html">default_dd_priors()</a></code>).</p></dd>
+<code><a href="default_dd_priors.html">default_dd_priors()</a></code>). For <code>equation = "rachlin"</code> this also fits on
+the normalised delay <code>x / median(x)</code> (recorded as
+<code>param_info$delay_scale</code>) so the prior is delay-unit invariant; reported
+draws are back-transformed to data-unit k, but the raw <code>brmsfit</code> draws
+of the logk intercept stay normalised.</p></dd>
 
 
 <dt id="arg-chains-iter-warmup-thin-cores-seed-backend-control-sample-prior">chains, iter, warmup, thin, cores, seed, backend, control, sample_prior<a class="anchor" aria-label="anchor" href="#arg-chains-iter-warmup-thin-cores-seed-backend-control-sample-prior"></a></dt>
@@ -209,14 +215,22 @@ divergences, bulk ESS &gt;= 400), <code>mcmc_info</code>, <code>loo</code>, <cod
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>family = "beta"</code> (default) uses <code>Beta(link = "identity")</code> with the mean
-squished into <code>(1e-6, 1 - 1e-6)</code> – the closest brms analog of the TMB
-SLT-beta (<code>family = "sltb"</code> has no brms equivalent and errors with this
-pointer). Boundary observations (<code>y</code> exactly 0 or 1) are handled per
-<code>boundary</code>: <code>"squeeze"</code> (default) applies the Smithson-Verkuilen
-transform <code>y* = (y (N - 1) + 0.5) / N</code> to all responses (message reports
-the boundary count); <code>"zoib"</code> switches to <code>zero_one_inflated_beta</code>
-(statistically more honest but changes the estimand – k then describes
-interior responses only); <code>"error"</code> refuses to fit.
+squished into <code>(1e-6, 1 - 1e-6)</code>. This is a different likelihood from the
+TMB scale-location-truncated beta (<code>family = "sltb"</code>, which has no brms
+equivalent and errors with this pointer): the ordinary beta density is
+undefined at exactly 0 and 1, so its estimates are not expected to match
+<code>fit_dd_tmb(family = "sltb")</code> whenever responses sit at or near the
+boundaries. Boundary observations (<code>y</code> exactly 0 or 1) are handled per
+<code>boundary</code>: <code>"error"</code> (default) refuses to fit and reports how many there
+are; <code>"squeeze"</code> applies the Smithson-Verkuilen transform
+<code>y* = (y (N - 1) + 0.5) / N</code> to <strong>every</strong> response (an explicit opt-in: it
+moves each value toward 0.5 and floors the response at <code>0.5 / N</code>, so when
+the fitted curve approaches that floor – long delays, steep discounting –
+the squeezed values pull k downward); <code>"zoib"</code> switches to
+<code>zero_one_inflated_beta</code> (changes the estimand – k then describes interior
+responses only). The fraction of exact-boundary and near-boundary
+(<code>y &lt;= 0.01</code> or <code>y &gt;= 0.99</code>) responses is stored in
+<code>param_info$boundary_info</code> and printed by <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>.
 <code>family = "gaussian"</code> matches <code>fit_dd_tmb(family = "gaussian")</code>
 wherever the TMB template's mu clamp into <code>[1e-6, 1 - 1e-6]</code> does not
 bind (everywhere except extreme decay underflow).</p>

@@ -8,8 +8,8 @@ diagnostic columns appended:
 
 - `.resid`: raw residual `y - .fitted` on the response scale.
 
-- `.std_resid`: Pearson (standardized) residual - `.resid` divided by
-  the per-row response SD. For `family = "gaussian"` the SD is the
+- `.std_resid`: Pearson (standardized) residual, i.e., `.resid` divided
+  by the per-row response SD. For `family = "gaussian"` the SD is the
   constant `sigma_e`; for `family = "sltb"` it is the delta-method SLT
   SD `sqrt(mu * (1 - mu) / (phi + 1))`.
 

@@ -36,14 +36,15 @@ predict(
 
   For `type = "response"`: `"subject"` (default; conditions on each
   subject's estimated random intercept, requires the id column) and/or
-  `"population"` (random effects set to zero - the population-mean
-  curve; no id column needed). Pass `c("population", "subject")` for
-  both columns side-by-side. A numeric nlme-style level is rejected with
-  an error. For an s-target 2-RE fit (`k + s ~ 1`), the subject level
-  uses each subject's estimated `s_i`; the population level (random
-  effects zero) uses the soft-clamped population
-  `s = .dd_soft_clamp_s_log(log_s)`, matching the kernel near the
-  `(0.05, 20)` bounds (equal to `exp(log_s)` in the interior).
+  `"population"` (random effects set to zero, i.e., the typical-subject
+  curve, not the population-averaged curve, which integrates over the
+  random effects; no id column needed). Pass
+  `c("population", "subject")` for both columns side-by-side. A numeric
+  nlme-style level is rejected with an error. For an s-target 2-RE fit
+  (`k + s ~ 1`), the subject level uses each subject's estimated `s_i`;
+  the population level (random effects zero) uses the soft-clamped
+  population `s = .dd_soft_clamp_s_log(log_s)`, matching the kernel near
+  the `(0.05, 20)` bounds (equal to `exp(log_s)` in the interior).
 
 - ...:
 

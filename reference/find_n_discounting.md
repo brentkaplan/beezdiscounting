@@ -12,10 +12,15 @@ selected N and its lower neighbor are then re-evaluated with fresh
 replicates before minimality is claimed.
 
 The returned `n` is an *estimated minimum under Monte Carlo
-uncertainty*, not an exact bound. For grant-quality reporting, rerun
+uncertainty*, not an exact bound. The adaptive rule looks at the Wilson
+interval repeatedly at the same N, and those looks have no simultaneous
+coverage guarantee; at the replicate cap a point estimate at or above
+the target can select an N whose true power is below it (status
+`"uncertain"`). For grant-quality reporting, validate the returned `n`
+with an independent, fixed-budget
 [`power_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/power_discounting.md)
-at the returned `n` with a large `n_sim` (2000+) and report that
-estimate with its Monte Carlo confidence interval.
+run (large `n_sim`, 2000+, new seed) and report that estimate with its
+Monte Carlo confidence interval.
 
 **Monotonicity assumption.** Bisection presumes that power is
 non-decreasing in `n_subjects`. Because every evaluated N is judged from
@@ -124,9 +129,9 @@ find_n_discounting(
   single subject random intercept on log k). The simulator ALWAYS
   generates only that intercept: any richer formula (e.g. `k + phi ~ 1`,
   `k + s ~ 1`) is accepted but produces a deliberately over-specified
-  refit of data with no such variance component – useful for probing
-  robustness, not for estimating power under those random effects (out
-  of scope in this version).
+  refit of data with no such variance component. That refit is useful
+  for probing robustness rather than for estimating power under those
+  random effects (out of scope in this version).
 
 - multi_start:
 
@@ -163,13 +168,13 @@ An object of class `beezdiscounting_power_n`: a list with
   `"confirmed"` (selected N re-confirmed above target and N - 1 below),
   `"uncertain"` (a decision relied on a point estimate, N - 1 also
   cleared the target on reconfirmation, or an evaluated lower N read
-  above the target – so the returned N may not be minimal),
+  above the target, so the returned N may not be minimal),
   `"unresolved"` (the selected N failed its own reconfirmation; `n` is
   `NA`), or `"at_lower_bound"` (the target was already met at
-  `n_range[1]` on two independent looks; smaller N was not explored –
+  `n_range[1]` on two independent looks; smaller N was not explored;
   widen `n_range` downward if that matters). These labels describe a
-  heuristic Monte Carlo decision rule – repeated looks at ordinary
-  Wilson intervals across several N – not a formal sequential error
+  heuristic Monte Carlo decision rule (repeated looks at ordinary Wilson
+  intervals across several N) rather than a formal sequential error
   guarantee.
 
 - uncertain:
@@ -212,7 +217,10 @@ print(res)
 #>   Target power 0.80 for delta_k = 2.079 at alpha = 0.05
 #>   Estimated minimum n_subjects = 8 (status: uncertain)
 #>   This is an estimated minimum under Monte Carlo uncertainty;
-#>   rerun the power function at this N with a large n_sim to report it.
+#>   at least one decision fell back to a point estimate, so the true
+#>   power at this N may be below the target.
+#>   Validate it with an independent power_discounting() run at this N
+#>   (large n_sim, new seed) before reporting.
 #> 
 #>   Evaluations:
 #>  n_subjects n_sim_total n_used usable_fraction power  ci_lower  ci_upper

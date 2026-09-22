@@ -4,7 +4,7 @@ The exact 8-column dd coefficient contract (`term`, `estimate`,
 `std.error`, `statistic`, `p.value`, `component`, `estimate_scale`,
 `term_display`). Estimates are posterior medians and `std.error`
 posterior SDs of the report-space-transformed draws (exact; no delta
-method); `statistic`/`p.value` are `NA` – use
+method); `statistic`/`p.value` are `NA`; use
 [`confint()`](https://rdrr.io/r/stats/confint.html) for interval
 summaries. The shape row (`s`, two-parameter equations) carries
 `component = "shape"`; variance rows (`effects = "ran_pars"`) mirror the

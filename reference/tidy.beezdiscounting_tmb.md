@@ -29,9 +29,9 @@ tidy(
 
 - report_space:
 
-  `"natural"`, `"log10"`, `"internal"`, or `"log"` - reporting scale for
-  fixed-effect `estimate`/`std.error` (`"internal"` and `"log"` coincide
-  for the log-k `beta_k` rows). Default is `"natural"`.
+  Reporting scale for fixed-effect `estimate`/`std.error`: `"natural"`
+  (default), `"log10"`, `"internal"`, or `"log"` (`"internal"` and
+  `"log"` coincide for the log-k `beta_k` rows).
 
 - ...:
 
@@ -49,8 +49,11 @@ shape-parameter row (2-parameter equations only) carries
 
 `estimate` and `std.error` are reported on the `report_space` scale for
 the fixed-effect (`beta_k`) rows. `statistic` and `p.value` are always
-computed on the estimation (log-k) scale - Wald statistics are not
+computed on the estimation (log-k) scale. Wald statistics are not
 recomputed after back-transforming (broom convention; see the
 [`summary()`](https://rdrr.io/r/base/summary.html) note for details).
-Variance-component rows carry `NA` for `statistic` and `p.value` and are
-not affected by `report_space`.
+Each test is of the log-scale coefficient against 0: for the intercept
+row that is `k = 1` (rarely a meaningful null), and for a condition or
+covariate row it is a fold-change of 1 (no difference). The `s` row
+tests `s = 1`. Variance-component rows carry `NA` for `statistic` and
+`p.value` and are not affected by `report_space`.

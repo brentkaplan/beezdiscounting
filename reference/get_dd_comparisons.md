@@ -16,7 +16,10 @@ gives a flat, cross-backend frame. Bayesian fits
 contrasts over the same reference grid: posterior medians with quantile
 credible intervals and `post.prob` in place of adjusted p-values (no
 multiplicity adjustment; the joint posterior already encodes contrast
-dependence).
+dependence). `post.prob` is the posterior probability of the *more
+probable* direction, `max(P(d > 0), P(d < 0))`, so it is at least 0.5
+and a negative contrast can show 0.99; it is not `P(left > right)`. Read
+the direction from the sign of the estimate.
 
 ## Usage
 

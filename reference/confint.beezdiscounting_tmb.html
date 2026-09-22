@@ -110,7 +110,10 @@ scale).</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A tibble with columns <code>term</code>, <code>estimate</code>, <code>conf.low</code>, <code>conf.high</code>,
-<code>level</code>.</p>
+<code>level</code>, and <code>estimate_scale</code> (<code>"log"</code> or <code>"natural"</code> for the <code>beta_k</code>
+and <code>log_s</code> rows, <code>"internal"</code> for the variance/auxiliary rows). Note that
+<code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code> defaults to the internal scale while <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> defaults to the
+natural scale.</p>
     </div>
     <div class="section level2">
     <h2 id="note">Note<a class="anchor" aria-label="anchor" href="#note"></a></h2>
@@ -127,17 +130,17 @@ internal (atanh / log) scales and are NOT back-transformed by
 <span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="fit_dd_tmb.html">fit_dd_tmb</a></span><span class="op">(</span><span class="va">dd</span>, equation <span class="op">=</span> <span class="st">"mazur"</span>, family <span class="op">=</span> <span class="st">"sltb"</span>,</span></span>
 <span class="r-in"><span>                  random_effects <span class="op">=</span> <span class="va">k</span> <span class="op">~</span> <span class="fl">1</span>, verbose <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   term          estimate conf.low conf.high level</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> k:(Intercept)   -<span style="color: #BB0000;">4.53</span>     -<span style="color: #BB0000;">4.80</span>    -<span style="color: #BB0000;">4.27</span>   0.95</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> log_sigma_u     -<span style="color: #BB0000;">0.632</span>    -<span style="color: #BB0000;">1.03</span>    -<span style="color: #BB0000;">0.235</span>  0.95</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> log_phi          2.52      2.29     2.76   0.95</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   term          estimate conf.low conf.high level estimate_scale</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> k:(Intercept)   -<span style="color: #BB0000;">4.53</span>     -<span style="color: #BB0000;">4.80</span>    -<span style="color: #BB0000;">4.27</span>   0.95 log           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> log_sigma_u     -<span style="color: #BB0000;">0.632</span>    -<span style="color: #BB0000;">1.03</span>    -<span style="color: #BB0000;">0.235</span>  0.95 internal      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> log_phi          2.52      2.29     2.76   0.95 internal      </span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">fit</span>, parm <span class="op">=</span> <span class="st">"k:(Intercept)"</span>, report_space <span class="op">=</span> <span class="st">"natural"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   term          estimate conf.low conf.high level</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> k:(Intercept)   0.010<span style="text-decoration: underline;">8</span>  0.008<span style="text-decoration: underline;">26</span>    0.014<span style="text-decoration: underline;">0</span>  0.95</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   term          estimate conf.low conf.high level estimate_scale</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> k:(Intercept)   0.010<span style="text-decoration: underline;">8</span>  0.008<span style="text-decoration: underline;">26</span>    0.014<span style="text-decoration: underline;">0</span>  0.95 natural       </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

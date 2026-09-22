@@ -89,9 +89,9 @@ both (default).</p></dd>
 
 
 <dt id="arg-report-space">report_space<a class="anchor" aria-label="anchor" href="#arg-report-space"></a></dt>
-<dd><p><code>"natural"</code>, <code>"log10"</code>, <code>"internal"</code>, or <code>"log"</code> -
-reporting scale for fixed-effect <code>estimate</code>/<code>std.error</code> (<code>"internal"</code> and
-<code>"log"</code> coincide for the log-k <code>beta_k</code> rows). Default is <code>"natural"</code>.</p></dd>
+<dd><p>Reporting scale for fixed-effect <code>estimate</code>/<code>std.error</code>:
+<code>"natural"</code> (default), <code>"log10"</code>, <code>"internal"</code>, or <code>"log"</code> (<code>"internal"</code>
+and <code>"log"</code> coincide for the log-k <code>beta_k</code> rows).</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -110,8 +110,12 @@ shape-parameter row (2-parameter equations only) carries
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>estimate</code> and <code>std.error</code> are reported on the <code>report_space</code> scale for the
 fixed-effect (<code>beta_k</code>) rows. <code>statistic</code> and <code>p.value</code> are always computed
-on the estimation (log-k) scale - Wald statistics are not recomputed after
+on the estimation (log-k) scale. Wald statistics are not recomputed after
 back-transforming (broom convention; see the <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> note for details).
+Each test is of the log-scale coefficient against 0: for the intercept row
+that is <code>k = 1</code> (rarely a meaningful null), and for a condition or
+covariate row it is a fold-change of 1 (no difference). The <code>s</code> row tests
+<code>s = 1</code>.
 Variance-component rows carry <code>NA</code> for <code>statistic</code> and <code>p.value</code> and are not
 affected by <code>report_space</code>.</p>
     </div>

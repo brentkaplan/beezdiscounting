@@ -161,7 +161,8 @@ on <code>log k</code> (same semantics as <code><a href="fit_dd_tmb.html">fit_dd_
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An object of class <code>beezdiscounting_choice</code>.</p>
+    <p>An object of class <code>beezdiscounting_choice</code>. Start selection and the
+non-convergence warnings follow <code><a href="fit_dd_tmb.html">fit_dd_tmb()</a></code> (see its <code>multi_start_info</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -177,6 +178,16 @@ follows Young (2018): it regresses binary choice on
 slopes on these two predictors; the primary inferential targets are the
 random-effect covariance (via <code><a href="https://rdrr.io/pkg/nlme/man/VarCorr.html" class="external-link">nlme::VarCorr()</a></code>) and per-subject slopes
 (via <code><a href="https://rdrr.io/pkg/nlme/man/random.effects.html" class="external-link">nlme::ranef()</a></code>), not emmeans.</p>
+<p>Interpreting the structural coefficients:</p><ul><li><p><code>gamma</code> is the choice sensitivity in log-odds per unit of relative value
+(<code>(ll/ss) * D - 1</code>); its row in <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> tests <code>log gamma = 0</code>, i.e.
+<code>gamma = 1</code>, not <code>gamma = 0</code>.</p></li>
+<li><p><code>beta0</code> (with <code>intercept = TRUE</code>) is a bias toward the larger-later
+reward. It is only weakly identified from the usual SS/LL designs; its
+standard error is often large and its estimate trades off against <code>k</code>.</p></li>
+<li><p>Condition and covariate coefficients on <code>log k</code> exponentiate to ratios
+of <code>k</code> (e.g. 2 = discounts twice as steeply as the reference level).</p></li>
+</ul><p>In the descriptive model the delay predictor is <code>log(delay + 1)</code>, so its
+slope depends on the delay unit (days vs weeks).</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

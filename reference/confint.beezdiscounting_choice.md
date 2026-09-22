@@ -47,4 +47,7 @@ confint(
 ## Value
 
 A tibble with columns `term`, `estimate`, `conf.low`, `conf.high`,
-`level`.
+`level`, and `estimate_scale` (structural mode: `"log"` or `"natural"`
+for the `beta_k`/`log_gamma` rows, `"internal"` otherwise; descriptive
+mode: `"logit"` for the fixed effects, `"correlation"` for `cor_slopes`,
+`"internal"` for the log SDs).

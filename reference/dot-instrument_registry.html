@@ -87,7 +87,9 @@ the 21-item MCQ (Kirby &amp; Marakovic, 1996), and the 30-item PDQ
     <p>List with <code>key</code>, <code>items</code>, <code>table</code> (design table in ladder order),
 <code>n_mag</code> (items per magnitude/block), <code>edge_k</code> (overall-ladder edge
 constant, or <code>NA</code> when the overall ladder uses the repeat-last
-convention instead), <code>overall_order_col</code> (name of the table column
+convention instead), <code>top_switch</code> (MCQ only: how the overall ladder's
+all-smaller-sooner switch point is scored, see <code><a href="dot-score_ladder.html">.score_ladder()</a></code>),
+<code>overall_order_col</code> (name of the table column
 giving each item's position in the pooled overall ladder, or <code>NULL</code>
 when the table's row order already is that ladder), <code>value_col</code>,
 <code>rank_col</code>, <code>param</code>, and <code>rank_labels</code>.</p>
@@ -96,7 +98,10 @@ when the table's row order already is that ladder), <code>value_col</code>,
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Edge conventions: MCQ overall ladders append 0.25 (27-item) /
 0.1333 (21-item) past the steepest item (Kaplan et al., 2014 Excel
-scorers); MCQ magnitude ladders and all PDQ block ladders repeat their
+scorers). The two workbooks score an all-smaller-sooner respondent
+differently, and each is reproduced: the 27-item scorer takes the
+geometric mean of the last item's k and 0.25 ("All" sheet, C60), the
+21-item scorer assigns 0.1333 itself ("All" sheet, C54). MCQ magnitude ladders and all PDQ block ladders repeat their
 last indifference value (verified against all 3 x 1024 response
 patterns in Gray et al.'s 2016 PDQ lookup tables). The PDQ's pooled
 overall ladder (<code>overall_order_col = "overall_rank"</code>, repeat-last

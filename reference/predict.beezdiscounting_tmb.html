@@ -94,7 +94,8 @@ regardless of the <code>id_var</code>/<code>x_var</code>/<code>y_var</code> you 
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
 <dd><p>For <code>type = "response"</code>: <code>"subject"</code> (default; conditions on
 each subject's estimated random intercept, requires the id column) and/or
-<code>"population"</code> (random effects set to zero - the population-mean curve;
+<code>"population"</code> (random effects set to zero, i.e., the typical-subject curve,
+not the population-averaged curve, which integrates over the random effects;
 no id column needed). Pass <code>c("population", "subject")</code> for both columns
 side-by-side. A numeric nlme-style level is rejected with an error. For
 an s-target 2-RE fit (<code>k + s ~ 1</code>), the subject level uses each subject's

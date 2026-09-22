@@ -19,7 +19,7 @@ fit_dd_brms(
   id_var = "id",
   equation = c("mazur", "exponential", "green-myerson", "rachlin"),
   family = c("beta", "gaussian"),
-  boundary = c("squeeze", "zoib", "error"),
+  boundary = c("error", "squeeze", "zoib"),
   random_effects = k ~ 1,
   covariance_structure = c("pdSymm", "pdDiag"),
   factors = NULL,
@@ -68,7 +68,9 @@ fit_dd_brms(
 
 - boundary:
 
-  Boundary handling for the beta family (see Details).
+  Boundary handling for the beta family: `"error"` (default),
+  `"squeeze"`, or `"zoib"` (see Details). Ignored for
+  `family = "gaussian"`.
 
 - random_effects:
 
@@ -102,6 +104,10 @@ fit_dd_brms(
 
   Anchor the `logk` prior to the median delay (see
   [`default_dd_priors()`](https://brentkaplan.github.io/beezdiscounting/reference/default_dd_priors.md)).
+  For `equation = "rachlin"` this also fits on the normalised delay
+  `x / median(x)` (recorded as `param_info$delay_scale`) so the prior is
+  delay-unit invariant; reported draws are back-transformed to data-unit
+  k, but the raw `brmsfit` draws of the logk intercept stay normalised.
 
 - chains, iter, warmup, thin, cores, seed, backend, control,
   sample_prior:
@@ -152,14 +158,23 @@ plus `variance_components`), `brmsfit`, `subject_pars` (`id`, `k`,
 ## Details
 
 `family = "beta"` (default) uses `Beta(link = "identity")` with the mean
-squished into `(1e-6, 1 - 1e-6)` – the closest brms analog of the TMB
-SLT-beta (`family = "sltb"` has no brms equivalent and errors with this
-pointer). Boundary observations (`y` exactly 0 or 1) are handled per
-`boundary`: `"squeeze"` (default) applies the Smithson-Verkuilen
-transform `y* = (y (N - 1) + 0.5) / N` to all responses (message reports
-the boundary count); `"zoib"` switches to `zero_one_inflated_beta`
-(statistically more honest but changes the estimand – k then describes
-interior responses only); `"error"` refuses to fit.
+squished into `(1e-6, 1 - 1e-6)`. This is a different likelihood from
+the TMB scale-location-truncated beta (`family = "sltb"`, which has no
+brms equivalent and errors with this pointer): the ordinary beta density
+is undefined at exactly 0 and 1, so its estimates are not expected to
+match `fit_dd_tmb(family = "sltb")` whenever responses sit at or near
+the boundaries. Boundary observations (`y` exactly 0 or 1) are handled
+per `boundary`: `"error"` (default) refuses to fit and reports how many
+there are; `"squeeze"` applies the Smithson-Verkuilen transform
+`y* = (y (N - 1) + 0.5) / N` to **every** response (an explicit opt-in:
+it moves each value toward 0.5 and floors the response at `0.5 / N`, so
+when the fitted curve approaches that floor – long delays, steep
+discounting – the squeezed values pull k downward); `"zoib"` switches to
+`zero_one_inflated_beta` (changes the estimand – k then describes
+interior responses only). The fraction of exact-boundary and
+near-boundary (`y <= 0.01` or `y >= 0.99`) responses is stored in
+`param_info$boundary_info` and printed by
+[`summary()`](https://rdrr.io/r/base/summary.html).
 `family = "gaussian"` matches `fit_dd_tmb(family = "gaussian")` wherever
 the TMB template's mu clamp into `[1e-6, 1 - 1e-6]` does not bind
 (everywhere except extreme decay underflow).

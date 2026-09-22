@@ -6,16 +6,18 @@ u_i ~ N(0, sigma_u^2). The mean indifference proportion at delay x is the
 discounting function mu (Mazur hyperbola, exponential, Green-Myerson, or
 Rachlin), and observed y
 is drawn from the scale-location-truncated beta (family = "sltb") via the
-inverse-CDF on the truncated beta, or from a clamped Gaussian
-(family = "gaussian").'><meta property="og:description" content='Generates long-format indifference-point data from the mixed-effects
+inverse-CDF on the truncated beta, or from an unclamped Gaussian
+(family = "gaussian", y ~ N(mu, sigma_e^2), the likelihood
+fit_dd_tmb() fits; draws can fall outside [0, 1]).'><meta property="og:description" content='Generates long-format indifference-point data from the mixed-effects
 discounting model used by fit_dd_tmb(). Each subject i has a random
 discount rate log k_i = log_k_pop + delta_k[condition] + u_i,
 u_i ~ N(0, sigma_u^2). The mean indifference proportion at delay x is the
 discounting function mu (Mazur hyperbola, exponential, Green-Myerson, or
 Rachlin), and observed y
 is drawn from the scale-location-truncated beta (family = "sltb") via the
-inverse-CDF on the truncated beta, or from a clamped Gaussian
-(family = "gaussian").'><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
+inverse-CDF on the truncated beta, or from an unclamped Gaussian
+(family = "gaussian", y ~ N(mu, sigma_e^2), the likelihood
+fit_dd_tmb() fits; draws can fall outside [0, 1]).'><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -80,8 +82,9 @@ discount rate <code>log k_i = log_k_pop + delta_k[condition] + u_i</code>,
 discounting function <code>mu</code> (Mazur hyperbola, exponential, Green-Myerson, or
 Rachlin), and observed <code>y</code>
 is drawn from the scale-location-truncated beta (<code>family = "sltb"</code>) via the
-inverse-CDF on the truncated beta, or from a clamped Gaussian
-(<code>family = "gaussian"</code>).</p>
+inverse-CDF on the truncated beta, or from an unclamped Gaussian
+(<code>family = "gaussian"</code>, <code>y ~ N(mu, sigma_e^2)</code>, the likelihood
+<code><a href="fit_dd_tmb.html">fit_dd_tmb()</a></code> fits; draws can fall outside <code>[0, 1]</code>).</p>
     </div>
 
     <div class="section level2">

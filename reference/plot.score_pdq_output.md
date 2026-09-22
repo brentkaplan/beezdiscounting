@@ -4,6 +4,8 @@ Boxplot of PDQ h metrics (block1_h, block2_h, block3_h, mean_h,
 geomean_h, and the pooled overall_h extension), handling the same log
 transformations as
 [`plot.score_mcq_output()`](https://brentkaplan.github.io/beezdiscounting/reference/plot.score_mcq_output.md).
+A caption marks `overall_h` as a pooled beezdiscounting extension:
+pooling the three blocks presumes a common h across reward amounts.
 
 ## Usage
 

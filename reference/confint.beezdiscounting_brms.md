@@ -1,9 +1,10 @@
 # Credible intervals for a beezdiscounting_brms model
 
 Equal-tailed quantile credible intervals on the report-space-transformed
-draws. Columns match
-[`confint.beezdiscounting_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/confint.beezdiscounting_tmb.md):
-`term`, `estimate`, `conf.low`, `conf.high`, `level`.
+draws. Columns: `term`, `estimate`, `conf.low`, `conf.high`, `level`
+(the first five columns of
+[`confint.beezdiscounting_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/confint.beezdiscounting_tmb.md),
+which adds `estimate_scale`).
 
 ## Usage
 

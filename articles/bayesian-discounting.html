@@ -111,6 +111,7 @@ reproduce them. brms, posterior, and loo are suggested packages.</p>
 <span>  <span class="va">dd_ip</span>,</span>
 <span>  equation <span class="op">=</span> <span class="st">"mazur"</span>,</span>
 <span>  family <span class="op">=</span> <span class="st">"beta"</span>,</span>
+<span>  boundary <span class="op">=</span> <span class="st">"squeeze"</span>,   <span class="co"># dd_ip has exact 0/1 responses; see below</span></span>
 <span>  chains <span class="op">=</span> <span class="fl">4</span>, cores <span class="op">=</span> <span class="fl">4</span>, seed <span class="op">=</span> <span class="fl">1</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -146,7 +147,7 @@ reproduce them. brms, posterior, and loo are suggested packages.</p>
 <span><span class="co">#&gt;   term          estimate conf.low conf.high level</span></span>
 <span><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;</span></span>
 <span><span class="co">#&gt; 1 k:(Intercept)    0.325    0.267     0.395  0.95</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/random.effects.html" class="external-link">ranef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span> <span class="co"># per-subject k posterior summaries</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/random.effects.html" class="external-link">ranef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span> <span class="co"># per-subject log k offsets (ln scale) and k</span></span>
 <span><span class="co">#&gt;     id     r_logk         k</span></span>
 <span><span class="co">#&gt; 1   P1 -0.1571624 0.2758678</span></span>
 <span><span class="co">#&gt; 2  P10  0.9286493 0.8219529</span></span>
@@ -183,20 +184,27 @@ cover the same ground:</p>
 <li>
 <code>family = "beta"</code> (default): brms’s beta likelihood with
 an identity link; the mean function is squished into (1e-6, 1 - 1e-6),
-the differentiable analog of the TMB clamp. Boundary responses
-(<code>y</code> exactly 0 or 1) are handled by <code>boundary</code>:
-the default <code>"squeeze"</code> applies the Smithson-Verkuilen
-transform <code>(y(N-1) + 0.5)/N</code> to all responses and reports the
-boundary count; <code>"zoib"</code> switches to a zero-one-inflated beta
-– statistically more explicit about boundary responding, but it
-<strong>changes the estimand</strong>: k then describes the interior
-responses only; <code>"error"</code> refuses to fit.</li>
+mirroring the TMB mean clamp. The beta likelihood is
+<strong>not</strong> the SLT-beta: it cannot evaluate responses at
+exactly 0 or 1, so its estimates are not expected to match
+<code>fit_dd_tmb(family = "sltb")</code> when responses sit at or near
+the boundaries. Boundary responses are handled by <code>boundary</code>,
+which must be chosen explicitly when any are present: the default
+<code>"error"</code> refuses to fit and reports the count;
+<code>"squeeze"</code> applies the Smithson-Verkuilen transform
+<code>(y(N-1) + 0.5)/N</code> to <strong>every</strong> response, which
+floors the response at <code>0.5/N</code> and can pull k downward when
+the fitted curve approaches that floor (long delays, steep discounting);
+<code>"zoib"</code> switches to a zero-one-inflated beta – more explicit
+about boundary responding, but it <strong>changes the estimand</strong>:
+k then describes the interior responses only. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>
+reports the fraction of exact- and near-boundary responses.</li>
 <li>
 <code>family = "gaussian"</code>: matches
 <code>fit_dd_tmb(family = "gaussian")</code> wherever the TMB mean clamp
-(into <code>[1e-6, 1 - 1e-6]</code>) does not bind – everywhere except
-extreme decay underflow. In our validation harness the posterior median
-of log k lands within hundredths of the TMB MLE.</li>
+(into <code>[1e-6, 1 - 1e-6]</code>) does not bind, i.e., everywhere
+except extreme decay underflow. In our validation harness the posterior
+median of log k lands within hundredths of the TMB MLE.</li>
 </ul>
 </div>
 <div class="section level3">
@@ -220,14 +228,37 @@ here without re-fitting):</p>
 <code class="sourceCode R"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_dd_brms.html">fit_dd_brms</a></span><span class="op">(</span></span>
 <span>  <span class="va">dd_ip</span>,</span>
 <span>  equation <span class="op">=</span> <span class="st">"mazur"</span>,</span>
+<span>  boundary <span class="op">=</span> <span class="st">"squeeze"</span>,</span>
 <span>  prior <span class="op">=</span> <span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">set_prior</a></span><span class="op">(</span><span class="st">"normal(-3, 1)"</span>, class <span class="op">=</span> <span class="st">"b"</span>,</span>
 <span>                          coef <span class="op">=</span> <span class="st">"Intercept"</span>, nlpar <span class="op">=</span> <span class="st">"logk"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The two-parameter equations (<code>"green-myerson"</code>,
 <code>"rachlin"</code>) add a population-level shape exponent with prior
-<code>normal(0, 0.5)</code> on log s (s near 1 a priori); zero delays
-are valid for Rachlin (the implementation guards the <code>0^s</code>
-case exactly as the TMB template does).</p>
+<code>normal(0, 0.5)</code> on log s (s near 1 a priori, 95% of the
+prior mass on roughly 0.38–2.66); zero delays are valid for Rachlin (the
+implementation guards the <code>0^s</code> case exactly as the TMB
+template does).</p>
+<p>These defaults are weakly <em>regularising</em>, not uninformative.
+With few subjects, the <code>log s</code> prior pulls the k–s pair of
+the two-parameter equations toward s = 1 (the pair is poorly identified
+from indifference points alone), and the half-t priors on the
+random-effect SDs matter when there are about 30 subjects or fewer.
+Report a prior-sensitivity check (refit with wider
+<code>logk</code>/<code>logs</code> priors) alongside two-parameter
+fits.</p>
+<p>Rachlin needs one more step. Changing the delay unit by a factor c
+rescales Rachlin’s k by c^s, not c, so a prior centre in data units
+would describe a different curve prior in days than in weeks whenever s
+is not 1. <code><a href="../reference/fit_dd_brms.html">fit_dd_brms()</a></code> therefore samples Rachlin on the
+normalised delay <code>x / median(x)</code> (stored as
+<code>fit$param_info$delay_scale</code>), where the <code>logk</code>
+intercept prior is <code>normal(0, 2.5)</code>, and converts the draws
+back to data-unit k before reporting. The same data in days or in weeks
+then gives the same curve posterior. A custom Rachlin <code>logk</code>
+intercept prior is read on the normalised scale, and the raw draws in
+<code>fit$brmsfit</code> are normalised; use <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>,
+<code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code> and <code><a href="../reference/get_dd_param_emms.html">get_dd_param_emms()</a></code> for
+data-unit k.</p>
 </div>
 </div>
 <div class="section level2">
@@ -268,7 +299,7 @@ case exactly as the TMB template does).</p>
 <p>The structural likelihood is identical to
 <code>fit_dd_choice(mode = "structural")</code>:
 <code>logit P(LL) = [b0] + gamma ((ll/ss) D(k, delay) - 1)</code>. The
-descriptive (Young 2018) mode is not wrapped – it is a plain logistic
+descriptive (Young 2018) mode is not wrapped; it is a plain logistic
 GLMM you can fit directly with <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brms::brm()</a></code> if you want it
 Bayesian.</p>
 <p>Between-subject designs on <code>log k</code> work as in
@@ -350,8 +381,14 @@ divergences, and bulk ESS &gt;= 400; components are in
 <div class="section level2">
 <h2 id="v1-scope">v1 scope<a class="anchor" aria-label="anchor" href="#v1-scope"></a>
 </h2>
-<p>Random effects are intercept-only on k (<code>k ~ 1</code>); the TMB
-tier’s <code>k + phi ~ 1</code> is planned via a distributional formula.
+<p>Random effects are an intercept on log k (<code>k ~ 1</code>),
+optionally with a per-subject precision intercept
+(<code>k + phi ~ 1</code>, beta family), as in the TMB tier. Two
+differences from the TMB tier remain: the TMB SLT-beta fit bounds the
+precision below at phi = 0.1 while the brms beta fit does not, and
+<code><a href="https://rdrr.io/pkg/nlme/man/random.effects.html" class="external-link">ranef()</a></code> returns each subject’s log k offset on the
+natural-log scale, whereas <code><a href="https://rdrr.io/pkg/nlme/man/random.effects.html" class="external-link">ranef()</a></code> on a one-random-effect
+TMB fit returns the standardised deviate u.
 <code><a href="../reference/get_dd_param_emms.html">get_dd_param_emms()</a></code> and <code><a href="../reference/get_dd_comparisons.html">get_dd_comparisons()</a></code>
 accept Bayesian indifference-point and structural choice fits (quantile
 credible intervals; <code>post.prob</code> in place of adjusted

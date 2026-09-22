@@ -9,7 +9,7 @@ forms reduce to Mazur at `s = 1`.
 ## Usage
 
 ``` r
-.dd_discount_mu(k, x, equation, s = 1)
+.dd_discount_mu(k, x, equation, s = 1, clamp = TRUE)
 ```
 
 ## Arguments
@@ -32,6 +32,12 @@ forms reduce to Mazur at `s = 1`.
   Numeric nonlinearity exponent (Green-Myerson / Rachlin). Default `1`
   so 1-parameter callers are unchanged.
 
+- clamp:
+
+  Apply the `[1e-6, 1 - 1e-6]` guard (default `TRUE`); `FALSE` returns
+  the raw mean, used to count guard activity.
+
 ## Value
 
-Numeric vector of mu values clamped to `[1e-6, 1-1e-6]`.
+Numeric vector of mu values clamped to `[1e-6, 1-1e-6]` (raw when
+`clamp = FALSE`).

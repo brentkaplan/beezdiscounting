@@ -91,9 +91,9 @@ shape rows gamma/beta0), <code>"ran_pars"</code> (the RE SD), or both (default).
 
 
 <dt id="arg-report-space">report_space<a class="anchor" aria-label="anchor" href="#arg-report-space"></a></dt>
-<dd><p><code>"natural"</code>, <code>"log10"</code>, <code>"internal"</code>, or <code>"log"</code> -
-reporting scale for the fixed-effect <code>estimate</code>/<code>std.error</code>. Default is
-<code>"natural"</code>.</p></dd>
+<dd><p>Reporting scale for the fixed-effect
+<code>estimate</code>/<code>std.error</code>: <code>"natural"</code> (default), <code>"log10"</code>, <code>"internal"</code>,
+or <code>"log"</code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -114,7 +114,7 @@ fixed-effect (<code>beta_k</code>) rows and for <code>gamma</code> (which is tra
 EXPLICITLY since the param-space transformer keys only on k/s/phi). <code>beta0</code>
 is on the identity (logit-intercept) scale and is NEVER transformed across
 report spaces. <code>statistic</code> and <code>p.value</code> are always computed on the
-estimation (internal) scale - Wald statistics are not recomputed after
+estimation (internal) scale. Wald statistics are not recomputed after
 back-transforming (broom convention).</p>
     </div>
 

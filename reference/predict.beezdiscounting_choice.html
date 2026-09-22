@@ -94,8 +94,11 @@ or <code>"parameters"</code> (the per-subject parameter tibble).</p></dd>
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
 <dd><p>For <code>type = "prob"</code>: <code>"subject"</code> (default; conditions on each
 subject's estimated random intercept, requires the id column) or
-<code>"population"</code> (random effects set to zero - the population-mean curve; no
-id column needed).</p></dd>
+<code>"population"</code> (random effects set to zero – the typical subject: in
+structural mode <code>log k</code> at its population value, in descriptive mode the
+random slopes at zero; no id column needed). This is not the
+population-averaged choice probability, which integrates over the random
+effects and is flatter.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

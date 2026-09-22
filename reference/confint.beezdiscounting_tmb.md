@@ -48,7 +48,12 @@ confint(
 ## Value
 
 A tibble with columns `term`, `estimate`, `conf.low`, `conf.high`,
-`level`.
+`level`, and `estimate_scale` (`"log"` or `"natural"` for the `beta_k`
+and `log_s` rows, `"internal"` for the variance/auxiliary rows). Note
+that [`confint()`](https://rdrr.io/r/stats/confint.html) defaults to the
+internal scale while
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) defaults to
+the natural scale.
 
 ## Note
 
@@ -65,16 +70,16 @@ dd <- simulate_dd_ip(n_subjects = 20, seed = 1)
 fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb",
                   random_effects = k ~ 1, verbose = 0)
 confint(fit)
-#> # A tibble: 3 × 5
-#>   term          estimate conf.low conf.high level
-#>   <chr>            <dbl>    <dbl>     <dbl> <dbl>
-#> 1 k:(Intercept)   -4.53     -4.80    -4.27   0.95
-#> 2 log_sigma_u     -0.632    -1.03    -0.235  0.95
-#> 3 log_phi          2.52      2.29     2.76   0.95
+#> # A tibble: 3 × 6
+#>   term          estimate conf.low conf.high level estimate_scale
+#>   <chr>            <dbl>    <dbl>     <dbl> <dbl> <chr>         
+#> 1 k:(Intercept)   -4.53     -4.80    -4.27   0.95 log           
+#> 2 log_sigma_u     -0.632    -1.03    -0.235  0.95 internal      
+#> 3 log_phi          2.52      2.29     2.76   0.95 internal      
 confint(fit, parm = "k:(Intercept)", report_space = "natural")
-#> # A tibble: 1 × 5
-#>   term          estimate conf.low conf.high level
-#>   <chr>            <dbl>    <dbl>     <dbl> <dbl>
-#> 1 k:(Intercept)   0.0108  0.00826    0.0140  0.95
+#> # A tibble: 1 × 6
+#>   term          estimate conf.low conf.high level estimate_scale
+#>   <chr>            <dbl>    <dbl>     <dbl> <dbl> <chr>         
+#> 1 k:(Intercept)   0.0108  0.00826    0.0140  0.95 natural       
 # }
 ```

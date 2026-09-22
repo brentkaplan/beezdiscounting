@@ -43,8 +43,8 @@ reward), in the input row order.
 ## Details
 
 Unknown or non-coercible question ids raise an error rather than
-silently producing unmatched rows. Ragged input is allowed – subjects
-need not have all items – and `NA` responses are preserved. For the
+silently producing unmatched rows. Ragged input is allowed (subjects
+need not have all items) and `NA` responses are preserved. For the
 strict scorer see
 [`score_pdq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_pdq.md).
 

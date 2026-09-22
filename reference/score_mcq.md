@@ -75,6 +75,19 @@ rather than silently mis-scoring. Contrast with
 [`mcq_to_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/mcq_to_choice.md)'s
 lenient, ragged contract, which accepts partial per-subject coverage.
 
+Ladder edges follow the Kaplan et al. (2014) Excel scorers. A switch
+point between two items scores the geometric mean of their k values, and
+larger-later on every item gives the first item's k. Smaller-sooner on
+every item follows each instrument's workbook, and the two workbooks
+differ: on the overall (all-item) ladder the 27-item scorer takes the
+geometric mean of the last item's k and the edge 0.25 (0.2494), while
+the 21-item scorer assigns the edge 0.1333 itself. Either way the value
+is a convention: those responses only show that k exceeds the steepest
+item's k. The small / medium / large magnitude ladders repeat their own
+last k (21-item: 0.1333 / 0.1292 / 0.131). The 21-item ladder keeps the
+published item order within each k rank, which is not strictly ascending
+in k; it must not be re-sorted.
+
 ## Examples
 
 ``` r

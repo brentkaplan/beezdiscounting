@@ -36,8 +36,11 @@ predict(
 
   For `type = "prob"`: `"subject"` (default; conditions on each
   subject's estimated random intercept, requires the id column) or
-  `"population"` (random effects set to zero - the population-mean
-  curve; no id column needed).
+  `"population"` (random effects set to zero – the typical subject: in
+  structural mode `log k` at its population value, in descriptive mode
+  the random slopes at zero; no id column needed). This is not the
+  population-averaged choice probability, which integrates over the
+  random effects and is flatter.
 
 - ...:
 

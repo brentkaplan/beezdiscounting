@@ -131,7 +131,7 @@ For <code>family == "sltb"</code> (i.e. <code>tmb_data$family == 0L</code>) a <s
 walk into the degenerate phi-&gt;0 optimum. The bound is overridable: if the
 caller already provides a <code>log_aux</code> entry in <code>tmb_control$lower</code> that value
 wins (merged before the floor check). Genuine low-precision fits (true phi
-above the floor, e.g. phi = 2) are retained — the bound only blocks the
+above the floor, e.g. phi = 2) are retained. The bound blocks only the
 pathological phi-&gt;0 sink. There is <strong>no post-hoc phi-based rejection</strong>.</p>
 <p>If every candidate trips the blowup guard the lowest-nll fit overall is
 returned with a warning. If every candidate fails entirely (error or

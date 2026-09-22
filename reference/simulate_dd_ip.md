@@ -9,7 +9,10 @@ Each subject `i` has a random discount rate
 is the discounting function `mu` (Mazur hyperbola, exponential,
 Green-Myerson, or Rachlin), and observed `y` is drawn from the
 scale-location-truncated beta (`family = "sltb"`) via the inverse-CDF on
-the truncated beta, or from a clamped Gaussian (`family = "gaussian"`).
+the truncated beta, or from an unclamped Gaussian
+(`family = "gaussian"`, `y ~ N(mu, sigma_e^2)`, the likelihood
+[`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)
+fits; draws can fall outside `[0, 1]`).
 
 ## Usage
 

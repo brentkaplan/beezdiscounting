@@ -86,8 +86,8 @@ group's `beta_k` contribution rather than the reference-group intercept.
 
 ## Value
 
-data.frame: `id, u_i, k` (1-RE), `id, re_k, re_phi, k, phi` (phi-target
-2-RE), or `id, re_k, re_s, k, s` (s-target 2-RE).
+data.frame: `id, u_i, k` (1-RE), `id, re_k, re_phi, k, phi, phi_latent`
+(phi-target 2-RE), or `id, re_k, re_s, k, s, s_latent` (s-target 2-RE).
 
 ## Details
 

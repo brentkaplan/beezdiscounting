@@ -128,8 +128,13 @@ calc_aucs(clean)
 
 `auc_regular` integrates over the raw delays; `auc_log10` and `auc_ord`
 integrate over log-spaced and ordinally-spaced delays, the rescalings
-recommended by Borges et al. (2016) so that closely-spaced short delays
-do not dominate the area. Like
+recommended by Borges et al. (2016). On the raw delay axis the long
+delays span most of the width, so the few long-delay points dominate
+`auc_regular` and the short delays, where most of the curve’s change
+happens, barely count; the log and ordinal scales spread the points more
+evenly. `auc_log10` uses `log10(delay + 1)`, which makes it depend on
+the delay unit (days vs weeks), so keep one unit when comparing it
+across studies. Like
 [`check_unsystematic()`](https://brentkaplan.github.io/beezdiscounting/reference/check_unsystematic.md),
 [`calc_aucs()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_aucs.md)
 returns one row per subject. Use AUC when you want an atheoretical

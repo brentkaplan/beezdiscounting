@@ -210,11 +210,16 @@ discounting). <code><a href="../reference/calc_aucs.html">calc_aucs()</a></code>
 <p><code>auc_regular</code> integrates over the raw delays;
 <code>auc_log10</code> and <code>auc_ord</code> integrate over
 log-spaced and ordinally-spaced delays, the rescalings recommended by
-Borges et al. (2016) so that closely-spaced short delays do not dominate
-the area. Like <code><a href="../reference/check_unsystematic.html">check_unsystematic()</a></code>,
-<code><a href="../reference/calc_aucs.html">calc_aucs()</a></code> returns one row per subject. Use AUC when you
-want an atheoretical index, or alongside <code>k</code> as a robustness
-check.</p>
+Borges et al. (2016). On the raw delay axis the long delays span most of
+the width, so the few long-delay points dominate
+<code>auc_regular</code> and the short delays, where most of the curve’s
+change happens, barely count; the log and ordinal scales spread the
+points more evenly. <code>auc_log10</code> uses
+<code>log10(delay + 1)</code>, which makes it depend on the delay unit
+(days vs weeks), so keep one unit when comparing it across studies. Like
+<code><a href="../reference/check_unsystematic.html">check_unsystematic()</a></code>, <code><a href="../reference/calc_aucs.html">calc_aucs()</a></code> returns one
+row per subject. Use AUC when you want an atheoretical index, or
+alongside <code>k</code> as a robustness check.</p>
 </div>
 <div class="section level2">
 <h2 id="working-at-scale">Working at scale<a class="anchor" aria-label="anchor" href="#working-at-scale"></a>

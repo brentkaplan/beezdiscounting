@@ -5,7 +5,124 @@
 This is a large release (the first since 0.3.2, January 2025):
 mixed-effects and Bayesian discounting tiers, trial-level choice models,
 21-item MCQ and PDQ scoring, Monte Carlo power analysis, and ten
-vignettes (all new since 0.3.2, which shipped none).
+vignettes (all new since 0.3.2, which had none).
+
+#### Bug fixes that can change results
+
+- [`check_unsystematic()`](https://brentkaplan.github.io/beezdiscounting/reference/check_unsystematic.md)
+  now applies both Johnson & Bickel (2008) thresholds on the `y` scale
+  (`c1 * ll`, `c2 * ll`). Previously `ll` cancelled out, so amount-scale
+  data (e.g. `y` in dollars with `ll = 100`) were judged against the
+  bare proportions `c1`/`c2` and received wrong verdicts. Criterion 2 is
+  now strict: a decline of exactly `c2 * ll` passes. `ll`, `c1` and `c2`
+  are validated. Verdicts on proportion data with `ll = 1` change only
+  for changes of exactly `c1` or `c2`, which floating-point error
+  previously judged either way (e.g. `y = c(0.6, 0.8, 0.1)` used to fail
+  C1).
+- [`check_unsystematic()`](https://brentkaplan.github.io/beezdiscounting/reference/check_unsystematic.md)
+  and
+  [`calc_aucs()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_aucs.md)
+  now error on missing `y`/`x` values and on duplicate delays within a
+  subject, which previously gave a silent `NA`/`TRUE` verdict or a
+  result that depended on row order.
+  [`calc_aucs()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_aucs.md)
+  documents that `auc_log10` uses `log10(x + 1)` and therefore depends
+  on the delay unit.
+- INN imputation
+  ([`score_mcq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq.md),
+  [`score_mcq27()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq27.md),
+  [`score_pdq()`](https://brentkaplan.github.io/beezdiscounting/reference/score_pdq.md)
+  with `impute_method = "inn"`) now warns when items stay missing
+  (neighbours disagree with `random = FALSE`, or a whole rank group is
+  missing) instead of letting the resulting `NA` scores pass silently.
+- [`score_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/score_dd.md),
+  [`ans_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/ans_dd.md),
+  [`calc_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_dd.md),
+  [`score_pd()`](https://brentkaplan.github.io/beezdiscounting/reference/score_pd.md),
+  [`ans_pd()`](https://brentkaplan.github.io/beezdiscounting/reference/ans_pd.md)
+  and
+  [`calc_pd()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_pd.md)
+  now read numeric Qualtrics exports (choice codes 1/2) as well as text
+  exports. In 0.3.2 only text exports were supported: a numeric export
+  matched neither “now” nor “for sure”, so every response was scored as
+  the larger-later (delay) or uncertain (probability) option. Numeric
+  codes are read per item, because both 5.5-trial templates code
+  `Attend-LL` in reverse order (delay: 1 = “in 25 years”, 2 = “now”;
+  probability: 1 = “with a 1% chance”, 2 = “for sure”). Text exports
+  score as before.
+- `fit_dd_brms(equation = "rachlin")` now samples on the normalised
+  delay `x / median(x)` with the `logk` intercept prior `normal(0, 2.5)`
+  on that scale, and back-transforms the draws to data-unit k. Rachlin k
+  scales as c^s under a change of delay unit, so the previous data-unit
+  prior (`normal(-log(median(x)), 2.5)`, independent of s) implied a
+  different curve prior in days than in weeks whenever s was not 1.
+  Rachlin posteriors change; the same data in any delay unit now give
+  the same curve posterior. A user-supplied Rachlin `logk` intercept
+  prior is read on the normalised scale, and raw `fit$brmsfit` draws of
+  `b_logk_Intercept` are normalised
+  ([`coef()`](https://rdrr.io/r/stats/coef.html),
+  [`confint()`](https://rdrr.io/r/stats/confint.html), `subject_pars`,
+  EMMs and comparisons report data units). `autoscale_priors = FALSE`
+  keeps the old parameterisation. MCMC convergence checks now also cover
+  the back-transformed log k.
+- `score_mcq(items = 21)`: a respondent who chooses the smaller-sooner
+  reward on every item now gets the overall-ladder edge k of 0.1333
+  itself, as the Kaplan et al. (2014) 21-item Excel scorer assigns it,
+  instead of the geometric mean of the last item’s k and the edge
+  (0.1321). When that switch point ties with others, 0.1333 is its
+  contribution to the geometric mean of the tied switch points, so the
+  overall k also changes there. The 21-item item table (order,
+  magnitude, k, delay) was checked against that workbook and matches.
+  The 27-item scorer is unchanged: its workbook does average the last
+  item with the edge (0.2494), and
+  [`score_mcq27()`](https://brentkaplan.github.io/beezdiscounting/reference/score_mcq27.md)
+  reproduces that.
+- The 5.5-trial delay and probability scorers
+  ([`score_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/score_dd.md),
+  [`ans_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/ans_dd.md),
+  [`calc_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_dd.md),
+  [`score_pd()`](https://brentkaplan.github.io/beezdiscounting/reference/score_pd.md),
+  [`ans_pd()`](https://brentkaplan.github.io/beezdiscounting/reference/ans_pd.md),
+  [`calc_pd()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_pd.md))
+  now recognise only the template’s numeric codes and option texts.
+  Previously any other value (a typo, `"-99"`, a relabelled export, a
+  blank cell) was silently scored as the delayed/uncertain choice with a
+  real k or h. Blank cells are now treated as unanswered and dropped,
+  and other unrecognised values raise an error naming the item and
+  value.
+- [`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)
+  and
+  [`fit_dd_choice()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice.md)
+  (both modes) no longer let a non-converged start displace a converged
+  one on negative log-likelihood alone: the multi-start keeps the
+  lowest-NLL converged start that passes the log-k sanity guard, falling
+  back to other starts only when no start both converged and passed the
+  guard (recorded in the new `multi_start_info` element). A
+  non-converged fit now raises a classed
+  `beezdiscounting_convergence_warning` at fit time regardless of
+  `verbose`, and
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
+  [`confint()`](https://rdrr.io/r/stats/confint.html),
+  [`summary()`](https://rdrr.io/r/base/summary.html),
+  [`get_dd_param_emms()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_param_emms.md)
+  and
+  [`get_dd_comparisons()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_comparisons.md)
+  repeat it. Previously such fits
+  (e.g. `tmb_control = list(iter_max = 3)`) returned finite p-values and
+  intervals with no warning. Non-positive-definite Hessian and failed
+  `sdreport()` warnings are likewise no longer silenced by
+  `verbose = 0`.
+- `simulate_dd_ip(family = "gaussian")` no longer clamps draws to
+  `[0, 1]`, and `fit_dd_tmb(family = "gaussian")` /
+  `fit_dd_brms(family = "gaussian")` keep responses as supplied: no
+  clamping to `[0, 1]` and no automatic percent detection (data that
+  look percent-scaled get a warning; an explicit
+  `response_scale = "percent"` or `"amount"` still converts). The
+  Gaussian likelihood is unbounded, so the clamp made the simulated
+  data, and the data the model saw, differ from the model being fitted:
+  near delay 0 about half the draws piled up at 1. Gaussian-family
+  simulations and `power_discounting(family = "gaussian")` results
+  change; the SLT-beta family is unaffected.
 
 #### Monte Carlo power analysis
 
@@ -19,8 +136,10 @@ vignettes (all new since 0.3.2, which shipped none).
   interval, p-value and CI-exclusion hit rates, and convergence
   diagnostics; non-usable fits are excluded from the denominator and
   surfaced, never counted as misses. The Wald test uses a t reference
-  with the design’s two-sample df (`n - 2`), validated by Type I
-  calibration tests.
+  with the design’s two-sample df (`n - 2`): an empirical small-sample
+  calibration, not a model-derived df, chosen because it keeps the Type
+  I error near nominal in the package’s calibration tests where the
+  z-test runs high.
 - [`find_n_discounting()`](https://brentkaplan.github.io/beezdiscounting/reference/find_n_discounting.md)
   searches for the smallest total N reaching a target power via
   bisection, adding replicates adaptively where the Monte Carlo verdict
@@ -60,8 +179,10 @@ vignettes (all new since 0.3.2, which shipped none).
   gains an `instrument` argument (`"mcq27"`, `"mcq21"`, `"pdq"`);
   `items` remains as a back-compatible alias. Internally the MCQ
   registry is now instrument-keyed and the ladder-scoring core is shared
-  across instruments; 27- and 21-item MCQ results are unchanged (pinned
-  by golden-fixture regression tests).
+  across instruments; the refactor leaves 27- and 21-item MCQ results
+  unchanged (pinned by golden-fixture regression tests). The separate
+  21-item all-smaller-sooner change is listed under “Bug fixes that can
+  change results”.
 
 #### 21-item MCQ support
 
@@ -104,9 +225,9 @@ vignettes (all new since 0.3.2, which shipped none).
   matching the existing 27-item plot method.
 - Internal (unexported)
   [`inn()`](https://brentkaplan.github.io/beezdiscounting/reference/inn.md)
-  gained a `reg` parameter – `inn(dat, reg, random, verbose)` – to
-  support both MCQ versions. This is a breaking signature change for any
-  code calling `beezdiscounting:::inn()` directly.
+  gained a `reg` parameter (`inn(dat, reg, random, verbose)`) to support
+  both MCQ versions. This is a breaking signature change for any code
+  calling `beezdiscounting:::inn()` directly.
 
 #### New vignettes
 
@@ -162,7 +283,8 @@ vignettes (all new since 0.3.2, which shipped none).
   over the whole data frame and recycled it across `unique(id)`, so
   multi-subject input returned the same verdict / AUC for every subject.
   Each now returns one correct row per subject (single-subject output is
-  unchanged).
+  unchanged by this, apart from the threshold and input-validation
+  changes under “Bug fixes that can change results”).
   [`check_unsystematic()`](https://brentkaplan.github.io/beezdiscounting/reference/check_unsystematic.md)
   orders points by `x` when that column is present, and
   [`calc_aucs()`](https://brentkaplan.github.io/beezdiscounting/reference/calc_aucs.md)
@@ -206,12 +328,19 @@ vignettes (all new since 0.3.2, which shipped none).
   Bayesian mixed-effects discounting via brms/Stan for all four TMB
   equations (`"mazur"`, `"exponential"`, `"green-myerson"`,
   `"rachlin"`). `family = "beta"` (identity link with a differentiable
-  squish) is the closest brms analog of the TMB SLT-beta;
-  `family = "gaussian"` matches the TMB gaussian likelihood wherever the
-  TMB mu clamp does not bind (everywhere except extreme decay
-  underflow). Boundary responses are handled via Smithson-Verkuilen
-  squeezing (default), zero-one-inflated beta (`boundary = "zoib"`;
-  changes the estimand), or refusal.
+  squish) is an ordinary beta likelihood, not the TMB SLT-beta, and its
+  estimates are not expected to match `fit_dd_tmb(family = "sltb")` when
+  responses sit at or near 0 or 1; `family = "gaussian"` matches the TMB
+  gaussian likelihood wherever the TMB mu clamp does not bind
+  (everywhere except extreme decay underflow). Exact 0/1 responses must
+  be handled explicitly: the default `boundary = "error"` refuses to fit
+  and reports the count; `"squeeze"` (Smithson-Verkuilen, rescales every
+  response) and `"zoib"` (zero-one-inflated beta; changes the estimand)
+  are opt-ins. [`summary()`](https://rdrr.io/r/base/summary.html)
+  reports the exact- and near-boundary fractions. `init = "tmb"` (both
+  brms fitters) seeds the chains from the TMB pre-fit only when that fit
+  converged with finite estimates, and otherwise falls back to
+  prior-center inits with a warning.
 - New
   [`fit_dd_choice_brms()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_choice_brms.md):
   the structural trial-level choice model under `bernoulli("logit")`,
@@ -225,7 +354,7 @@ vignettes (all new since 0.3.2, which shipped none).
   /
   [`default_dd_choice_priors()`](https://brentkaplan.github.io/beezdiscounting/reference/default_dd_choice_priors.md):
   inspectable defaults with delay-unit-aware `logk` anchoring (centers
-  `k * median(delay) = 1`).
+  `k * median(delay) = 1`; for Rachlin, `k * median(delay)^s = 1`).
 - `fit_dd_brms(random_effects = k + phi ~ 1, family = "beta")` adds a
   per-subject precision random effect, correlated with the `log k`
   intercept (`covariance_structure = "pdSymm"`, the default) or
@@ -267,9 +396,9 @@ vignettes (all new since 0.3.2, which shipped none).
 - New vignette “Comparing discounting rates between groups”
   ([`vignette("dd-group-comparisons")`](https://brentkaplan.github.io/beezdiscounting/articles/dd-group-comparisons.md)):
   factor designs on log k, estimated marginal means, and contrasts
-  across both backends – TMB (Wald + holm) and brms (posterior draws +
-  `post.prob`) – for indifference-point and trial-level choice models
-  alike.
+  across both backends (TMB with Wald tests and Holm adjustment; brms
+  with posterior draws and `post.prob`), for indifference-point and
+  trial-level choice models alike.
 
 #### Modeling tiers and choice models
 
@@ -332,9 +461,9 @@ vignettes (all new since 0.3.2, which shipped none).
 
 - **Mixed-effects discounting via TMB**
   ([`fit_dd_tmb()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_tmb.md)):
-  fits the indifference-point (IP) family discounting model — Mazur
+  fits the indifference-point (IP) family discounting model (Mazur
   hyperbolic or exponential mean with a subject random intercept on
-  `log k` — under either the scale-location-truncated beta
+  `log k`) under either the scale-location-truncated beta
   (`family = "sltb"`, default) or Gaussian (`family = "gaussian"`)
   observation family. Between-subject factors and continuous covariates
   enter the `log k` fixed-effect design.
@@ -380,27 +509,9 @@ vignettes (all new since 0.3.2, which shipped none).
 #### Notes
 
 - The data validator coerces percent/amount response scales to `[0, 1]`
-  and clamps mild out-of-range values, **warning loudly** and naming the
-  number of values coerced or clamped.
-
-#### Bug fixes (scoring)
-
-- **[`score_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/score_dd.md)**
-  and
-  **[`ans_dd()`](https://brentkaplan.github.io/beezdiscounting/reference/ans_dd.md)**:
-  Fixed incorrect response classification for Qualtrics numeric recode
-  exports where SS = `"1"` and LL = `"2"`. Previously, all numeric
-  responses were classified as `"ll"`, producing incorrect `kval` and
-  `ed50`. Both text exports (containing `"now"`) and numeric exports
-  (`"1"` / `"2"`) are now handled correctly via an internal
-  `normalize_dd_response()` helper.
-
-- **[`score_pd()`](https://brentkaplan.github.io/beezdiscounting/reference/score_pd.md)**
-  and
-  **[`ans_pd()`](https://brentkaplan.github.io/beezdiscounting/reference/ans_pd.md)**:
-  Same fix for probability discounting. SC = `"1"`, LU = `"2"` in
-  numeric exports are now correctly classified via an internal
-  `normalize_pd_response()` helper.
+  and, for the SLT-beta and beta families, clamps mild out-of-range
+  values, **warning loudly** and naming the number of values coerced or
+  clamped (Gaussian fits keep responses as supplied).
 
 ## beezdiscounting 0.3.2
 

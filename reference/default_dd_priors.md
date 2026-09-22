@@ -5,8 +5,8 @@ Returns the default prior table used by
 so the defaults can be inspected, modified row-wise, and passed back via
 the fitter's `prior` argument. The `logk` location is the principled fix
 for k's delay-unit dependence: with `autoscale = TRUE` (the default
-whenever `data` is supplied) it centers `k * median(delay) = 1` – the
-delay at which the Mazur curve crosses 0.5 – via
+whenever `data` is supplied) it centers `k * median(delay) = 1` (the
+delay at which the Mazur curve crosses 0.5) via
 `normal(-log(median(x)), 2.5)`; the static fallback is
 `normal(-4.5, 2.5)`. The anchors used are attached as
 `attr(, "autoscale_info")`; numeric values are formatted with
@@ -79,6 +79,19 @@ A `brmsprior` data frame, with `attr(, "autoscale_info")` when
 autoscaling was used.
 
 ## Details
+
+For Rachlin (`mu = 1 / (1 + k * x^s)`) a change of delay unit by a
+factor `c` rescales k by `c^s`, so a data-unit anchor would describe a
+different curve prior in days than in weeks whenever `s != 1`. With
+autoscaling,
+[`fit_dd_brms()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_brms.md)
+therefore fits Rachlin on the normalised delay `x / median(x)` (recorded
+as `autoscale_info$delay_scale`), and the logk intercept prior is
+`normal(0, 2.5)` on that scale (`k * median(x)^s = 1` at the prior
+centre). A user-supplied Rachlin logk intercept prior is read on the
+normalised scale too. Reported k (coefficients, `subject_pars`, EMMs) is
+back-transformed to data units. The other equations are unit-invariant
+under the data-unit anchor and are unchanged.
 
 Other defaults: `logs ~ normal(0, 0.5)` (two-parameter equations; s is
 near 1 a priori), `sd(logk) ~ student_t(3, 0, 1)`, `phi ~ gamma(2, 0.1)`

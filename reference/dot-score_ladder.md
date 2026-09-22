@@ -9,7 +9,7 @@ tables for all 1024 response patterns per block.
 ## Usage
 
 ``` r
-.score_ladder(resp, vals, edge)
+.score_ladder(resp, vals, edge, top = c("geomean", "edge"))
 ```
 
 ## Arguments
@@ -28,6 +28,13 @@ tables for all 1024 response patterns per block.
 
   Value appended past the steepest item (the overall-ladder edge
   constant, or `vals[length(vals)]` for the repeat-last convention).
+
+- top:
+
+  Value for the top switch point (smaller/guaranteed option on every
+  item): `"geomean"` (default) = geometric mean of the last item and
+  `edge`; `"edge"` = `edge` itself. Identical under the repeat-last
+  edge.
 
 ## Value
 

@@ -169,7 +169,7 @@ for interactive exploration; use 2000+ for grant-quality precision (see
 <dd><p>Degrees of freedom for the Wald test's t reference
 distribution. <code>NULL</code> (default) uses <code>n_subjects - 2</code>, the two-sample df
 of the between-subject design. This is an <em>empirically calibrated</em>
-small-sample correction, not a model-derived df (the TMB fit has no
+small-sample correction rather than a model-derived df (the TMB fit has no
 exact t sampling theory); it passes the package's Type I calibration
 battery, while the asymptotic z-test (<code>df = Inf</code>) is anticonservative
 at study-relevant sample sizes.</p></dd>
@@ -198,9 +198,9 @@ The default <code>k ~ 1</code> matches the simulator's data-generating process (
 single subject random intercept on log k). The simulator ALWAYS
 generates only that intercept: any richer formula (e.g. <code>k + phi ~ 1</code>,
 <code>k + s ~ 1</code>) is accepted but produces a deliberately over-specified
-refit of data with no such variance component – useful for probing
-robustness, not for estimating power under those random effects (out
-of scope in this version).</p></dd>
+refit of data with no such variance component. That refit is useful for
+probing robustness rather than for estimating power under those random
+effects (out of scope in this version).</p></dd>
 
 
 <dt id="arg-multi-start">multi_start<a class="anchor" aria-label="anchor" href="#arg-multi-start"></a></dt>
@@ -294,7 +294,7 @@ deparsed random-effects formula.</p></dd>
     <p>A replicate whose fit fails (non-convergence, non-positive-definite
 Hessian, unusable standard error, or an error) is excluded from the power
 denominator and reported through the <code>n_*</code> counts and
-<code>$replicates$status</code> – it is never counted as "no effect detected", which
+<code>$replicates$status</code>. It is never counted as "no effect detected", which
 would bias power in an unpredictable direction. A warning is issued when
 fewer than 95% of replicates are usable.</p>
 <p>The v1 scope is a single fixed-effect <code>delta_k</code> under the package's

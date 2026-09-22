@@ -1,7 +1,6 @@
 # Plot Delay-Discounting Model
 
-This function generates a plot of the delay-discounting data and the
-fitted model.
+Plots the delay-discounting data with the fitted model overlaid.
 
 ## Usage
 

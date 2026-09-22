@@ -30,8 +30,8 @@ tidy(
 
 - report_space:
 
-  `"natural"`, `"log10"`, `"internal"`, or `"log"` - reporting scale for
-  the fixed-effect `estimate`/`std.error`. Default is `"natural"`.
+  Reporting scale for the fixed-effect `estimate`/`std.error`:
+  `"natural"` (default), `"log10"`, `"internal"`, or `"log"`.
 
 - ...:
 
@@ -52,5 +52,5 @@ the fixed-effect (`beta_k`) rows and for `gamma` (which is transformed
 EXPLICITLY since the param-space transformer keys only on k/s/phi).
 `beta0` is on the identity (logit-intercept) scale and is NEVER
 transformed across report spaces. `statistic` and `p.value` are always
-computed on the estimation (internal) scale - Wald statistics are not
+computed on the estimation (internal) scale. Wald statistics are not
 recomputed after back-transforming (broom convention).

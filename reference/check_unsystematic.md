@@ -1,13 +1,14 @@
 # Check for Unsystematic Data Violations
 
-This function checks a dataset for violations of two criteria commonly
-used to identify unsystematic delay-discounting data:
+Checks a data set against the two Johnson and Bickel (2008) criteria for
+unsystematic delay-discounting data:
 
 - Criterion 1: Any subsequent value of `y` exceeds the previous value by
   more than a specified proportion of the larger later reward (`ll`).
 
 - Criterion 2: The last value of `y` is not at least a specified
-  proportion less than the first value of `y`.
+  proportion of `ll` less than the first value of `y` (a decline of
+  exactly `c2 * ll` passes).
 
 ## Usage
 
@@ -29,9 +30,16 @@ check_unsystematic(dat, ll = 1, c1 = 0.2, c2 = 0.1)
   - `x` (optional): Delay values; when present, each subject's points
     are ordered by delay first.
 
+  Missing `y` or `x` values and duplicate delays within a subject are
+  errors.
+
 - ll:
 
-  A numeric value representing the larger later reward. Default is 1.
+  A numeric value representing the larger later reward, in the same
+  units as `y`. Default is 1 (indifference points expressed as a
+  proportion of the larger later reward). Both thresholds are applied on
+  the `y` scale (`c1 * ll` and `c2 * ll`), so amount-scale data (e.g.
+  `y` in dollars) need `ll` set to the larger later amount.
 
 - c1:
 

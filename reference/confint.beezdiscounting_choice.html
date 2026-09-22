@@ -109,7 +109,10 @@ scales).</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A tibble with columns <code>term</code>, <code>estimate</code>, <code>conf.low</code>, <code>conf.high</code>,
-<code>level</code>.</p>
+<code>level</code>, and <code>estimate_scale</code> (structural mode: <code>"log"</code> or <code>"natural"</code>
+for the <code>beta_k</code>/<code>log_gamma</code> rows, <code>"internal"</code> otherwise; descriptive
+mode: <code>"logit"</code> for the fixed effects, <code>"correlation"</code> for <code>cor_slopes</code>,
+<code>"internal"</code> for the log SDs).</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

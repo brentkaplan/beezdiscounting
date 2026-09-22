@@ -4,8 +4,8 @@
 method for `beezdiscounting_comparison` objects (returned by
 [`get_dd_comparisons()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_comparisons.md)).
 Produces a flat long tibble whose **column names and order** match the
-beezdemand `beezdemand_comparison` tidier, enabling downstream consumers
-to bind rows from both backends into a single frame. Note that the
+beezdemand `beezdemand_comparison` tidier, so downstream consumers can
+bind rows from both backends into a single frame. Note that the
 `contrast` label dialect differs: beezdiscounting emits native
 `factor=level` labels (e.g. `"condition=C1 - condition=C2"`), while
 beezdemand emits bare level labels (e.g. `"C1 - C2"`). Fully uniform
@@ -46,5 +46,6 @@ Estimates and CIs are on the log10 scale (or ratios when
 `exponentiate = TRUE`). `statistic` is an asymptotic *z* (`df = Inf`).
 On the brms backend, `statistic`/`df`/`p.value` are `NA` (posterior
 summaries), the intervals are quantile credible intervals, and an
-additional `post.prob` column reports the posterior probability of
-direction.
+additional `post.prob` column reports the posterior probability of the
+more probable direction (at least 0.5; see
+[`get_dd_comparisons()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_comparisons.md)).

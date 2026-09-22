@@ -13,7 +13,11 @@ Bayesian fits (beezdiscounting_brms,
 beezdiscounting_choice_brms) compute per-draw contrasts over the
 same reference grid: posterior medians with quantile credible intervals
 and post.prob in place of adjusted p-values (no multiplicity
-adjustment; the joint posterior already encodes contrast dependence)."><meta property="og:description" content="Computes factor-level contrasts of the discount rate k from a fitted
+adjustment; the joint posterior already encodes contrast dependence).
+post.prob is the posterior probability of the more probable
+direction, max(P(d &amp;gt; 0), P(d &amp;lt; 0)), so it is at least 0.5 and a
+negative contrast can show 0.99; it is not P(left &amp;gt; right). Read the
+direction from the sign of the estimate."><meta property="og:description" content="Computes factor-level contrasts of the discount rate k from a fitted
 beezdiscounting_tmb model (or a structural
 beezdiscounting_choice fit). k is linear in the fixed-effect
 coefficients on the natural-log scale (log k = X beta_k), so each
@@ -27,7 +31,11 @@ Bayesian fits (beezdiscounting_brms,
 beezdiscounting_choice_brms) compute per-draw contrasts over the
 same reference grid: posterior medians with quantile credible intervals
 and post.prob in place of adjusted p-values (no multiplicity
-adjustment; the joint posterior already encodes contrast dependence)."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
+adjustment; the joint posterior already encodes contrast dependence).
+post.prob is the posterior probability of the more probable
+direction, max(P(d &amp;gt; 0), P(d &amp;lt; 0)), so it is at least 0.5 and a
+negative contrast can show 0.99; it is not P(left &amp;gt; right). Read the
+direction from the sign of the estimate."><meta property="og:image" content="https://brentkaplan.github.io/beezdiscounting/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -99,7 +107,11 @@ Bayesian fits (<code>beezdiscounting_brms</code>,
 <code>beezdiscounting_choice_brms</code>) compute per-draw contrasts over the
 same reference grid: posterior medians with quantile credible intervals
 and <code>post.prob</code> in place of adjusted p-values (no multiplicity
-adjustment; the joint posterior already encodes contrast dependence).</p>
+adjustment; the joint posterior already encodes contrast dependence).
+<code>post.prob</code> is the posterior probability of the <em>more probable</em>
+direction, <code>max(P(d &gt; 0), P(d &lt; 0))</code>, so it is at least 0.5 and a
+negative contrast can show 0.99; it is not <code>P(left &gt; right)</code>. Read the
+direction from the sign of the estimate.</p>
     </div>
 
     <div class="section level2">

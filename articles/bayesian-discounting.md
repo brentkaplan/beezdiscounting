@@ -18,6 +18,7 @@ fit <- fit_dd_brms(
   dd_ip,
   equation = "mazur",
   family = "beta",
+  boundary = "squeeze",   # dd_ip has exact 0/1 responses; see below
   chains = 4, cores = 4, seed = 1
 )
 
@@ -53,7 +54,7 @@ confint(fit)     # equal-tailed credible intervals
 #>   term          estimate conf.low conf.high level
 #>   <chr>            <dbl>    <dbl>     <dbl> <dbl>
 #> 1 k:(Intercept)    0.325    0.267     0.395  0.95
-head(ranef(fit)) # per-subject k posterior summaries
+head(ranef(fit)) # per-subject log k offsets (ln scale) and k
 #>     id     r_logk         k
 #> 1   P1 -0.1571624 0.2758678
 #> 2  P10  0.9286493 0.8219529
@@ -96,18 +97,26 @@ The TMB tier’s SLT-beta family has no brms equivalent. Two options cover
 the same ground:
 
 - `family = "beta"` (default): brms’s beta likelihood with an identity
-  link; the mean function is squished into (1e-6, 1 - 1e-6), the
-  differentiable analog of the TMB clamp. Boundary responses (`y`
-  exactly 0 or 1) are handled by `boundary`: the default `"squeeze"`
-  applies the Smithson-Verkuilen transform `(y(N-1) + 0.5)/N` to all
-  responses and reports the boundary count; `"zoib"` switches to a
-  zero-one-inflated beta – statistically more explicit about boundary
-  responding, but it **changes the estimand**: k then describes the
-  interior responses only; `"error"` refuses to fit.
+  link; the mean function is squished into (1e-6, 1 - 1e-6), mirroring
+  the TMB mean clamp. The beta likelihood is **not** the SLT-beta: it
+  cannot evaluate responses at exactly 0 or 1, so its estimates are not
+  expected to match `fit_dd_tmb(family = "sltb")` when responses sit at
+  or near the boundaries. Boundary responses are handled by `boundary`,
+  which must be chosen explicitly when any are present: the default
+  `"error"` refuses to fit and reports the count; `"squeeze"` applies
+  the Smithson-Verkuilen transform `(y(N-1) + 0.5)/N` to **every**
+  response, which floors the response at `0.5/N` and can pull k downward
+  when the fitted curve approaches that floor (long delays, steep
+  discounting); `"zoib"` switches to a zero-one-inflated beta – more
+  explicit about boundary responding, but it **changes the estimand**: k
+  then describes the interior responses only.
+  [`summary()`](https://rdrr.io/r/base/summary.html) reports the
+  fraction of exact- and near-boundary responses.
 - `family = "gaussian"`: matches `fit_dd_tmb(family = "gaussian")`
-  wherever the TMB mean clamp (into `[1e-6, 1 - 1e-6]`) does not bind –
-  everywhere except extreme decay underflow. In our validation harness
-  the posterior median of log k lands within hundredths of the TMB MLE.
+  wherever the TMB mean clamp (into `[1e-6, 1 - 1e-6]`) does not bind,
+  i.e., everywhere except extreme decay underflow. In our validation
+  harness the posterior median of log k lands within hundredths of the
+  TMB MLE.
 
 ### Priors
 
@@ -135,6 +144,7 @@ Override any row by passing a
 fit2 <- fit_dd_brms(
   dd_ip,
   equation = "mazur",
+  boundary = "squeeze",
   prior = brms::set_prior("normal(-3, 1)", class = "b",
                           coef = "Intercept", nlpar = "logk")
 )
@@ -142,8 +152,33 @@ fit2 <- fit_dd_brms(
 
 The two-parameter equations (`"green-myerson"`, `"rachlin"`) add a
 population-level shape exponent with prior `normal(0, 0.5)` on log s (s
-near 1 a priori); zero delays are valid for Rachlin (the implementation
-guards the `0^s` case exactly as the TMB template does).
+near 1 a priori, 95% of the prior mass on roughly 0.38–2.66); zero
+delays are valid for Rachlin (the implementation guards the `0^s` case
+exactly as the TMB template does).
+
+These defaults are weakly *regularising*, not uninformative. With few
+subjects, the `log s` prior pulls the k–s pair of the two-parameter
+equations toward s = 1 (the pair is poorly identified from indifference
+points alone), and the half-t priors on the random-effect SDs matter
+when there are about 30 subjects or fewer. Report a prior-sensitivity
+check (refit with wider `logk`/`logs` priors) alongside two-parameter
+fits.
+
+Rachlin needs one more step. Changing the delay unit by a factor c
+rescales Rachlin’s k by c^s, not c, so a prior centre in data units
+would describe a different curve prior in days than in weeks whenever s
+is not 1.
+[`fit_dd_brms()`](https://brentkaplan.github.io/beezdiscounting/reference/fit_dd_brms.md)
+therefore samples Rachlin on the normalised delay `x / median(x)`
+(stored as `fit$param_info$delay_scale`), where the `logk` intercept
+prior is `normal(0, 2.5)`, and converts the draws back to data-unit k
+before reporting. The same data in days or in weeks then gives the same
+curve posterior. A custom Rachlin `logk` intercept prior is read on the
+normalised scale, and the raw draws in `fit$brmsfit` are normalised; use
+[`coef()`](https://rdrr.io/r/stats/coef.html),
+[`confint()`](https://rdrr.io/r/stats/confint.html) and
+[`get_dd_param_emms()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_param_emms.md)
+for data-unit k.
 
 ## Trial-level choice
 
@@ -185,7 +220,7 @@ head(predict(fitc))     # P(choosing the larger-later), with intervals
 The structural likelihood is identical to
 `fit_dd_choice(mode = "structural")`:
 `logit P(LL) = [b0] + gamma ((ll/ss) D(k, delay) - 1)`. The descriptive
-(Young 2018) mode is not wrapped – it is a plain logistic GLMM you can
+(Young 2018) mode is not wrapped; it is a plain logistic GLMM you can
 fit directly with
 [`brms::brm()`](https://paulbuerkner.com/brms/reference/brm.html) if you
 want it Bayesian.
@@ -264,8 +299,14 @@ get_dd_comparisons(fitc_grp)     # log10 contrasts + ratios, post.prob
 
 ## v1 scope
 
-Random effects are intercept-only on k (`k ~ 1`); the TMB tier’s
-`k + phi ~ 1` is planned via a distributional formula.
+Random effects are an intercept on log k (`k ~ 1`), optionally with a
+per-subject precision intercept (`k + phi ~ 1`, beta family), as in the
+TMB tier. Two differences from the TMB tier remain: the TMB SLT-beta fit
+bounds the precision below at phi = 0.1 while the brms beta fit does
+not, and [`ranef()`](https://rdrr.io/pkg/nlme/man/random.effects.html)
+returns each subject’s log k offset on the natural-log scale, whereas
+[`ranef()`](https://rdrr.io/pkg/nlme/man/random.effects.html) on a
+one-random-effect TMB fit returns the standardised deviate u.
 [`get_dd_param_emms()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_param_emms.md)
 and
 [`get_dd_comparisons()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_comparisons.md)

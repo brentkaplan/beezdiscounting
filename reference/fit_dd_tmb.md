@@ -1,9 +1,10 @@
 # Fit an indifference-point mixed-effects discounting model via TMB
 
-Fits a 1-parameter discounting model (Mazur hyperbolic or exponential)
-with a random intercept on `log k`, between-subject fixed effects, and
-either an SLT-beta or Gaussian observation family, using Template Model
-Builder for exact AD + Laplace approximation.
+Fits a discounting model (Mazur hyperbolic, exponential, or the
+two-parameter Green-Myerson / Rachlin hyperboloids) with a random
+intercept on `log k`, between-subject fixed effects, and either an
+SLT-beta or Gaussian observation family, using Template Model Builder
+for exact AD + Laplace approximation.
 
 ## Usage
 
@@ -50,7 +51,11 @@ fit_dd_tmb(
 
 - family:
 
-  Observation family: `"sltb"` (default) or `"gaussian"`.
+  Observation family: `"sltb"` (default) or `"gaussian"`. For `"sltb"`,
+  responses outside `[0, 1]` after scaling are clamped (with a warning);
+  for `"gaussian"`, whose likelihood is unbounded, they are kept as
+  observed and percent-scaled data are not detected automatically (set
+  `response_scale = "percent"`).
 
 - random_effects:
 
@@ -90,6 +95,9 @@ fit_dd_tmb(
 - multi_start:
 
   Logical; if `TRUE` (default), run the 3-set guarded multi-start.
+  Converged starts are preferred over non-converged ones, then the
+  lowest negative log-likelihood wins; the Hessian is checked on the
+  kept fit only.
 
 - verbose:
 
@@ -143,9 +151,17 @@ An object of class `beezdiscounting_tmb` with components:
 
   Data frame of subject-level parameters. For a 1-RE fit (`k ~ 1`) the
   columns are `id, u_i, k`; for a phi-target 2-RE fit (`k + phi ~ 1`)
-  they are `id, re_k, re_phi, k, phi`; for an s-target 2-RE fit
-  (`k + s ~ 1`, GM/Rachlin) they are `id, re_k, re_s, k, s` where `s` is
-  soft-clamped toward `(0.05, 20)`.
+  they are `id, re_k, re_phi, k, phi, phi_latent` (`phi` floored at 0.1,
+  `phi_latent` unfloored); for an s-target 2-RE fit (`k + s ~ 1`,
+  GM/Rachlin) they are `id, re_k, re_s, k, s, s_latent` where `s` is
+  soft-clamped toward `(0.05, 20)` and `s_latent = exp(log_s + re_s)`.
+
+- guard_info:
+
+  Guard / clamp / floor activity at the fitted values (see "Scales,
+  guards and floors"): `n_rows`, `mu_guard_lower`, `mu_guard_upper`,
+  plus `n_s_clamped_lower`/`n_s_clamped_upper` (`k + s ~ 1`) or
+  `n_phi_floor` (`k + phi ~ 1`). `NULL` if the computation failed.
 
 - loglik, AIC, BIC:
 
@@ -153,7 +169,23 @@ An object of class `beezdiscounting_tmb` with components:
 
 - converged, se_available:
 
-  Convergence / SE-availability flags.
+  Convergence / SE-availability flags. A non-converged fit raises a
+  `beezdiscounting_convergence_warning` at fit time (regardless of
+  `verbose`) and again from
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
+  [`confint()`](https://rdrr.io/r/stats/confint.html),
+  [`summary()`](https://rdrr.io/r/base/summary.html),
+  [`get_dd_param_emms()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_param_emms.md)
+  and
+  [`get_dd_comparisons()`](https://brentkaplan.github.io/beezdiscounting/reference/get_dd_comparisons.md).
+
+- multi_start_info:
+
+  List recording the start selection: `n_starts`, `n_finite`,
+  `n_converged`, `selected_start`, `tier` (1 = converged and passing the
+  log-k sanity guard, 2 = passing the guard but not converged, 3 =
+  neither), and `lower_nll_nonconverged` (`TRUE` when a non-converged
+  start reached a lower NLL than the kept one).
 
 - opt_warnings:
 
@@ -171,6 +203,70 @@ An object of class `beezdiscounting_tmb` with components:
 - coercion_info:
 
   Scale-coercion/clamping audit list.
+
+## Scales, guards and floors
+
+- **Random-effect scales.**
+  [`nlme::VarCorr()`](https://rdrr.io/pkg/nlme/man/VarCorr.html) reports
+  the subject SD of `log k` on the natural-log scale (`Term = "k"` means
+  log k); [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and
+  [`summary()`](https://rdrr.io/r/base/summary.html) convert it to the
+  log10 scale and label it so.
+  [`ranef()`](https://rdrr.io/pkg/nlme/man/random.effects.html) returns
+  the standardised deviate `u_i` for a `k ~ 1` fit but natural-log
+  offsets (`re_k`, `re_phi` / `re_s`) for a two-random-effect fit.
+
+- **Mean guard.** The fitted mean is held inside `[1e-6, 1 - 1e-6]`. For
+  the exponential equation this binds once `k * delay` exceeds about
+  13.8 (for `k = 0.01`, delays beyond roughly 1,400 days); such
+  observations carry no information about `k`, so very steep discounters
+  measured at long delays lose curvature. Mazur needs `k * delay` near
+  `1e6` to reach the guard; Green-Myerson and Rachlin can reach it with
+  a large `s` (e.g. Green-Myerson with `k = 0.1`, `s = 3` at 1,460
+  days). `fit$guard_info$mu_guard_lower` / `$mu_guard_upper` count the
+  positive-delay observations whose subject-level fitted mean falls
+  outside the guard, and
+  [`summary()`](https://rdrr.io/r/base/summary.html) adds a note when
+  either is non-zero.
+
+- **Shape `s`.** The reported `s` is the unclamped population value
+  `exp(log_s)`. With `k + s ~ 1` each subject's effective `s` is
+  soft-clamped into `(0.05, 20)`, and the `VarCorr()` SD of `s` is on
+  the latent (pre-clamp) log scale. `subject_pars` holds both the
+  effective `s` and the latent `s_latent = exp(log_s + re_s)`;
+  `fit$guard_info$n_s_clamped_lower` / `$n_s_clamped_upper` count the
+  subjects whose two values differ by more than 1% on the log scale
+  (noted by [`summary()`](https://rdrr.io/r/base/summary.html)).
+
+- **Precision floor.** SLT-beta precision is bounded below at
+  `phi = 0.1`. For `k ~ 1` this is an optimizer bound that
+  `tmb_control$lower` can relax; with `k + phi ~ 1` each subject's `phi`
+  is floored at 0.1 inside the likelihood and cannot be relaxed.
+  `subject_pars$phi_latent` is the unfloored value and
+  `fit$guard_info$n_phi_floor` counts the subjects below the floor
+  (noted by [`summary()`](https://rdrr.io/r/base/summary.html)).
+
+These counts are computed at the fitted values and are reporting only:
+they do not change any estimate.
+
+## Two-parameter equations (Green-Myerson, Rachlin)
+
+`k` and `s` trade off along a ridge, and with the few delays of a
+typical titration task (about 7) the pair is much less stable than a
+one-parameter `k`. The pair is particularly sensitive to how responses
+near zero are recorded. In the SLT-beta log-density the response enters
+through a `(mu * phi - 1) * log(y)` term, so a recorded 0 (treated as
+about `1e-8`) carries far more leverage than a recorded 0.001; the
+direction of the pull depends on `mu * phi`. In simulation with
+identical true values (Green- Myerson, `log k = -4.61`, `s = 1.4`, 300
+subjects, 6 delays), the same draws gave `(log k, s)` of `(-4.79, 1.58)`
+as simulated, `(-5.06, 1.91)` after rounding `y` to 3 decimals, and
+`(-4.37, 1.20)` after flooring `y` at 0.001; Mazur fits to the same data
+moved by less than 0.03. These are sensitivity results for that design,
+not a general bias. Report how the indifference points were recorded
+(resolution, how zeros were coded, the count of `y` below 0.001), keep
+the convention identical across groups being compared, and consider a
+sensitivity refit under an alternative convention.
 
 ## References
 

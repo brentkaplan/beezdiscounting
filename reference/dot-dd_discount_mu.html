@@ -71,7 +71,7 @@ template bounds. The two 2-parameter forms reduce to Mazur at <code>s = 1</code>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.dd_discount_mu</span><span class="op">(</span><span class="va">k</span>, <span class="va">x</span>, <span class="va">equation</span>, s <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.dd_discount_mu</span><span class="op">(</span><span class="va">k</span>, <span class="va">x</span>, <span class="va">equation</span>, s <span class="op">=</span> <span class="fl">1</span>, clamp <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -95,10 +95,16 @@ or <code>"rachlin"</code>.</p></dd>
 <dd><p>Numeric nonlinearity exponent (Green-Myerson / Rachlin). Default
 <code>1</code> so 1-parameter callers are unchanged.</p></dd>
 
+
+<dt id="arg-clamp">clamp<a class="anchor" aria-label="anchor" href="#arg-clamp"></a></dt>
+<dd><p>Apply the <code>[1e-6, 1 - 1e-6]</code> guard (default <code>TRUE</code>); <code>FALSE</code>
+returns the raw mean, used to count guard activity.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Numeric vector of mu values clamped to <code>[1e-6, 1-1e-6]</code>.</p>
+    <p>Numeric vector of mu values clamped to <code>[1e-6, 1-1e-6]</code> (raw when
+<code>clamp = FALSE</code>).</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

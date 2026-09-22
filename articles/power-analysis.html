@@ -127,9 +127,11 @@ the TMB <code>sdreport</code>.</li>
 (does the Wald CI exclude 0). Both are referred to a t distribution with
 <code>n_subjects - 2</code> degrees of freedom (the design’s two-sample
 df) rather than the asymptotic normal, which is anticonservative at
-study-relevant N; <code>df = Inf</code> recovers the z-test. The two
-verdicts use the same standard error and reference distribution, so they
-always agree – both report formats are returned.</li>
+study-relevant N. This df is an empirical calibration device, not a df
+derived from the mixed model (the TMB fit has no exact t sampling
+theory); <code>df = Inf</code> recovers the z-test. The two verdicts use
+the same standard error and reference distribution, so they always
+agree; both report formats are returned.</li>
 <li>Repeat <code>n_sim</code> times. Power is the proportion of
 <em>usable</em> fits (converged, positive-definite Hessian, finite SE)
 that reject, reported with a Wilson confidence interval because it is
@@ -139,7 +141,7 @@ itself an estimate from finitely many replicates.</li>
 the total N, split across the two conditions round-robin (use even
 numbers for equal groups). This mirrors
 <code>beezdemand::power_demand()</code>, which models a
-<em>within-subject</em> condition – the asymmetry matches what each
+<em>within-subject</em> condition. The asymmetry matches what each
 package’s simulator and fitter already represent.</p>
 </div>
 <div class="section level2">
@@ -167,10 +169,10 @@ as steeply (<code>delta_k = log(2) ≈ 0.69</code>) and subjects vary with
 <span><span class="co">#&gt;   n_subjects = 60 (between-subject, 2 conditions), n_sim = 40 (converged 40, usable 40)</span></span>
 <span><span class="co">#&gt;   Power (CI-exclusion): 0.925 [95% MC CI 0.801, 0.974]</span></span>
 <span><span class="co">#&gt;   p-value hit rate:     0.925</span></span></code></pre></div>
-<p>Convergence diagnostics are part of the output, not a footnote:
-replicates whose refit fails are excluded from the power denominator and
-counted in <code>n_converged</code> / <code>n_used</code>, never treated
-as “no effect detected”.</p>
+<p>Convergence diagnostics are part of the output. Replicates whose
+refit fails are excluded from the power denominator and counted in
+<code>n_converged</code> / <code>n_used</code> rather than treated as
+“no effect detected”.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span><span class="op">$</span><span class="va">n_converged</span></span>
 <span><span class="co">#&gt; [1] 40</span></span>
@@ -186,7 +188,7 @@ as “no effect detected”.</p>
 </h2>
 <p><code><a href="../reference/find_n_discounting.html">find_n_discounting()</a></code> wraps the engine in a bisection
 search over total N for the smallest sample whose estimated power
-reaches the target. The search is aware of Monte Carlo noise: at each
+reaches the target. The search accounts for Monte Carlo noise: at each
 candidate N it adds replicates until the Wilson interval falls clearly
 above or below the target (up to <code>n_sim_max</code>), and it
 re-evaluates the selected N and its lower neighbor (or the lower bound
@@ -195,7 +197,7 @@ Bisection assumes power is monotone in N; because each N is judged from
 independent replicates, a fluctuation at a lower N can hide a crossing
 the search never revisits. Evaluated N that contradict monotonicity
 demote the status to <code>uncertain</code>, but never-visited N cannot
-be checked – so treat the result as an estimate and confirm it with a
+be checked, so treat the result as an estimate and confirm it with a
 large <code>n_sim</code> at the chosen N.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">search</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/find_n_discounting.html">find_n_discounting</a></span><span class="op">(</span></span>
@@ -211,7 +213,10 @@ large <code>n_sim</code> at the chosen N.</p>
 <span><span class="co">#&gt;   Target power 0.80 for delta_k = 1.099 at alpha = 0.05</span></span>
 <span><span class="co">#&gt;   Estimated minimum n_subjects = 13 (status: uncertain)</span></span>
 <span><span class="co">#&gt;   This is an estimated minimum under Monte Carlo uncertainty;</span></span>
-<span><span class="co">#&gt;   rerun the power function at this N with a large n_sim to report it.</span></span>
+<span><span class="co">#&gt;   at least one decision fell back to a point estimate, so the true</span></span>
+<span><span class="co">#&gt;   power at this N may be below the target.</span></span>
+<span><span class="co">#&gt;   Validate it with an independent power_discounting() run at this N</span></span>
+<span><span class="co">#&gt;   (large n_sim, new seed) before reporting.</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;   Evaluations:</span></span>
 <span><span class="co">#&gt;  n_subjects n_sim_total n_used usable_fraction     power  ci_lower  ci_upper</span></span>
@@ -301,22 +306,21 @@ preregistered seeds and tolerance bands fixed before the tests were
 first run:</p>
 <ul>
 <li>
-<strong>Type I error calibration</strong> (the load-bearing check):
-with <code>delta_k = 0</code>, the empirical false-positive rate at
-nominal <code>alpha = .05</code> over 1,200 replicates must fall in
-[0.03, 0.07] – a band of 3.18 binomial standard errors that excludes
-both half and 1.5 times the nominal rate. <code>n_sim = 1200</code> was
-computed from that tolerance
-(<code>9 * .05 * .95 / .02^2 ≈ 1069</code>), not guessed. A second null
-check runs at N = 60. The t(n - 2) reference distribution these checks
-validate was adopted after the sibling beezdemand calibration battery
-showed the asymptotic z-test is anticonservative at study-relevant
-sample sizes.</li>
+<strong>Type I error calibration</strong> (the primary check): with
+<code>delta_k = 0</code>, the empirical false-positive rate at nominal
+<code>alpha = .05</code> over 1,200 replicates must fall in [0.03, 0.07]
+(a band of 3.18 binomial standard errors that excludes both half and 1.5
+times the nominal rate). <code>n_sim = 1200</code> was computed from
+that tolerance (<code>9 * .05 * .95 / .02^2 ≈ 1069</code>). A second
+null check runs at N = 60. The t(n - 2) reference distribution these
+checks calibrate was adopted after the sibling beezdemand calibration
+battery showed the asymptotic z-test is anticonservative at
+study-relevant sample sizes.</li>
 <li>
 <strong>Convergence handling</strong>: a configuration that reliably
-produces non-convergence confirms failed replicates are excluded from
-the power denominator and surfaced via <code>n_converged</code> /
-<code>n_used</code>, not silently counted as misses.</li>
+produces non-convergence confirms that failed replicates are excluded
+from the power denominator and reported in <code>n_converged</code> /
+<code>n_used</code> rather than counted as misses.</li>
 <li>
 <strong>Closed-form benchmark</strong>: with
 <code>family = "gaussian"</code>, tiny residual error, and many delays,
@@ -338,13 +342,13 @@ identical results, asserted exactly.</li>
 matches the data-generating process.</p>
 <p>The <code>find_n_*</code> search statuses (<code>"confirmed"</code>,
 <code>"uncertain"</code>, <code>"unresolved"</code>) describe a
-heuristic Monte Carlo decision rule – repeated looks at ordinary Wilson
-intervals across candidate N – not a formal sequential testing procedure
-with a guaranteed error rate. When the confirmation pass contradicts the
-search, the function returns <code>n = NA</code> rather than an
-unsupported number.</p>
-<p><strong>Explicitly out of scope in v1</strong> (flagged as future
-work, not silently approximated):</p>
+heuristic Monte Carlo decision rule (repeated looks at ordinary Wilson
+intervals across candidate N) rather than a formal sequential testing
+procedure with a guaranteed error rate. When the confirmation pass
+contradicts the search, the function returns <code>n = NA</code> rather
+than an unsupported number.</p>
+<p><strong>Explicitly out of scope in v1</strong> (deferred to future
+work; none of these is approximated):</p>
 <ul>
 <li>Effects on the curvature exponent <code>s</code> (Green-Myerson /
 Rachlin) or the SLT-beta precision <code>phi</code>; the two-parameter
@@ -355,19 +359,20 @@ delay).</li>
 <code>k</code>/<code>phi</code> or <code>k</code>/<code>s</code> random
 effects. (<code>random_effects</code> accepts such formulas, but the
 simulator still generates only the log-k intercept, so the refit is
-over-specified relative to the data-generating process – a robustness
-probe, not a power estimate under those random effects.)</li>
+over-specified relative to the data-generating process; treat such a run
+as a robustness probe rather than a power estimate under those random
+effects.)</li>
 <li>Arbitrary user-supplied designs beyond the package’s between-subject
 simulator (two conditions, round-robin allocation, all subjects at all
 delays).</li>
 <li>Any graphical or interactive interface.</li>
 </ul>
-<p><strong>What the numbers can bear.</strong> A reported power estimate
-is (a) conditional on the assumed population parameters and
-heterogeneity – vary them and look at the sensitivity of the answer; (b)
-conditional on usable fits – take the <code>n_used</code> warning
-seriously if it fires; and (c) a Monte Carlo estimate – cite it with its
-interval at an <code>n_sim</code> sized for the decision it
+<p><strong>Interpreting a power estimate.</strong> A reported power
+estimate is (a) conditional on the assumed population parameters and
+heterogeneity, so vary them and check the sensitivity of the answer; (b)
+conditional on usable fits, so take the <code>n_used</code> warning
+seriously if it fires; and (c) a Monte Carlo estimate, so cite it with
+its interval at an <code>n_sim</code> sized for the decision it
 supports.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

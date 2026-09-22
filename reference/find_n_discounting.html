@@ -9,8 +9,12 @@ estimate and the result is flagged uncertain. The selected N and its
 lower neighbor are then re-evaluated with fresh replicates before
 minimality is claimed.
 The returned n is an estimated minimum under Monte Carlo uncertainty,
-not an exact bound. For grant-quality reporting, rerun
-power_discounting() at the returned n with a large n_sim (2000+)
+not an exact bound. The adaptive rule looks at the Wilson interval
+repeatedly at the same N, and those looks have no simultaneous coverage
+guarantee; at the replicate cap a point estimate at or above the target
+can select an N whose true power is below it (status "uncertain"). For
+grant-quality reporting, validate the returned n with an independent,
+fixed-budget power_discounting() run (large n_sim, 2000+, new seed)
 and report that estimate with its Monte Carlo confidence interval.
 Monotonicity assumption. Bisection presumes that power is
 non-decreasing in n_subjects. Because every evaluated N is judged from
@@ -34,8 +38,12 @@ estimate and the result is flagged uncertain. The selected N and its
 lower neighbor are then re-evaluated with fresh replicates before
 minimality is claimed.
 The returned n is an estimated minimum under Monte Carlo uncertainty,
-not an exact bound. For grant-quality reporting, rerun
-power_discounting() at the returned n with a large n_sim (2000+)
+not an exact bound. The adaptive rule looks at the Wilson interval
+repeatedly at the same N, and those looks have no simultaneous coverage
+guarantee; at the replicate cap a point estimate at or above the target
+can select an N whose true power is below it (status "uncertain"). For
+grant-quality reporting, validate the returned n with an independent,
+fixed-budget power_discounting() run (large n_sim, 2000+, new seed)
 and report that estimate with its Monte Carlo confidence interval.
 Monotonicity assumption. Bisection presumes that power is
 non-decreasing in n_subjects. Because every evaluated N is judged from
@@ -117,8 +125,12 @@ estimate and the result is flagged <code>uncertain</code>. The selected N and it
 lower neighbor are then re-evaluated with fresh replicates before
 minimality is claimed.</p>
 <p>The returned <code>n</code> is an <em>estimated minimum under Monte Carlo uncertainty</em>,
-not an exact bound. For grant-quality reporting, rerun
-<code><a href="power_discounting.html">power_discounting()</a></code> at the returned <code>n</code> with a large <code>n_sim</code> (2000+)
+not an exact bound. The adaptive rule looks at the Wilson interval
+repeatedly at the same N, and those looks have no simultaneous coverage
+guarantee; at the replicate cap a point estimate at or above the target
+can select an N whose true power is below it (status <code>"uncertain"</code>). For
+grant-quality reporting, validate the returned <code>n</code> with an independent,
+fixed-budget <code><a href="power_discounting.html">power_discounting()</a></code> run (large <code>n_sim</code>, 2000+, new seed)
 and report that estimate with its Monte Carlo confidence interval.</p>
 <p><strong>Monotonicity assumption.</strong> Bisection presumes that power is
 non-decreasing in <code>n_subjects</code>. Because every evaluated N is judged from
@@ -226,9 +238,9 @@ The default <code>k ~ 1</code> matches the simulator's data-generating process (
 single subject random intercept on log k). The simulator ALWAYS
 generates only that intercept: any richer formula (e.g. <code>k + phi ~ 1</code>,
 <code>k + s ~ 1</code>) is accepted but produces a deliberately over-specified
-refit of data with no such variance component – useful for probing
-robustness, not for estimating power under those random effects (out
-of scope in this version).</p></dd>
+refit of data with no such variance component. That refit is useful for
+probing robustness rather than for estimating power under those random
+effects (out of scope in this version).</p></dd>
 
 
 <dt id="arg-multi-start">multi_start<a class="anchor" aria-label="anchor" href="#arg-multi-start"></a></dt>
@@ -259,14 +271,14 @@ search (<code>status = "unresolved"</code>).</p></dd>
 <dd><p><code>"confirmed"</code> (selected N re-confirmed above target and
 N - 1 below), <code>"uncertain"</code> (a decision relied on a point estimate,
 N - 1 also cleared the target on reconfirmation, or an evaluated
-lower N read above the target – so the returned N may not be
+lower N read above the target, so the returned N may not be
 minimal), <code>"unresolved"</code> (the selected N failed its
 own reconfirmation; <code>n</code> is <code>NA</code>), or <code>"at_lower_bound"</code> (the target
 was already met at <code>n_range[1]</code> on two independent looks; smaller N
-was not explored – widen <code>n_range</code> downward if that matters). These
-labels describe a heuristic Monte Carlo decision rule – repeated
-looks at ordinary Wilson intervals across several N – not a formal
-sequential error guarantee.</p></dd>
+was not explored; widen <code>n_range</code> downward if that matters). These
+labels describe a heuristic Monte Carlo decision rule (repeated
+looks at ordinary Wilson intervals across several N) rather than a
+formal sequential error guarantee.</p></dd>
 
 <dt>uncertain</dt>
 <dd><p>Logical; <code>TRUE</code> when any search decision was made on
@@ -306,7 +318,10 @@ settings, call</dt>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Target power 0.80 for delta_k = 2.079 at alpha = 0.05</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Estimated minimum n_subjects = 8 (status: uncertain)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   This is an estimated minimum under Monte Carlo uncertainty;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   rerun the power function at this N with a large n_sim to report it.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   at least one decision fell back to a point estimate, so the true</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   power at this N may be below the target.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Validate it with an independent power_discounting() run at this N</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (large n_sim, new seed) before reporting.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Evaluations:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  n_subjects n_sim_total n_used usable_fraction power  ci_lower  ci_upper</span>

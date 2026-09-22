@@ -24,7 +24,11 @@ inn(dat, reg, random, verbose)
 
 - random:
 
-  Boolean whether to insert a random draw (0 or 1) for NAs
+  Boolean whether to insert a random draw (0 or 1) for NAs whose
+  neighbours disagree or are all missing. When the observed neighbours
+  agree (e.g. responses `1, NA, NA` within a rank group) the NAs take
+  that value even with `random = TRUE`, following Yeh et al. (2023).
+  Items that stay missing are reported with a warning.
 
 - verbose:
 

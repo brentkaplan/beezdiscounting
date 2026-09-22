@@ -58,8 +58,10 @@ test_that("21-item: all-LL and all-SIR edge patterns hit the ladder edges", {
 
   all_sir <- data.frame(subjectid = 1, questionid = 1:21, response = 0)
   res2 <- score_mcq(all_sir, items = 21)
-  # overall: geometric midpoint of last item k and edge k (0.1333, scorer "All" sheet)
-  expect_equal(res2$overall_k, sqrt(0.1310 * 0.1333), tolerance = 1e-6)
+  # overall: the edge k itself (0.1333), as the Kaplan 2014 21-item scorer
+  # assigns it (sheet "All", C54; the 27-item scorer instead averages its last
+  # item with its edge, and score_mcq27() keeps that) (F-BZ1-1).
+  expect_equal(res2$overall_k, 0.1333, tolerance = 1e-9)
   # per magnitude: edge repeats the magnitude's last kindiff
   expect_equal(res2$small_k, 0.1333, tolerance = 1e-6)
   expect_equal(res2$medium_k, 0.1292, tolerance = 1e-6)
@@ -226,4 +228,67 @@ test_that("logical NA responses behave like numeric NA responses", {
     score_mcq(dat_log_na, items = 21, impute_method = "none"),
     score_mcq(dat_num_na, items = 21, impute_method = "none")
   )
+})
+
+test_that("21-item lookup matches the Kaplan 2014 Excel scorer item table", {
+  wb <- utils::read.csv(test_path("fixtures", "mcq21",
+                                  "kaplan2014-21item-ordered.csv"),
+                        stringsAsFactors = FALSE)
+  lt <- get_lookup_table(items = 21)
+  # ladder order, magnitude, stored k, delay -- item by item, unsorted
+  expect_identical(as.integer(lt$questionid), wb$questionid)
+  expect_identical(as.character(lt$magnitude), wb$magnitude)
+  expect_equal(lt$kindiff, wb$kindiff, tolerance = 0)
+  expect_equal(as.numeric(lt$delay), wb$delay)
+  expect_identical(beezdiscounting:::.instrument_registry("mcq21")$edge_k, 0.1333)
+})
+
+test_that("21-item overall k: a tie including the top switch point uses the edge itself", {
+  # Emulates the Excel "All" sheet: switch-point k = geomean of the two
+  # bracketing ladder k's; all-LL = first k; all-SS = 0.1333 (C54).
+  wb <- utils::read.csv(test_path("fixtures", "mcq21",
+                                  "kaplan2014-21item-ordered.csv"))
+  excel_k <- function(resp) {
+    n <- length(resp)
+    cons <- vapply(0:n, function(j) sum(resp[seq_len(j)] == 0) +
+                     sum(resp[seq_len(n) > j] == 1), numeric(1))
+    kv <- c(wb$kindiff[1],
+            sqrt(wb$kindiff[-n] * wb$kindiff[-1]),
+            0.1333)
+    exp(mean(log(kv[cons == max(cons)])))
+  }
+  pats <- list(
+    rep(0, 21),
+    c(rep(0, 19), 1, 0),            # tie: switch after 19 and after 21
+    c(1, rep(0, 20)),
+    c(rep(0, 7), rep(1, 14)),
+    rep(1, 21)
+  )
+  for (r in pats) {
+    dat <- data.frame(subjectid = 1, questionid = wb$questionid, response = r)
+    res <- score_mcq(dat, items = 21, round = 12)
+    expect_equal(res$overall_k, excel_k(r), tolerance = 1e-10,
+                 info = paste(r, collapse = ""))
+  }
+})
+
+test_that(".score_ladder top = 'edge' changes only the top switch point", {
+  sl <- beezdiscounting:::.score_ladder
+  vals <- c(0.01, 0.02, 0.04)
+  expect_equal(sl(c(0, 0, 0), vals, 0.05)$value, sqrt(0.04 * 0.05))
+  expect_equal(sl(c(0, 0, 0), vals, 0.05, top = "edge")$value, 0.05)
+  # tie between switch after item 1 and after item 3
+  r <- c(0, 1, 0)
+  expect_equal(sl(r, vals, 0.05, top = "edge")$value,
+               exp(mean(log(c(sqrt(0.01 * 0.02), 0.05)))))
+  expect_equal(sl(r, vals, 0.05)$value,
+               exp(mean(log(c(sqrt(0.01 * 0.02), sqrt(0.04 * 0.05))))))
+  for (p in list(c(1, 1, 1), c(0, 1, 1), c(0, 0, 1))) {
+    expect_identical(sl(p, vals, 0.05, top = "edge"), sl(p, vals, 0.05))
+  }
+  # repeat-last edge: identical either way
+  expect_identical(sl(c(0, 0, 0), vals, 0.04, top = "edge"),
+                   sl(c(0, 0, 0), vals, 0.04))
+  expect_identical(beezdiscounting:::.instrument_registry("mcq27")$top_switch, "geomean")
+  expect_identical(beezdiscounting:::.instrument_registry("mcq21")$top_switch, "edge")
 })

@@ -27,13 +27,16 @@
 #' rather than silently mis-scoring. Contrast with [mcq_to_choice()]'s
 #' lenient, ragged contract, which accepts partial per-subject coverage.
 #'
-#' Ladder edges follow the Kaplan et al. (2014) Excel scorers. The overall
-#' (all-item) ladder appends a fixed edge value past the steepest item:
-#' 0.25 for the 27-item MCQ and 0.1333 for the 21-item MCQ. The small /
-#' medium / large magnitude ladders instead repeat their own last k. A
-#' respondent who chooses the smaller-sooner reward on every item therefore
-#' gets an overall k that is not the mean of their magnitude k's (for the
-#' 21-item MCQ roughly 0.132 overall vs 0.133 / 0.129 / 0.131 by magnitude).
+#' Ladder edges follow the Kaplan et al. (2014) Excel scorers. A switch
+#' point between two items scores the geometric mean of their k values, and
+#' larger-later on every item gives the first item's k. Smaller-sooner on
+#' every item follows each instrument's workbook, and the two workbooks
+#' differ: on the overall (all-item) ladder the 27-item scorer takes the
+#' geometric mean of the last item's k and the edge 0.25 (0.2494), while
+#' the 21-item scorer assigns the edge 0.1333 itself. Either way the value
+#' is a convention: those responses only show that k exceeds the steepest
+#' item's k. The small / medium / large magnitude ladders repeat their own
+#' last k (21-item: 0.1333 / 0.1292 / 0.131).
 #' The 21-item ladder keeps the published item order within each k rank,
 #' which is not strictly ascending in k; it must not be re-sorted.
 #' @export
@@ -292,7 +295,12 @@ score_one_mcq <- function(dat, reg, impute_method = "none", round = 6) {
   dat <- dat[match(reg$table$questionid, dat$questionid), ]
 
   ## overall
-  overall <- .score_ladder(dat$response, reg$table[[reg$value_col]], reg$edge_k)
+  overall <- .score_ladder(
+    dat$response,
+    reg$table[[reg$value_col]],
+    reg$edge_k,
+    top = reg$top_switch
+  )
   dfout["overall_k"] <- overall$value
   dfout["overall_consistency"] <- overall$consistency
   dfout["overall_proportion"] <- overall$proportion

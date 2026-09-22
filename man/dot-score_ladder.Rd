@@ -4,7 +4,7 @@
 \alias{.score_ladder}
 \title{Score one ascending ladder by consistency maximization}
 \usage{
-.score_ladder(resp, vals, edge)
+.score_ladder(resp, vals, edge, top = c("geomean", "edge"))
 }
 \arguments{
 \item{resp}{0/1/NA responses in ladder order (1 = chose the larger
@@ -16,6 +16,10 @@ the same length as \code{resp}.}
 
 \item{edge}{Value appended past the steepest item (the overall-ladder
 edge constant, or \code{vals[length(vals)]} for the repeat-last convention).}
+
+\item{top}{Value for the top switch point (smaller/guaranteed option on
+every item): \code{"geomean"} (default) = geometric mean of the last item and
+\code{edge}; \code{"edge"} = \code{edge} itself. Identical under the repeat-last edge.}
 }
 \value{
 \code{list(value, consistency, proportion)}.

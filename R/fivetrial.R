@@ -209,9 +209,6 @@ calc_dd <- function(df) {
            dplyr::arrange(ResponseId, q))
 }
 
-# Numeric codes: 1 = the certain ("for sure") option, 2 = the uncertain option,
-# for every item. (No probability template ships with the package; the
-# attention items are assumed to follow the same order.)
 # Numeric codes follow 55_Trial_Discounting_Probability_Template_100.qsf (see
 # data-raw/fivetrial_pd_template_choices.R): every I-item and Attend-SS export
 # 1 = the certain option ("... for sure") and 2 = the uncertain option

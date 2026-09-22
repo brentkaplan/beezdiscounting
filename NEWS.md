@@ -48,6 +48,14 @@ which shipped none).
   report data units). `autoscale_priors = FALSE` keeps the old
   parameterisation. MCMC convergence checks now also cover the
   back-transformed log k.
+* `score_mcq(items = 21)`: a respondent who chooses the smaller-sooner
+  reward on every item (or whose tied best switch points include that one)
+  now gets the overall-ladder edge k of 0.1333 itself, as the Kaplan et al.
+  (2014) 21-item Excel scorer assigns it, instead of the geometric mean of
+  the last item's k and the edge (0.1321). The 21-item item table (order,
+  magnitude, k, delay) was checked against that workbook and matches. The
+  27-item scorer is unchanged: its workbook does average the last item with
+  the edge (0.2494), and `score_mcq27()` reproduces that.
 * The 5.5-trial delay and probability scorers (`score_dd()`, `ans_dd()`,
   `calc_dd()`, `score_pd()`, `ans_pd()`, `calc_pd()`) now recognise only the
   template's numeric codes and option texts. Previously any other value

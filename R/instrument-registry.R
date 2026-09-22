@@ -9,13 +9,18 @@
 #' @return List with `key`, `items`, `table` (design table in ladder order),
 #'   `n_mag` (items per magnitude/block), `edge_k` (overall-ladder edge
 #'   constant, or `NA` when the overall ladder uses the repeat-last
-#'   convention instead), `overall_order_col` (name of the table column
+#'   convention instead), `top_switch` (MCQ only: how the overall ladder's
+#'   all-smaller-sooner switch point is scored, see `.score_ladder()`),
+#'   `overall_order_col` (name of the table column
 #'   giving each item's position in the pooled overall ladder, or `NULL`
 #'   when the table's row order already is that ladder), `value_col`,
 #'   `rank_col`, `param`, and `rank_labels`.
 #' @details Edge conventions: MCQ overall ladders append 0.25 (27-item) /
 #'   0.1333 (21-item) past the steepest item (Kaplan et al., 2014 Excel
-#'   scorers); MCQ magnitude ladders and all PDQ block ladders repeat their
+#'   scorers). The two workbooks score an all-smaller-sooner respondent
+#'   differently, and each is reproduced: the 27-item scorer takes the
+#'   geometric mean of the last item's k and 0.25 ("All" sheet, C60), the
+#'   21-item scorer assigns 0.1333 itself ("All" sheet, C54). MCQ magnitude ladders and all PDQ block ladders repeat their
 #'   last indifference value (verified against all 3 x 1024 response
 #'   patterns in Gray et al.'s 2016 PDQ lookup tables). The PDQ's pooled
 #'   overall ladder (`overall_order_col = "overall_rank"`, repeat-last
@@ -42,6 +47,7 @@
       table = lookup,
       n_mag = 9L,
       edge_k = 0.25,
+      top_switch = "geomean",
       overall_order_col = NULL,
       value_col = "kindiff",
       rank_col = "k_rank",
@@ -64,6 +70,7 @@
       table = lookup21,
       n_mag = 7L,
       edge_k = 0.1333,
+      top_switch = "edge",
       overall_order_col = NULL,
       value_col = "kindiff",
       rank_col = "k_rank",
@@ -127,10 +134,14 @@
 #'   the same length as `resp`.
 #' @param edge Value appended past the steepest item (the overall-ladder
 #'   edge constant, or `vals[length(vals)]` for the repeat-last convention).
+#' @param top Value for the top switch point (smaller/guaranteed option on
+#'   every item): `"geomean"` (default) = geometric mean of the last item and
+#'   `edge`; `"edge"` = `edge` itself. Identical under the repeat-last edge.
 #' @return `list(value, consistency, proportion)`.
 #' @importFrom psych geometric.mean
 #' @keywords internal
-.score_ladder <- function(resp, vals, edge) {
+.score_ladder <- function(resp, vals, edge, top = c("geomean", "edge")) {
+  top <- match.arg(top)
   # the old inline code coupled these structurally; the extracted signature
   # does not, and a mismatch silently indexes past the intended ladder
   stopifnot(length(resp) == length(vals))
@@ -154,6 +165,17 @@
   consmaxi <- sort(rbind(consmaxi, (consmaxi - 1)))
   if (0 %in% consmaxi) {
     consmaxi[which(consmaxi == 0)] <- 1
+  }
+  # top = "edge": the top switch point (smaller/guaranteed on every item)
+  # scores the edge value itself, as the Kaplan et al. (2014) 21-item scorer
+  # does ("All" sheet, C54); the default "geomean" pairs it with the last item
+  # (the 27-item scorer, "All" C60). Pairs are consecutive in the sorted
+  # vector, so the top switch point's partner is the second-to-last entry.
+  if (identical(top, "edge")) {
+    last <- length(consmaxi)
+    if (last >= 2L && consmaxi[last] == lngth) {
+      consmaxi[last - 1L] <- lngth
+    }
   }
   value <- if (length(consmaxi) != 0) {
     vv <- gtools::running(

@@ -106,14 +106,42 @@ test_that("21-item paths match the pre-refactor goldens (scores within 1e-12; ch
     prop_na = 0.03
   )
   all_sir <- data.frame(subjectid = 1L, questionid = 1:21, response = 0)
-  expect_equal(score_mcq(dat21, items = 21), golden$default, tolerance = 1e-12)
-  expect_equal(score_mcq(dat21, items = 21, trans = "ln"), golden$ln, tolerance = 1e-12)
+  # Audit F-BZ1-1 (2026-09-22): the top switch point (smaller-sooner on every
+  # item) now scores the edge 0.1333 itself, as the Kaplan 2014 scorer does,
+  # instead of geomean(0.131, 0.1333). The frozen goldens are not regenerated;
+  # the rows whose best switch set includes that point (dat21 subjects 5 and 6,
+  # and all_sir) are re-derived here from an independent emulation of the
+  # workbook's "All" sheet. Every other value must still match the golden.
+  wb <- utils::read.csv(testthat::test_path("fixtures", "mcq21",
+                                            "kaplan2014-21item-ordered.csv"))
+  excel_k <- function(resp) {
+    n <- length(resp)
+    cons <- vapply(0:n, function(j) sum(resp[seq_len(j)] == 0) +
+                     sum(resp[seq_len(n) > j] == 1), numeric(1))
+    kv <- c(wb$kindiff[1], sqrt(wb$kindiff[-n] * wb$kindiff[-1]), 0.1333)
+    exp(mean(log(kv[cons == max(cons)])))
+  }
+  top_k <- vapply(c(5, 6), function(i) {
+    d <- dat21[dat21$subjectid == unique(dat21$subjectid)[i], ]
+    excel_k(d$response[match(wb$questionid, d$questionid)])
+  }, numeric(1))
+  g_def <- golden$default
+  g_def$overall_k[5:6] <- round(top_k, 6)
+  g_ln <- golden$ln
+  g_ln$ln_overall_k[5:6] <- log(round(top_k, 6))
+  g_log <- golden$log_round3
+  g_log$log10_overall_k[5:6] <- log10(round(top_k, 3))
+  g_sir <- golden$all_sir
+  g_sir$overall_k <- 0.1333
+  expect_equal(g_def$overall_k[5], 0.1333)   # subject 5 is all smaller-sooner
+  expect_equal(score_mcq(dat21, items = 21), g_def, tolerance = 1e-12)
+  expect_equal(score_mcq(dat21, items = 21, trans = "ln"), g_ln, tolerance = 1e-12)
   expect_equal(
     score_mcq(dat21, items = 21, trans = "log", round = 3),
-    golden$log_round3,
+    g_log,
     tolerance = 1e-12
   )
-  expect_equal(score_mcq(all_sir, items = 21), golden$all_sir, tolerance = 1e-12)
+  expect_equal(score_mcq(all_sir, items = 21), g_sir, tolerance = 1e-12)
   expect_equal(
     suppressWarnings(score_mcq(dat21_na, items = 21, impute_method = "none")),
     golden$na_none,

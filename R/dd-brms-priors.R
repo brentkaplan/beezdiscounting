@@ -21,6 +21,17 @@
 #' attached as `attr(, "autoscale_info")`; numeric values are formatted
 #' with `format(x, digits = 6, scientific = FALSE)`.
 #'
+#' For Rachlin (`mu = 1 / (1 + k * x^s)`) a change of delay unit by a factor
+#' `c` rescales k by `c^s`, so a data-unit anchor would describe a different
+#' curve prior in days than in weeks whenever `s != 1`. With autoscaling,
+#' [fit_dd_brms()] therefore fits Rachlin on the normalised delay
+#' `x / median(x)` (recorded as `autoscale_info$delay_scale`), and the logk
+#' intercept prior is `normal(0, 2.5)` on that scale (`k * median(x)^s = 1`
+#' at the prior centre). A user-supplied Rachlin logk intercept prior is read
+#' on the normalised scale too. Reported k (coefficients, `subject_pars`,
+#' EMMs) is back-transformed to data units. The other equations are
+#' unit-invariant under the data-unit anchor and are unchanged.
+#'
 #' Other defaults: `logs ~ normal(0, 0.5)` (two-parameter equations; s is
 #' near 1 a priori), `sd(logk) ~ student_t(3, 0, 1)`,
 #' `phi ~ gamma(2, 0.1)` (Beta precision; mean 20, far from brms's
@@ -109,9 +120,16 @@ default_dd_priors <- function(
       stop("Cannot autoscale priors: no positive delays.", call. = FALSE)
     }
     info <- list(median_delay = stats::median(x))
+    if (equation == "rachlin") {
+      # Normalised-delay parameterisation (audit F-BZ7-3): the fitter divides
+      # delays by this scale, so logk is log kn and the anchor kn = 1 is 0.
+      info$delay_scale <- info$median_delay
+    }
   }
 
-  p_logk <- if (!is.null(info)) {
+  p_logk <- if (!is.null(info$delay_scale)) {
+    "normal(0, 2.5)"
+  } else if (!is.null(info)) {
     paste0("normal(", fmt(-log(info$median_delay)), ", 2.5)")
   } else {
     "normal(-4.5, 2.5)"

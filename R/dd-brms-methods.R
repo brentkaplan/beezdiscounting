@@ -368,13 +368,8 @@ predict.beezdiscounting_brms <- function(
     return(object$subject_pars)
   }
 
-  if (
-    !is.null(newdata) &&
-      object$param_info$equation == "rachlin" &&
-      !all(c("xzero", "xsafe") %in% names(newdata))
-  ) {
-    newdata$xzero <- as.numeric(newdata$x == 0)
-    newdata$xsafe <- ifelse(newdata$x == 0, 1, newdata$x)
+  if (!is.null(newdata)) {
+    newdata <- .dd_brms_prep_newdata(object, newdata)
   }
 
   re_formula <- if (level == "population") NA else NULL
@@ -392,6 +387,18 @@ predict.beezdiscounting_brms <- function(
   base$.lower <- apply(ep, 2, stats::quantile, probs = probs[1])
   base$.upper <- apply(ep, 2, stats::quantile, probs = probs[2])
   base
+}
+
+# Rachlin newdata: always rebuild xzero/xsafe from x on the fitted delay scale
+# (any supplied helper columns are overwritten; F-BZ7-3 plan review).
+.dd_brms_prep_newdata <- function(object, newdata) {
+  if (!identical(object$param_info$equation, "rachlin")) {
+    return(newdata)
+  }
+  rc <- .dd_brms_rachlin_cols(newdata$x, .dd_brms_delay_scale(object))
+  newdata$xzero <- rc$xzero
+  newdata$xsafe <- rc$xsafe
+  newdata
 }
 
 #' @export

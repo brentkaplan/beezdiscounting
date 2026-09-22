@@ -6,9 +6,100 @@
 # Helper machinery is the beezdemand brms tier ported with the .dd_ prefix.
 
 #' Posterior draws matrix
+#'
+#' The single draws accessor. For a Rachlin fit the brms nlpar `logk` is on
+#' the normalised-delay scale (audit F-BZ7-3); it is back-transformed here so
+#' every consumer sees data-unit log k.
 #' @noRd
 .dd_brms_draws_matrix <- function(object) {
-  posterior::as_draws_matrix(object$brmsfit)
+  .dd_brms_backtransform_logk(
+    posterior::as_draws_matrix(object$brmsfit),
+    .dd_brms_delay_scale(object)
+  )
+}
+
+#' Delay scale m of a Rachlin fit (1 for other equations and for fits saved
+#' before the normalised parameterisation existed, whose draws are already in
+#' data units -- never inferred from autoscale_info)
+#' @noRd
+.dd_brms_delay_scale <- function(object) {
+  pi <- object$param_info
+  if (identical(pi$equation, "rachlin") && !is.null(pi$delay_scale)) {
+    pi$delay_scale
+  } else {
+    1
+  }
+}
+
+#' Rachlin data columns on the normalised delay scale
+#'
+#' `xzero` flags zero delays (mu = 1 there); `xsafe = x / m` with zero delays
+#' set to 1 so `pow(0, s)` is never evaluated (mirrors the TMB CondExpGt
+#' guard). `m = 1` gives the data-unit columns.
+#' @noRd
+.dd_brms_rachlin_cols <- function(x, m = 1) {
+  list(
+    xzero = as.numeric(x == 0),
+    xsafe = ifelse(x == 0, 1, x / m)
+  )
+}
+
+#' Back-transform normalised Rachlin log k draws to data units
+#'
+#' With `xsafe = x / m` the sampled intercept is log kn, `kn = k m^s`, so
+#' `log k = log kn - s log m`. Only the logk intercept shifts: `s` is
+#' population-level (`logs ~ 1`), factor/covariate coefficients are
+#' differences, and subject offsets are unchanged. Prior draws
+#' (`sample_prior`) are shifted the same way when present. Works on
+#' draws_matrix and draws_array objects.
+#' @noRd
+.dd_brms_backtransform_logk <- function(draws, m) {
+  if (isTRUE(all.equal(m, 1)) || is.null(m)) {
+    return(draws)
+  }
+  vars <- posterior::variables(draws)
+  pairs <- list(
+    c("b_logk_Intercept", "b_logs_Intercept"),
+    c("prior_b_logk_Intercept", "prior_b_logs_Intercept")
+  )
+  if (!all(pairs[[1]] %in% vars)) {
+    stop(
+      "Internal error: a normalised Rachlin fit needs the logk intercept and ",
+      "logs draws to back-transform log k (found: ",
+      paste(grep("^b_log[ks]_", vars, value = TRUE), collapse = ", "), ").",
+      call. = FALSE
+    )
+  }
+  is_arr <- posterior::is_draws_array(draws)
+  for (p in pairs) {
+    if (!all(p %in% vars)) next
+    if (is_arr) {
+      draws[, , p[1]] <- draws[, , p[1]] - exp(draws[, , p[2]]) * log(m)
+    } else {
+      draws[, p[1]] <- draws[, p[1]] - exp(draws[, p[2]]) * log(m)
+    }
+  }
+  draws
+}
+
+#' Draws used for convergence diagnostics
+#'
+#' Raw sampler draws plus, for a normalised Rachlin fit, the data-unit logk
+#' intercept as an extra variable: that nonlinear combination of sampled
+#' parameters can mix worse than either (audit F-BZ7-3 plan review).
+#' @noRd
+.dd_brms_diag_draws <- function(arr, m) {
+  if (isTRUE(all.equal(m, 1)) || is.null(m)) {
+    return(arr)
+  }
+  extra <- .dd_brms_backtransform_logk(
+    arr[, , c("b_logk_Intercept", "b_logs_Intercept")], m
+  )
+  extra <- posterior::subset_draws(extra, variable = "b_logk_Intercept")
+  extra <- posterior::rename_variables(
+    extra, b_logk_Intercept_data_units = b_logk_Intercept
+  )
+  posterior::bind_draws(arr, extra, along = "variable")
 }
 
 #' Canonicalize design column names the way brms sanitizes draw names
@@ -114,9 +205,10 @@
 
 #' MCMC diagnostics (all-NA-safe: chains = 1 must not fake convergence)
 #' @noRd
-.dd_brms_mcmc_diagnostics <- function(brmsfit, max_treedepth = 10) {
+.dd_brms_mcmc_diagnostics <- function(brmsfit, max_treedepth = 10,
+                                      delay_scale = 1) {
   sm <- posterior::summarise_draws(
-    posterior::as_draws_array(brmsfit),
+    .dd_brms_diag_draws(posterior::as_draws_array(brmsfit), delay_scale),
     "rhat",
     "ess_bulk",
     "ess_tail"
@@ -213,7 +305,11 @@
 #' @param ll,response_scale Response coercion, as in [fit_dd_tmb()].
 #' @param prior Optional `brmsprior`; user rows override the defaults.
 #' @param autoscale_priors Anchor the `logk` prior to the median delay (see
-#'   [default_dd_priors()]).
+#'   [default_dd_priors()]). For `equation = "rachlin"` this also fits on
+#'   the normalised delay `x / median(x)` (recorded as
+#'   `param_info$delay_scale`) so the prior is delay-unit invariant; reported
+#'   draws are back-transformed to data-unit k, but the raw `brmsfit` draws
+#'   of the logk intercept stay normalised.
 #' @param chains,iter,warmup,thin,cores,seed,backend,control,sample_prior
 #'   MCMC settings passed to [brms::brm()].
 #' @param init `"prior_center"` (default), `"tmb"` (a quiet
@@ -387,11 +483,6 @@ fit_dd_brms <- function(
     }
   }
 
-  if (equation == "rachlin") {
-    d$xzero <- as.numeric(d$x == 0)
-    d$xsafe <- ifelse(d$x == 0, 1, d$x)
-  }
-
   defaults <- default_dd_priors(
     equation,
     family = family,
@@ -407,6 +498,20 @@ fit_dd_brms <- function(
   )
   merged_priors <- .dd_brms_merge_priors(prior, defaults)
   autoscale_info <- attr(defaults, "autoscale_info")
+
+  # Rachlin: normalise delays by the median positive delay when autoscaling
+  # (audit F-BZ7-3), so the logk prior -- anchored at kn = 1 -- describes the
+  # same curve prior in any delay unit. Draws are back-transformed to data
+  # units by .dd_brms_draws_matrix(). autoscale_priors = FALSE keeps m = 1.
+  delay_scale <- 1
+  if (equation == "rachlin") {
+    if (!is.null(autoscale_info$delay_scale)) {
+      delay_scale <- autoscale_info$delay_scale
+    }
+    rc <- .dd_brms_rachlin_cols(d$x, delay_scale)
+    d$xzero <- rc$xzero
+    d$xsafe <- rc$xsafe
+  }
 
   brms::validate_prior(
     merged_priors,
@@ -437,7 +542,8 @@ fit_dd_brms <- function(
     continuous_covariates = continuous_covariates,
     equation = equation,
     phi_re = phi_re,
-    re_cov = re_cov
+    re_cov = re_cov,
+    delay_scale = delay_scale
   )
 
   if (verbose >= 1) {
@@ -505,7 +611,8 @@ fit_dd_brms <- function(
     n_boundary = n_boundary,
     boundary_info = boundary_info,
     compute_loo = isTRUE(loo),
-    verbose = verbose
+    verbose = verbose,
+    delay_scale = delay_scale
   )
 }
 
@@ -546,7 +653,8 @@ fit_dd_brms <- function(
   continuous_covariates,
   equation,
   phi_re = FALSE,
-  re_cov = "pdDiag"
+  re_cov = "pdDiag",
+  delay_scale = 1
 ) {
   if (is.list(init) || is.function(init)) {
     return(init)
@@ -559,7 +667,11 @@ fit_dd_brms <- function(
     return(0)
   }
 
-  logk_center <- if (!is.null(autoscale_info)) {
+  # Normalised Rachlin (delay_scale != 1): the sampled logk is log kn with a
+  # prior centre of 0; TMB (data-unit) centers are mapped below.
+  logk_center <- if (!isTRUE(all.equal(delay_scale, 1))) {
+    0
+  } else if (!is.null(autoscale_info)) {
     -log(autoscale_info$median_delay)
   } else {
     -4.5
@@ -609,6 +721,13 @@ fit_dd_brms <- function(
         }
         if ("log_sigma_e" %in% names(coefs)) {
           out$sigma <- exp(unname(coefs[["log_sigma_e"]]))
+        }
+        # Map the data-unit TMB intercept to the normalised Rachlin scale:
+        # log kn = log k + s log m (only the intercept shifts).
+        if (!isTRUE(all.equal(delay_scale, 1))) {
+          shift <- exp(out$logs %||% 0) * log(delay_scale)
+          out$beta_k_vec[1] <- out$beta_k_vec[1] + shift
+          out$logk <- out$logk + shift
         }
         out
       },
@@ -700,7 +819,8 @@ fit_dd_brms <- function(
   n_boundary,
   boundary_info = NULL,
   compute_loo,
-  verbose
+  verbose,
+  delay_scale = 1
 ) {
   X <- design$X
 
@@ -735,7 +855,10 @@ fit_dd_brms <- function(
         response_scale = response_scale,
         factors = factors,
         factor_interaction = factor_interaction,
-        continuous_covariates = continuous_covariates
+        continuous_covariates = continuous_covariates,
+        # Rachlin: brms samples log k on delays / delay_scale (F-BZ7-3);
+        # NULL for the other equations.
+        delay_scale = if (spec$equation == "rachlin") delay_scale else NULL
       ),
       formula_details = list(
         X = X,
@@ -840,7 +963,8 @@ fit_dd_brms <- function(
 
   diag <- .dd_brms_mcmc_diagnostics(
     brmsfit,
-    max_treedepth = mcmc_settings$max_treedepth
+    max_treedepth = mcmc_settings$max_treedepth,
+    delay_scale = .dd_brms_delay_scale(obj)
   )
   obj$mcmc_info <- c(
     mcmc_settings[c("chains", "iter", "warmup", "thin", "seed", "backend")],

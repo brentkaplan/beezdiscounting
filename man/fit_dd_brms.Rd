@@ -69,7 +69,11 @@ design on \code{logk}, as in \code{\link[=fit_dd_tmb]{fit_dd_tmb()}}.}
 \item{prior}{Optional \code{brmsprior}; user rows override the defaults.}
 
 \item{autoscale_priors}{Anchor the \code{logk} prior to the median delay (see
-\code{\link[=default_dd_priors]{default_dd_priors()}}).}
+\code{\link[=default_dd_priors]{default_dd_priors()}}). For \code{equation = "rachlin"} this also fits on
+the normalised delay \code{x / median(x)} (recorded as
+\code{param_info$delay_scale}) so the prior is delay-unit invariant; reported
+draws are back-transformed to data-unit k, but the raw \code{brmsfit} draws
+of the logk intercept stay normalised.}
 
 \item{chains, iter, warmup, thin, cores, seed, backend, control, sample_prior}{MCMC settings passed to \code{\link[brms:brm]{brms::brm()}}.}
 

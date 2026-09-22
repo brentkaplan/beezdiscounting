@@ -35,6 +35,19 @@ which shipped none).
   chance", 2 = "for sure"), so numeric exports previously flagged respondents
   who chose the certain amount and passed those who chose the 1% chance.
   Text exports were unaffected.
+* `fit_dd_brms(equation = "rachlin")` now samples on the normalised delay
+  `x / median(x)` with the `logk` intercept prior `normal(0, 2.5)` on that
+  scale, and back-transforms the draws to data-unit k. Rachlin k scales as
+  c^s under a change of delay unit, so the previous data-unit prior
+  (`normal(-log(median(x)), 2.5)`, independent of s) implied a different
+  curve prior in days than in weeks whenever s was not 1. Rachlin posteriors
+  change; the same data in any delay unit now give the same curve
+  posterior. A user-supplied Rachlin `logk` intercept prior is read on the
+  normalised scale, and raw `fit$brmsfit` draws of `b_logk_Intercept` are
+  normalised (`coef()`, `confint()`, `subject_pars`, EMMs and comparisons
+  report data units). `autoscale_priors = FALSE` keeps the old
+  parameterisation. MCMC convergence checks now also cover the
+  back-transformed log k.
 * The 5.5-trial delay and probability scorers (`score_dd()`, `ans_dd()`,
   `calc_dd()`, `score_pd()`, `ans_pd()`, `calc_pd()`) now recognise only the
   template's numeric codes and option texts. Previously any other value

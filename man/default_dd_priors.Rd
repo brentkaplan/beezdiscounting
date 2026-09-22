@@ -62,6 +62,17 @@ attached as \code{attr(, "autoscale_info")}; numeric values are formatted
 with \code{format(x, digits = 6, scientific = FALSE)}.
 }
 \details{
+For Rachlin (\code{mu = 1 / (1 + k * x^s)}) a change of delay unit by a factor
+\code{c} rescales k by \code{c^s}, so a data-unit anchor would describe a different
+curve prior in days than in weeks whenever \code{s != 1}. With autoscaling,
+\code{\link[=fit_dd_brms]{fit_dd_brms()}} therefore fits Rachlin on the normalised delay
+\code{x / median(x)} (recorded as \code{autoscale_info$delay_scale}), and the logk
+intercept prior is \code{normal(0, 2.5)} on that scale (\code{k * median(x)^s = 1}
+at the prior centre). A user-supplied Rachlin logk intercept prior is read
+on the normalised scale too. Reported k (coefficients, \code{subject_pars},
+EMMs) is back-transformed to data units. The other equations are
+unit-invariant under the data-unit anchor and are unchanged.
+
 Other defaults: \code{logs ~ normal(0, 0.5)} (two-parameter equations; s is
 near 1 a priori), \code{sd(logk) ~ student_t(3, 0, 1)},
 \code{phi ~ gamma(2, 0.1)} (Beta precision; mean 20, far from brms's

@@ -116,12 +116,20 @@ These defaults are weakly *regularising*, not uninformative. With few
 subjects, the `log s` prior pulls the k--s pair of the two-parameter
 equations toward s = 1 (the pair is poorly identified from indifference
 points alone), and the half-t priors on the random-effect SDs matter when
-there are about 30 subjects or fewer. For Rachlin the `logk` anchor is
-also delay-unit dependent in a second way: changing the delay unit by a
-factor c rescales k by c^s, not c, so the same prior centre describes a
-different curve prior whenever s is far from 1. Report a prior-sensitivity
-check (refit with wider `logk`/`logs` priors) alongside two-parameter
-fits.
+there are about 30 subjects or fewer. Report a prior-sensitivity check
+(refit with wider `logk`/`logs` priors) alongside two-parameter fits.
+
+Rachlin needs one more step. Changing the delay unit by a factor c
+rescales Rachlin's k by c^s, not c, so a prior centre in data units would
+describe a different curve prior in days than in weeks whenever s is not 1.
+`fit_dd_brms()` therefore samples Rachlin on the normalised delay
+`x / median(x)` (stored as `fit$param_info$delay_scale`), where the `logk`
+intercept prior is `normal(0, 2.5)`, and converts the draws back to
+data-unit k before reporting. The same data in days or in weeks then gives
+the same curve posterior. A custom Rachlin `logk` intercept prior is read
+on the normalised scale, and the raw draws in `fit$brmsfit` are
+normalised; use `coef()`, `confint()` and `get_dd_param_emms()` for
+data-unit k.
 
 ## Trial-level choice
 

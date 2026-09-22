@@ -24,17 +24,14 @@ which had none).
   `impute_method = "inn"`) now warns when items stay missing (neighbours
   disagree with `random = FALSE`, or a whole rank group is missing) instead
   of letting the resulting `NA` scores pass silently.
-* `score_dd()`, `ans_dd()` and `calc_dd()` read numeric Qualtrics exports per
-  item. The bundled 5.5-trial template codes `Attend-LL` in reverse order
-  (1 = "in 25 years", 2 = "now"), so numeric exports previously flagged
-  respondents who chose "now" and passed those who chose the 25-year option,
-  and applied the attention-item k to the wrong respondents. Text exports were
-  unaffected.
-* `score_pd()`, `ans_pd()` and `calc_pd()` have the same fix: the 5.5-trial
-  probability template codes `Attend-LL` in reverse order (1 = "with a 1%
-  chance", 2 = "for sure"), so numeric exports previously flagged respondents
-  who chose the certain amount and passed those who chose the 1% chance.
-  Text exports were unaffected.
+* `score_dd()`, `ans_dd()`, `calc_dd()`, `score_pd()`, `ans_pd()` and
+  `calc_pd()` now read numeric Qualtrics exports (choice codes 1/2) as well
+  as text exports. In 0.3.2 only text exports were supported: a numeric
+  export matched neither "now" nor "for sure", so every response was scored
+  as the larger-later (delay) or uncertain (probability) option. Numeric
+  codes are read per item, because both 5.5-trial templates code `Attend-LL`
+  in reverse order (delay: 1 = "in 25 years", 2 = "now"; probability:
+  1 = "with a 1% chance", 2 = "for sure"). Text exports score as before.
 * `fit_dd_brms(equation = "rachlin")` now samples on the normalised delay
   `x / median(x)` with the `logk` intercept prior `normal(0, 2.5)` on that
   scale, and back-transforms the draws to data-unit k. Rachlin k scales as

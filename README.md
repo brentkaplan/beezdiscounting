@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# Behavioral Economic (be) Easy (ez) Discounting <a><img src="https://raw.githubusercontent.com/brentkaplan/beezdiscounting/master/hex-beezdiscounting.png" align="right" height="138" /></a>
+# Behavioral Economic (be) Easy (ez) Discounting <a><img src="https://raw.githubusercontent.com/brentkaplan/beezdiscounting/master/hex-beezdiscounting.png" align="right" height="200" /></a>
 
 [![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/beezdiscounting)](https://cran.r-project.org/package=beezdiscounting)
 [![downloads](https://cranlogs.r-pkg.org/badges/beezdiscounting)](https://cranlogs.r-pkg.org/)

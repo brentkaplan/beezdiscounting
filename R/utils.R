@@ -40,8 +40,13 @@ generate_data_mcq <- function(n_ids = 100, n_items = 27,
 
 #' Reshape MCQ data wide to long
 #'
-#' @param dat Wide format MCQ assuming subject id is in column 1
-#' @param items Number of MCQ questions
+#' @param dat Wide format MCQ assuming subject id is in column 1 and one column
+#'   per item after it
+#' @param items Number of MCQ questions; must equal `ncol(dat) - 1`
+#'
+#' @details Items are numbered by column position within each wide row, so the
+#'   result has `items` rows per input row whatever the subject ids are. Repeated
+#'   or missing subject ids are left for the scoring functions to report.
 #'
 #' @return Long format data frame
 #'
@@ -50,11 +55,25 @@ generate_data_mcq <- function(n_ids = 100, n_items = 27,
 #' @export
 #'
 wide_to_long_mcq <- function(dat, items = 27) {
+  n_items <- ncol(dat) - 1L
+  if (n_items != items) {
+    stop(
+      sprintf(
+        "`dat` has %d item columns after the subject id column, but `items` is %d.",
+        n_items, items
+      ),
+      call. = FALSE
+    )
+  }
+  # pivot_longer() emits one block of `items` rows per wide row, so the item
+  # number is the column position within each block. Sizing it by the number of
+  # distinct subjectids aborted whenever a subject appeared on more than one row.
+  # rep_len() over n() numbers within each dplyr group too (groups survive the
+  # pivot, and mutate() evaluates once per group), so grouped input keeps working.
   return(tidyr::pivot_longer(dat, cols = 2:ncol(dat),
                              names_to = "questionid",
                              values_to = "response") |>
-    dplyr::mutate(questionid = rep(1:items,
-                                   times = length(unique(dat$subjectid)))))
+    dplyr::mutate(questionid = rep_len(seq_len(items), dplyr::n())))
 }
 
 

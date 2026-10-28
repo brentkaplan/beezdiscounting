@@ -7,15 +7,21 @@
 wide_to_long_mcq(dat, items = 27)
 }
 \arguments{
-\item{dat}{Wide format MCQ assuming subject id is in column 1}
+\item{dat}{Wide format MCQ assuming subject id is in column 1 and one column
+per item after it}
 
-\item{items}{Number of MCQ questions}
+\item{items}{Number of MCQ questions; must equal \code{ncol(dat) - 1}}
 }
 \value{
 Long format data frame
 }
 \description{
 Reshape MCQ data wide to long
+}
+\details{
+Items are numbered by column position within each wide row, so the
+result has \code{items} rows per input row whatever the subject ids are. Repeated
+or missing subject ids are left for the scoring functions to report.
 }
 \examples{
 wide_to_long_mcq(long_to_wide_mcq(mcq27))

@@ -68,10 +68,12 @@ wide_to_long_mcq <- function(dat, items = 27) {
   # pivot_longer() emits one block of `items` rows per wide row, so the item
   # number is the column position within each block. Sizing it by the number of
   # distinct subjectids aborted whenever a subject appeared on more than one row.
+  # rep_len() over n() numbers within each dplyr group too (groups survive the
+  # pivot, and mutate() evaluates once per group), so grouped input keeps working.
   return(tidyr::pivot_longer(dat, cols = 2:ncol(dat),
                              names_to = "questionid",
                              values_to = "response") |>
-    dplyr::mutate(questionid = rep(seq_len(items), times = nrow(dat))))
+    dplyr::mutate(questionid = rep_len(seq_len(items), dplyr::n())))
 }
 
 

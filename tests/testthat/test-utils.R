@@ -63,3 +63,18 @@ describe("wide_to_long_mcq()", {
     expect_no_error(wide_to_long_mcq(wide(1:2, items = 21), items = 21))
   })
 })
+
+describe("wide_to_long_mcq() on a grouped wide frame", {
+  # pivot_longer() keeps dplyr groups, and mutate() then evaluates questionid once per
+  # group, so a whole-frame vector only fits when every group happens to have the same
+  # size. Number items within each group instead; the grouping is preserved.
+  it("numbers items by column position within each group and keeps the grouping", {
+    wide <- data.frame(subjectid = c(1, 1, 2, 2), a = 1:4, b = 5:8) |>
+      dplyr::group_by(subjectid)
+    out <- wide_to_long_mcq(wide, items = 2)
+    expect_equal(nrow(out), 8)
+    expect_equal(out$questionid, rep(1:2, times = 4))
+    expect_equal(out$response, c(1L, 5L, 2L, 6L, 3L, 7L, 4L, 8L))
+    expect_true(dplyr::is_grouped_df(out))
+  })
+})

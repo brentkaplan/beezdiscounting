@@ -12,15 +12,23 @@ wide_to_long_mcq(dat, items = 27)
 
 - dat:
 
-  Wide format MCQ assuming subject id is in column 1
+  Wide format MCQ assuming subject id is in column 1 and one column per
+  item after it
 
 - items:
 
-  Number of MCQ questions
+  Number of MCQ questions; must equal `ncol(dat) - 1`
 
 ## Value
 
 Long format data frame
+
+## Details
+
+Items are numbered by column position within each wide row, so the
+result has `items` rows per input row whatever the subject ids are.
+Repeated or missing subject ids are left for the scoring functions to
+report.
 
 ## Examples
 

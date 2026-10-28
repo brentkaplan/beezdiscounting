@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -55,6 +55,14 @@
       <small>Source: <a href="https://github.com/brentkaplan/beezdiscounting/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.4.0.9000" id="beezdiscounting-0409000-development">beezdiscounting 0.4.0.9000 (development)<a class="anchor" aria-label="anchor" href="#beezdiscounting-0409000-development"></a></h2>
+<div class="section level4">
+<h4 id="bug-fixes-0-4-0-9000">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-4-0-9000"></a></h4>
+<ul><li>
+<code><a href="../reference/wide_to_long_mcq.html">wide_to_long_mcq()</a></code> numbers items by column position within each wide row instead of sizing <code>questionid</code> by the number of distinct <code>subjectid</code> values, so a repeated or missing <code>subjectid</code> no longer aborts with “<code>questionid</code> must be size N or 1”; such subjects now reach the scoring functions, which report them. An <code>items</code> value that does not match the number of item columns errors with a clear message instead of recycling.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="beezdiscounting-040">beezdiscounting 0.4.0<a class="anchor" aria-label="anchor" href="#beezdiscounting-040"></a></h2>
 <p>This is a large release (the first since 0.3.2, January 2025): mixed-effects and Bayesian discounting tiers, trial-level choice models, 21-item MCQ and PDQ scoring, Monte Carlo power analysis, and ten vignettes (all new since 0.3.2, which had none).</p>

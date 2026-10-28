@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">beezdiscounting</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -70,16 +70,23 @@
 
 
 <dl><dt id="arg-dat">dat<a class="anchor" aria-label="anchor" href="#arg-dat"></a></dt>
-<dd><p>Wide format MCQ assuming subject id is in column 1</p></dd>
+<dd><p>Wide format MCQ assuming subject id is in column 1 and one column
+per item after it</p></dd>
 
 
 <dt id="arg-items">items<a class="anchor" aria-label="anchor" href="#arg-items"></a></dt>
-<dd><p>Number of MCQ questions</p></dd>
+<dd><p>Number of MCQ questions; must equal <code>ncol(dat) - 1</code></p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Long format data frame</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Items are numbered by column position within each wide row, so the
+result has <code>items</code> rows per input row whatever the subject ids are. Repeated
+or missing subject ids are left for the scoring functions to report.</p>
     </div>
 
     <div class="section level2">

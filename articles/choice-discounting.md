@@ -298,7 +298,7 @@ c(
   choice = tidy(fit_ch)$estimate[tidy(fit_ch)$term == "k:(Intercept)"][1]
 )
 #>              truth indifference_point             choice 
-#>         0.02000000         0.01791425         0.01914801
+#>         0.02000000         0.01791424         0.01914801
 ```
 
 The two estimates are compatible in this controlled simulation,

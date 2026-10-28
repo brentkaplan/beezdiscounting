@@ -56,6 +56,15 @@
   rejects indifference points at exactly 0 or 1), so `boundary = "clamp"`
   is this package's addition.
 
+### Bug fixes
+
+* `wide_to_long_mcq()` numbers items by column position within each wide row
+  instead of sizing `questionid` by the number of distinct `subjectid` values,
+  so a repeated or missing `subjectid` no longer aborts with "`questionid` must
+  be size N or 1"; such subjects now reach the scoring functions, which report
+  them. An `items` value that does not match the number of item columns errors
+  with a clear message instead of recycling.
+
 # beezdiscounting 0.4.0
 
 This is a large release (the first since 0.3.2, January 2025): mixed-effects

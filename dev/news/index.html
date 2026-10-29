@@ -70,6 +70,11 @@
 <li>Polish: <code>conf_level</code> is validated; a <code>factors</code> column named <code>unit</code>, <code>y_lin</code>, <code>d_used</code> or <code>log_jac</code> is rejected rather than overwritten by the derived column; the <code>transform</code> counts refer to the retained units; <code>confint(parm = "subject")</code> defaults to the fit’s <code>conf_level</code> (population intervals keep the package-wide 0.95 default); <code>anova(pairwise = TRUE)</code> rejects <code>hypothesis</code> instead of ignoring it and warns once, not once per pair, when <code>g-hat = 0</code>.</li>
 <li>Implementation note: written from the published paper; validated against <code>nlme::lme(method = "ML")</code> and nested <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> ANOVA oracles, and then (2026-08-26) against the authors’ CRAN package <code>delaydiscount</code> 0.0.1: per-subject ln k, group means, <code>sigma2</code>, <code>g</code>, and the overall and pairwise F-tests agree to within 1e-11 relative on the package’s <code>remedi</code> data (reproducing the paper’s Tables 2-3) and on <code>dd_ip</code> under identical boundary handling; the reference package has no boundary policy (it rejects indifference points at exactly 0 or 1), so <code>boundary = "clamp"</code> is this package’s addition.</li>
 </ul></div>
+<div class="section level4">
+<h4 id="bug-fixes-0-5-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-5-0"></a></h4>
+<ul><li>
+<code><a href="../reference/wide_to_long_mcq.html">wide_to_long_mcq()</a></code> numbers items by column position within each wide row instead of sizing <code>questionid</code> by the number of distinct <code>subjectid</code> values, so a repeated or missing <code>subjectid</code> no longer aborts with “<code>questionid</code> must be size N or 1”; such subjects now reach the scoring functions, which report them. An <code>items</code> value that does not match the number of item columns errors with a clear message instead of recycling.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="beezdiscounting-040">beezdiscounting 0.4.0<a class="anchor" aria-label="anchor" href="#beezdiscounting-040"></a></h2>

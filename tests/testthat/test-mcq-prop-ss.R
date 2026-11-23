@@ -53,3 +53,39 @@ test_that("plot.prop_ss_output labels remaining ranks correctly when a rank is a
   labs2 <- ggplot2::ggplot_build(p2)$layout$panel_params[[1]]$x$get_labels()
   expect_equal(labs2, reg$rank_labels[c(1, 2, 3, 5, 6, 7)])
 })
+
+test_that("plot.prop_ss_output labels the 27-item x axis with its 9 k values", {
+  # The 27-item lookup stores each rank as its k value (0.00016 ... 0.25), not
+  # as a position 1-9, so the labels must be matched to the ranks, not indexed
+  # by them.
+  x_labels <- function(p) {
+    ggplot2::ggplot_build(p)$layout$panel_params[[1]]$x$get_labels()
+  }
+  k_labels <- c(
+    "0.00016", "0.0004", "0.001", "0.0025", "0.006", "0.016", "0.041", "0.1",
+    "0.25"
+  )
+  dat <- data.frame(subjectid = 1, questionid = 1:27, response = 1)
+  res <- prop_ss(dat)
+
+  expect_equal(x_labels(plot(res)), k_labels)
+
+  # lowest rank absent
+  res_no1 <- res[res$k_rank != min(res$k_rank), ]
+  class(res_no1) <- class(res)
+  expect_equal(x_labels(plot(res_no1)), k_labels[2:9])
+
+  # a middle rank (0.0025, the 4th) absent
+  res_no4 <- res[res$k_rank != 0.0025, ]
+  class(res_no4) <- class(res)
+  expect_equal(x_labels(plot(res_no4)), k_labels[c(1:3, 5:9)])
+})
+
+test_that("plot.prop_ss_output labels 21-item output that has lost its attribute", {
+  dat <- data.frame(subjectid = 1, questionid = 1:21, response = 1)
+  res <- prop_ss(dat, items = 21)
+  attr(res, "mcq_items") <- NULL
+
+  labs <- ggplot2::ggplot_build(plot(res))$layout$panel_params[[1]]$x$get_labels()
+  expect_equal(labs, .mcq_registry(21)$rank_labels)
+})

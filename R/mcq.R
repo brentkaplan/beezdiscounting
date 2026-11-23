@@ -665,12 +665,21 @@ plot.prop_ss_output <- function(
     xlab = "k value rank",
     ylab = "Proportion of SS choices"
     ) {
-  # index (not append) the labels by the k_rank values actually present, so
+  # match (not append) the labels to the k_rank values actually present, so
   # a missing rank (first or middle) can't shift labels onto the wrong
   # remaining ranks -- factor(k_rank)'s levels are these same sorted values,
-  # in the same order.
+  # in the same order. The labels are looked up by each rank's position in the
+  # design's sorted ranks: the 21-item table stores ranks as 1-7, but the
+  # 27-item table stores them as the k values themselves (0.00016 ... 0.25),
+  # which cannot be used as an index.
   levels_present <- sort(unique(x$k_rank))
-  labs_k <- .mcq_registry(attr(x, "mcq_items") %||% 27L)$rank_labels[levels_present]
+  # the two designs' ranks never overlap, so an object that has lost its
+  # `mcq_items` attribute (dplyr verbs drop it) is still told apart by them.
+  items <- attr(x, "mcq_items") %||%
+    if (all(levels_present %in% .mcq_registry(21L)$table$k_rank)) 21L else 27L
+  reg <- .mcq_registry(items)
+  design_ranks <- sort(unique(reg$table[[reg$rank_col]]))
+  labs_k <- reg$rank_labels[match(levels_present, design_ranks)]
   x |>
     dplyr::mutate(group = 1) |>
     ggplot2::ggplot(ggplot2::aes(x = factor(k_rank), y = prop_ss, group = group)) +

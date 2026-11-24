@@ -11,6 +11,15 @@
   must be size N or 1”; such subjects now reach the scoring functions,
   which report them. An `items` value that does not match the number of
   item columns errors with a clear message instead of recycling.
+- [`plot()`](https://rdrr.io/r/graphics/plot.default.html) on 27-item
+  [`prop_ss()`](https://brentkaplan.github.io/beezdiscounting/reference/prop_ss.md)
+  output labels the x axis with the 9 k values again. Every tick read
+  `NA` since 21-item support was added: the labels were indexed by the
+  rank value, which is a position (1-7) for the 21-item MCQ but the k
+  value itself for the 27-item MCQ. 21-item output that has lost its
+  `mcq_items` attribute (for example after a dplyr verb) is labelled
+  with the 21-item k values; before, it took the first 7 of the 27-item
+  labels.
 
 ## beezdiscounting 0.4.0
 

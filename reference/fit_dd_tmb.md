@@ -297,6 +297,6 @@ dd <- data.frame(
 )
 fit <- fit_dd_tmb(dd, equation = "mazur", family = "sltb", verbose = 0)
 exp(fit$model$coefficients[["beta_k"]])  # population k
-#> [1] 0.008690582
+#> [1] 0.008690581
 # }
 ```
